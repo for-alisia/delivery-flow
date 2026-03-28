@@ -1,0 +1,16 @@
+{
+	"servers": {
+		"GitlabFlow": {
+			"type": "stdio",
+			"command": "node",
+			"args": ["mcp-server/dist/index.js"],
+			"dev": {
+				"watch": "mcp-server/dist/**/*.js",
+				"debug": {
+					"type": "node"
+				}
+			}
+		}
+	},
+	"inputs": []
+}

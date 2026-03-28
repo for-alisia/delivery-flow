@@ -1,0 +1,31 @@
+# IDE and editor
+.vscode/*
+!.vscode/mcp.json
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# Node / TypeScript
+mcp-server/node_modules/
+mcp-server/dist/
+*.tsbuildinfo
+
+# Java / Maven
+flow-orchestrator/target/
+flow-orchestrator/src/main/resources/application-local.yml
+
+# Environment and logs
+.env
+.env.local
+.env.*.local
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+.nx/installation
+.nx/cache
+.nx/workspace-data

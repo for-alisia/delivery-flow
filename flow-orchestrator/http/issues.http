@@ -1,0 +1,31 @@
+@host = http://localhost:8080
+
+### Fetch all issues (no filters)
+GET {{host}}/api/issues
+
+### Fetch issues with pagination
+GET {{host}}/api/issues?page=1&per_page=20
+
+### Fetch open issues
+GET {{host}}/api/issues?state=opened
+
+### Fetch closed issues
+GET {{host}}/api/issues?state=closed
+
+### Fetch issues by assignee
+GET {{host}}/api/issues?assignee_id=123
+
+### Fetch issues by author
+GET {{host}}/api/issues?author_id=456
+
+### Fetch issues with specific labels
+GET {{host}}/api/issues?labels=bug,critical
+
+### Search issues
+GET {{host}}/api/issues?search=performance
+
+### Fetch issues for a milestone
+GET {{host}}/api/issues?milestone=v1.0
+
+### Complex query with multiple filters
+GET {{host}}/api/issues?state=opened&assignee_id=123&labels=bug&order_by=created_at&sort=desc&page=1&per_page=50
