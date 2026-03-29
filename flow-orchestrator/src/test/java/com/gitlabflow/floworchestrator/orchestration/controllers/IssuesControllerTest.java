@@ -1,10 +1,11 @@
 package com.gitlabflow.floworchestrator.orchestration.controllers;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,18 +13,20 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.gitlabflow.floworchestrator.common.errors.ErrorCode;
 import com.gitlabflow.floworchestrator.common.errors.IntegrationException;
+import com.gitlabflow.floworchestrator.integration.gitlab.GitlabIssuesClient;
 import com.gitlabflow.floworchestrator.common.errors.ValidationException;
-import com.gitlabflow.floworchestrator.orchestration.issues.GetIssuesRequestValidator;
-import com.gitlabflow.floworchestrator.orchestration.issues.IssuesProvider;
-import com.gitlabflow.floworchestrator.orchestration.issues.models.GetIssuesRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.ListProjectIssuesUseCase;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.ListProjectIssuesResult;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.PaginationMetadata;
 
 @WebMvcTest(IssuesController.class)
 @DisplayName("IssuesController")
@@ -33,96 +36,134 @@ class IssuesControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private IssuesProvider issuesProvider;
+    private ListProjectIssuesUseCase listProjectIssuesUseCase;
 
-    @MockBean
-    private GetIssuesRequestValidator requestValidator;
+        @MockBean
+        private GitlabIssuesClient gitlabIssuesClient;
 
     @Test
-    @DisplayName("given no params when get issues then delegates with empty request and returns 200")
-    void givenNoParamsWhenGetIssuesThenDelegatesWithEmptyRequestAndReturns200() throws Exception {
-        when(issuesProvider.fetchIssues(any())).thenReturn(List.of());
+    @DisplayName("given omitted body when search issues then defaults are applied by use case")
+    void givenOmittedBodyWhenSearchIssuesThenDefaultsAreAppliedByUseCase() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any())).thenReturn(sampleResult(1, 20));
 
-        mockMvc.perform(get("/api/issues"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/projects/group%2Fproject/issues/search"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(1001))
+                .andExpect(jsonPath("$.pagination.currentPage").value(1))
+                .andExpect(jsonPath("$.pagination.pageSize").value(20));
 
-        ArgumentCaptor<GetIssuesRequest> captor = ArgumentCaptor.forClass(GetIssuesRequest.class);
-        verify(requestValidator).validate(captor.capture());
-        verify(issuesProvider).fetchIssues(any(GetIssuesRequest.class));
-
-        GetIssuesRequest request = captor.getValue();
-        org.assertj.core.api.Assertions.assertThat(request.assigneeId()).isNull();
-        org.assertj.core.api.Assertions.assertThat(request.perPage()).isNull();
-        org.assertj.core.api.Assertions.assertThat(request.page()).isNull();
+                verify(listProjectIssuesUseCase).listProjectIssues("group%2Fproject", null, null);
     }
 
     @Test
-    @DisplayName("given assignee id query param when get issues then binds assignee id")
-    void givenAssigneeIdQueryParamWhenGetIssuesThenBindsAssigneeId() throws Exception {
-        when(issuesProvider.fetchIssues(any())).thenReturn(List.of());
+    @DisplayName("given explicit pagination body when search issues then request values are bound")
+    void givenExplicitPaginationBodyWhenSearchIssuesThenRequestValuesAreBound() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any())).thenReturn(sampleResult(2, 5));
 
-        mockMvc.perform(get("/api/issues").param("assignee_id", "123"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/projects/123/issues/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "page": 2,
+                                  "pageSize": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pagination.currentPage").value(2))
+                .andExpect(jsonPath("$.pagination.pageSize").value(5));
 
-        ArgumentCaptor<GetIssuesRequest> captor = ArgumentCaptor.forClass(GetIssuesRequest.class);
-        verify(requestValidator).validate(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().assigneeId()).isEqualTo(123L);
+        verify(listProjectIssuesUseCase).listProjectIssues("123", 2, 5);
     }
 
     @Test
-    @DisplayName("given per page and page query params when get issues then binds paging values")
-    void givenPerPageAndPageQueryParamsWhenGetIssuesThenBindsPagingValues() throws Exception {
-        when(issuesProvider.fetchIssues(any())).thenReturn(List.of());
+    @DisplayName("given invalid pagination from use case validation when search issues then returns 400")
+    void givenInvalidPaginationFromUseCaseValidationWhenSearchIssuesThenReturns400() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any()))
+                .thenThrow(new ValidationException("page must be positive"));
 
-        mockMvc.perform(get("/api/issues").param("per_page", "20").param("page", "2"))
-                .andExpect(status().isOk());
-
-        ArgumentCaptor<GetIssuesRequest> captor = ArgumentCaptor.forClass(GetIssuesRequest.class);
-        verify(requestValidator).validate(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().perPage()).isEqualTo(20);
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().page()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("given state query param when get issues then binds state")
-    void givenStateQueryParamWhenGetIssuesThenBindsState() throws Exception {
-        when(issuesProvider.fetchIssues(any())).thenReturn(List.of());
-
-        mockMvc.perform(get("/api/issues").param("state", "opened"))
-                .andExpect(status().isOk());
-
-        ArgumentCaptor<GetIssuesRequest> captor = ArgumentCaptor.forClass(GetIssuesRequest.class);
-        verify(requestValidator).validate(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().state()).isEqualTo("opened");
-    }
-
-    @Test
-    @DisplayName("given validator throws when get issues then returns 400")
-    void givenValidatorThrowsWhenGetIssuesThenReturns400() throws Exception {
-        doThrow(new ValidationException("Invalid state"))
-                .when(requestValidator)
-                .validate(any(GetIssuesRequest.class));
-
-        mockMvc.perform(get("/api/issues").param("state", "invalid"))
+        mockMvc.perform(post("/api/projects/123/issues/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "page": 0,
+                                  "pageSize": 20
+                                }
+                                """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid state"));
+                .andExpect(jsonPath("$.message").value("page must be positive"));
     }
 
     @Test
-    @DisplayName("given provider integration error when get issues then returns 502")
-    void givenProviderIntegrationErrorWhenGetIssuesThenReturns502() throws Exception {
-        when(issuesProvider.fetchIssues(any())).thenThrow(
-                new IntegrationException(
-                        ErrorCode.INTEGRATION_UNAUTHORIZED,
+    @DisplayName("given malformed json body when search issues then returns 400 before use case invocation")
+    void givenMalformedJsonBodyWhenSearchIssuesThenReturns400BeforeUseCaseInvocation() throws Exception {
+        mockMvc.perform(post("/api/projects/123/issues/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"page\": 1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION"));
+
+        verifyNoInteractions(listProjectIssuesUseCase);
+    }
+
+    @Test
+    @DisplayName("given unknown project from integration when search issues then returns sanitized 404")
+    void givenUnknownProjectFromIntegrationWhenSearchIssuesThenReturnsSanitized404() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any()))
+                .thenThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_NOT_FOUND,
                         "gitlab",
-                        401,
-                        "GitLab unauthorized",
+                        404,
+                        "Requested project was not found or is not accessible.",
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(post("/api/projects/404/issues/search"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Requested project was not found or is not accessible."));
+    }
+
+    @Test
+    @DisplayName("given upstream is rate limited when search issues then returns 429 with retry after")
+    void givenUpstreamIsRateLimitedWhenSearchIssuesThenReturns429WithRetryAfter() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any())).thenThrow(
+                new IntegrationException(
+                        ErrorCode.INTEGRATION_RATE_LIMITED,
+                        "gitlab",
+                        429,
+                        "Issue retrieval is temporarily rate-limited by the integration provider.",
+                        30L,
+                        null
+                )
+        );
+
+        mockMvc.perform(post("/api/projects/123/issues/search"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.retryAfterSeconds").value(30));
+    }
+
+    @Test
+    @DisplayName("given upstream unavailable when search issues then returns 503")
+    void givenUpstreamUnavailableWhenSearchIssuesThenReturns503() throws Exception {
+        when(listProjectIssuesUseCase.listProjectIssues(anyString(), any(), any())).thenThrow(
+                new IntegrationException(
+                        ErrorCode.INTEGRATION_UNAVAILABLE,
+                        "gitlab",
+                        503,
+                        "Issue retrieval is temporarily unavailable from the integration provider.",
                         null,
                         null
                 )
         );
 
-        mockMvc.perform(get("/api/issues"))
-                .andExpect(status().isBadGateway());
+        mockMvc.perform(post("/api/projects/123/issues/search"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    private static ListProjectIssuesResult sampleResult(int page, int pageSize) {
+        return new ListProjectIssuesResult(
+                List.of(new IssueSummary(1001L, 101L, "Issue title", "opened", "https://gitlab.example.com/i/101")),
+                new PaginationMetadata(page, pageSize, page > 1 ? page - 1 : null, page + 1, 50L, 10L)
+        );
     }
 }

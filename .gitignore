@@ -15,6 +15,7 @@ mcp-server/dist/
 # Java / Maven
 flow-orchestrator/target/
 flow-orchestrator/src/main/resources/application-local.yml
+.scannerwork/
 
 # Environment and logs
 .env

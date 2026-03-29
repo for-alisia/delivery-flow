@@ -1,72 +1,87 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
 
-@DisplayName("GitlabProperties")
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@DisplayName("GitlabPropertiesValidation")
 class GitlabPropertiesValidationTest {
 
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withUserConfiguration(PropertiesConfig.class);
+
     @Test
-    @DisplayName("given blank url when create then throws illegal argument")
-    void givenBlankUrlWhenCreateThenThrowsIllegalArgument() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new GitlabProperties(" ", "token"));
+    @DisplayName("given missing token when context starts then startup fails")
+    void givenMissingTokenWhenContextStartsThenStartupFails() {
+        contextRunner
+                .withPropertyValues("app.gitlab.url=https://gitlab.example.com")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure()).hasStackTraceContaining("field 'token'");
+                });
     }
 
     @Test
-    @DisplayName("given null url when create then throws illegal argument")
-    void givenNullUrlWhenCreateThenThrowsIllegalArgument() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new GitlabProperties(null, "token"));
+    @DisplayName("given missing url when context starts then startup fails")
+    void givenMissingUrlWhenContextStartsThenStartupFails() {
+        contextRunner
+                .withPropertyValues("app.gitlab.token=secret-token")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure()).hasStackTraceContaining("field 'url'");
+                });
     }
 
     @Test
-    @DisplayName("given blank token when create then throws illegal argument")
-    void givenBlankTokenWhenCreateThenThrowsIllegalArgument() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new GitlabProperties("https://gitlab.example.com/group/project", " "));
+    @DisplayName("given required properties when context starts then startup succeeds")
+    void givenRequiredPropertiesWhenContextStartsThenStartupSucceeds() {
+        contextRunner
+                .withPropertyValues(
+                        "app.gitlab.url=https://gitlab.example.com",
+                        "app.gitlab.token=secret-token"
+                )
+                .run(context -> assertThat(context).hasNotFailed());
     }
 
     @Test
-    @DisplayName("given null token when create then throws illegal argument")
-    void givenNullTokenWhenCreateThenThrowsIllegalArgument() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new GitlabProperties("https://gitlab.example.com/group/project", null));
+    @DisplayName("given project-style url when context starts then api base url is normalized")
+    void givenProjectStyleUrlWhenContextStartsThenApiBaseUrlIsNormalized() {
+        contextRunner
+                .withPropertyValues(
+                        "app.gitlab.url=https://gitlab.example.com/group/subgroup/project",
+                        "app.gitlab.token=secret-token"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    GitlabProperties properties = context.getBean(GitlabProperties.class);
+                    assertThat(properties.apiBaseUrl()).isEqualTo("https://gitlab.example.com");
+                });
     }
 
     @Test
-    @DisplayName("given valid url and token when create then succeeds")
-    void givenValidUrlAndTokenWhenCreateThenSucceeds() {
-        GitlabProperties properties = new GitlabProperties("https://gitlab.example.com/group/project", "token");
-
-        assertThat(properties.url()).isEqualTo("https://gitlab.example.com/group/project");
-        assertThat(properties.token()).isEqualTo("token");
+    @DisplayName("given invalid url when api base url is resolved then validation fails")
+    void givenInvalidUrlWhenApiBaseUrlIsResolvedThenValidationFails() {
+        contextRunner
+                .withPropertyValues(
+                        "app.gitlab.url=not-a-url",
+                        "app.gitlab.token=secret-token"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    GitlabProperties properties = context.getBean(GitlabProperties.class);
+                    assertThatThrownBy(properties::apiBaseUrl)
+                        .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("app.gitlab.url");
+                });
     }
 
-    @Test
-    @DisplayName("given project url when get base url then returns host root")
-    void givenProjectUrlWhenGetBaseUrlThenReturnsHostRoot() {
-        GitlabProperties properties = new GitlabProperties("https://gitlab.example.com/group/project", "token");
-
-        assertThat(properties.getBaseUrl()).isEqualTo("https://gitlab.example.com");
-    }
-
-    @Test
-    @DisplayName("given project url when get encoded project path then encodes slash")
-    void givenProjectUrlWhenGetEncodedProjectPathThenEncodesSlash() {
-        GitlabProperties properties = new GitlabProperties("https://gitlab.example.com/group/project", "token");
-
-        assertThat(properties.getEncodedProjectPath()).isEqualTo("group%2Fproject");
-    }
-
-    @Test
-    @DisplayName("given nested project url when get encoded project path then encodes full path")
-    void givenNestedProjectUrlWhenGetEncodedProjectPathThenEncodesFullPath() {
-        GitlabProperties properties = new GitlabProperties("https://gitlab.example.com/group/subgroup/project", "token");
-
-        assertThat(properties.getEncodedProjectPath()).isEqualTo("group%2Fsubgroup%2Fproject");
+    @Configuration
+    @EnableConfigurationProperties(GitlabProperties.class)
+    static class PropertiesConfig {
     }
 }

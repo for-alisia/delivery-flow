@@ -1,58 +1,109 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
 import java.util.Collection;
+import java.util.Map;
 
 import com.gitlabflow.floworchestrator.common.errors.ErrorCode;
 import com.gitlabflow.floworchestrator.common.errors.IntegrationException;
 
 import feign.Response;
 import feign.codec.ErrorDecoder;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public class GitlabErrorDecoder implements ErrorDecoder {
-
-    private static final String SOURCE = "gitlab";
 
     @Override
     public Exception decode(String methodKey, Response response) {
         int status = response.status();
-        log.warn("GitLab API error: status={} method={}", status, methodKey);
 
-        return switch (status) {
-            case 400 -> integrationException(ErrorCode.INTEGRATION_BAD_REQUEST, status, "Invalid request sent to GitLab", null);
-            case 401 -> integrationException(ErrorCode.INTEGRATION_UNAUTHORIZED, status, "GitLab authentication failed", null);
-            case 403 -> integrationException(ErrorCode.INTEGRATION_FORBIDDEN, status, "GitLab access is forbidden", null);
-            case 404 -> integrationException(ErrorCode.INTEGRATION_NOT_FOUND, status, "GitLab project not found or not accessible", null);
-            case 429 -> integrationException(
-                    ErrorCode.INTEGRATION_RATE_LIMITED,
+        if (status == 400) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_BAD_REQUEST,
+                    "gitlab",
                     status,
-                    "GitLab rate limit exceeded",
-                    parseRetryAfter(response.headers().get("Retry-After"))
+                    "Issue retrieval request was rejected by the integration provider.",
+                    null,
+                    null
             );
-            default -> {
-                if (status >= 500 && status <= 599) {
-                    yield integrationException(ErrorCode.INTEGRATION_UNKNOWN, status, "GitLab server error", null);
-                }
-                yield integrationException(ErrorCode.INTEGRATION_UNKNOWN, status, "Unexpected GitLab integration error", null);
-            }
-        };
-    }
-
-    private IntegrationException integrationException(ErrorCode code, int status, String message, Long retryAfterSeconds) {
-        return new IntegrationException(code, SOURCE, status, message, retryAfterSeconds, null);
-    }
-
-    private Long parseRetryAfter(Collection<String> retryAfterValues) {
-        if (retryAfterValues == null || retryAfterValues.isEmpty()) {
-            return null;
+        }
+        if (status == 401) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_UNAUTHORIZED,
+                    "gitlab",
+                    status,
+                    "Issue retrieval failed due to integration authentication.",
+                    null,
+                    null
+            );
+        }
+        if (status == 403) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_FORBIDDEN,
+                    "gitlab",
+                    status,
+                    "Issue retrieval is not permitted for the requested project.",
+                    null,
+                    null
+            );
+        }
+        if (status == 404) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_NOT_FOUND,
+                    "gitlab",
+                    status,
+                    "Requested project was not found or is not accessible.",
+                    null,
+                    null
+            );
+        }
+        if (status == 429) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_RATE_LIMITED,
+                    "gitlab",
+                    status,
+                    "Issue retrieval is temporarily rate-limited by the integration provider.",
+                    parseRetryAfter(response.headers()),
+                    null
+            );
+        }
+        if (status >= 500) {
+            return new IntegrationException(
+                    ErrorCode.INTEGRATION_UNAVAILABLE,
+                    "gitlab",
+                    status,
+                    "Issue retrieval is temporarily unavailable from the integration provider.",
+                    null,
+                    null
+            );
         }
 
-        String rawValue = retryAfterValues.iterator().next();
+        return new IntegrationException(
+                ErrorCode.INTEGRATION_UNKNOWN,
+                "gitlab",
+                status,
+                "Issue retrieval failed due to an unexpected integration error.",
+                null,
+                null
+        );
+    }
+
+    private Long parseRetryAfter(Map<String, Collection<String>> headers) {
+        for (Map.Entry<String, Collection<String>> entry : headers.entrySet()) {
+            if (!"retry-after".equalsIgnoreCase(entry.getKey())) {
+                continue;
+            }
+            return entry.getValue().stream()
+                    .findFirst()
+                    .flatMap(this::parseLong)
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    private java.util.Optional<Long> parseLong(String value) {
         try {
-            return Long.parseLong(rawValue);
-        } catch (NumberFormatException ignored) {
-            return null;
+            return java.util.Optional.of(Long.parseLong(value));
+        } catch (NumberFormatException ex) {
+            return java.util.Optional.empty();
         }
     }
 }

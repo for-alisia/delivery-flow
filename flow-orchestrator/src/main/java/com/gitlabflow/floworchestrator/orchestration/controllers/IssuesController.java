@@ -2,57 +2,58 @@ package com.gitlabflow.floworchestrator.orchestration.controllers;
 
 import java.util.List;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.gitlabflow.floworchestrator.orchestration.issues.GetIssuesRequestValidator;
-import com.gitlabflow.floworchestrator.orchestration.issues.IssuesProvider;
-import com.gitlabflow.floworchestrator.orchestration.issues.models.IssueSummary;
-import com.gitlabflow.floworchestrator.orchestration.issues.models.GetIssuesRequest;
+import com.gitlabflow.floworchestrator.orchestration.controllers.models.ListProjectIssuesRequestBody;
+import com.gitlabflow.floworchestrator.orchestration.controllers.models.ListProjectIssuesResponse;
+import com.gitlabflow.floworchestrator.orchestration.controllers.models.PaginationResponse;
+import com.gitlabflow.floworchestrator.orchestration.controllers.models.ProjectIssueResponseItem;
+import com.gitlabflow.floworchestrator.orchestration.issues.ListProjectIssuesUseCase;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.ListProjectIssuesResult;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @RestController
-@RequestMapping("/api/issues")
 @RequiredArgsConstructor
+@RequestMapping("/api/projects/{projectId}/issues")
 public class IssuesController {
 
-    private final IssuesProvider issuesProvider;
-    private final GetIssuesRequestValidator requestValidator;
+    private final ListProjectIssuesUseCase listProjectIssuesUseCase;
 
-    @GetMapping
-    public List<IssueSummary> getIssues(
-            @RequestParam(name = "assignee_id", required = false) Long assigneeId,
-            @RequestParam(name = "author_id", required = false) Long authorId,
-            @RequestParam(name = "milestone", required = false) String milestone,
-            @RequestParam(name = "state", required = false) String state,
-            @RequestParam(name = "search", required = false) String search,
-            @RequestParam(name = "labels", required = false) String labels,
-            @RequestParam(name = "order_by", required = false) String orderBy,
-            @RequestParam(name = "sort", required = false) String sort,
-            @RequestParam(name = "page", required = false) Integer page,
-            @RequestParam(name = "per_page", required = false) Integer perPage) {
-        GetIssuesRequest request = new GetIssuesRequest(
-                assigneeId,
-                authorId,
-                milestone,
-                state,
-                search,
-                labels,
-                orderBy,
-                sort,
-                page,
-                perPage
+    @PostMapping("/search")
+    public ResponseEntity<ListProjectIssuesResponse> searchProjectIssues(
+            @PathVariable String projectId,
+            @RequestBody(required = false) ListProjectIssuesRequestBody requestBody
+    ) {
+        final Integer page = requestBody == null ? null : requestBody.page();
+        final Integer pageSize = requestBody == null ? null : requestBody.pageSize();
+
+        final ListProjectIssuesResult result = listProjectIssuesUseCase.listProjectIssues(projectId, page, pageSize);
+
+        final List<ProjectIssueResponseItem> items = result.items().stream()
+                .map(issue -> new ProjectIssueResponseItem(
+                        issue.id(),
+                        issue.iid(),
+                        issue.title(),
+                        issue.state(),
+                        issue.webUrl()
+                ))
+                .toList();
+
+        final PaginationResponse pagination = new PaginationResponse(
+                result.pagination().currentPage(),
+                result.pagination().pageSize(),
+                result.pagination().previousPage(),
+                result.pagination().nextPage(),
+                result.pagination().totalItems(),
+                result.pagination().totalPages()
         );
-            requestValidator.validate(request);
-        log.debug("Incoming request to list issues with filters: {}", request);
-        List<IssueSummary> issues = issuesProvider.fetchIssues(request);
-        log.info("Retrieved {} issues", issues.size());
-        return issues;
-    }
 
+        return ResponseEntity.ok(new ListProjectIssuesResponse(items, pagination));
+    }
 }

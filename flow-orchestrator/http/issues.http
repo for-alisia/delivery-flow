@@ -1,31 +1,61 @@
 @host = http://localhost:8080
 
-### Fetch all issues (no filters)
-GET {{host}}/api/issues
+### Search project issues with default pagination (body omitted)
+POST {{host}}/api/projects/76761463/issues/search
 
-### Fetch issues with pagination
-GET {{host}}/api/issues?page=1&per_page=20
+###
 
-### Fetch open issues
-GET {{host}}/api/issues?state=opened
+### Search project issues with explicit pagination
+POST {{host}}/api/projects/123/issues/search
+Content-Type: application/json
 
-### Fetch closed issues
-GET {{host}}/api/issues?state=closed
+{
+	"page": 2,
+	"pageSize": 5
+}
 
-### Fetch issues by assignee
-GET {{host}}/api/issues?assignee_id=123
+###
 
-### Fetch issues by author
-GET {{host}}/api/issues?author_id=456
+### Validation error (invalid pagination)
+POST {{host}}/api/projects/123/issues/search
+Content-Type: application/json
 
-### Fetch issues with specific labels
-GET {{host}}/api/issues?labels=bug,critical
+{
+	"page": 0,
+	"pageSize": 20
+}
 
-### Search issues
-GET {{host}}/api/issues?search=performance
+###
 
-### Fetch issues for a milestone
-GET {{host}}/api/issues?milestone=v1.0
+### Project not found
+POST {{host}}/api/projects/404/issues/search
 
-### Complex query with multiple filters
-GET {{host}}/api/issues?state=opened&assignee_id=123&labels=bug&order_by=created_at&sort=desc&page=1&per_page=50
+###
+
+### Upstream unavailable
+POST {{host}}/api/projects/upstream-down/issues/search
+
+###
+
+### Representative success response
+# {
+#   "items": [
+#     {
+#       "id": 1001,
+#       "iid": 101,
+#       "title": "Example issue",
+#       "state": "opened",
+#       "webUrl": "https://gitlab.example.com/group/project/-/issues/101"
+#     }
+#   ],
+#   "pagination": {
+#     "currentPage": 1,
+#     "pageSize": 20,
+#     "previousPage": null,
+#     "nextPage": 2,
+#     "totalItems": 40,
+#     "totalPages": 2
+#   }
+# }
+
+

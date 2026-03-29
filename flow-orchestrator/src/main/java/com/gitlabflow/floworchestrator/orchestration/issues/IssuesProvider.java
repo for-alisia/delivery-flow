@@ -1,10 +1,9 @@
 package com.gitlabflow.floworchestrator.orchestration.issues;
 
-import java.util.List;
-
-import com.gitlabflow.floworchestrator.orchestration.issues.models.IssueSummary;
-import com.gitlabflow.floworchestrator.orchestration.issues.models.GetIssuesRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.ListProjectIssuesQuery;
+import com.gitlabflow.floworchestrator.orchestration.issues.models.ListProjectIssuesResult;
 
 public interface IssuesProvider {
-    List<IssueSummary> fetchIssues(GetIssuesRequest request);
+
+    ListProjectIssuesResult listProjectIssues(ListProjectIssuesQuery query);
 }

@@ -17,6 +17,15 @@ As a <user or actor>,
 I want <capability>,
 so that <business value>.
 
+## Locked Request Constraints
+
+These are the non-negotiable constraints copied from the original request or explicitly locked by Team Lead.
+
+- Input or source-of-truth constraints:
+- Contract or payload constraints:
+- Configuration or external-system constraints:
+- Unresolved items requiring clarification:
+
 ## Business Context and Constraints
 
 - Primary users or stakeholders:
