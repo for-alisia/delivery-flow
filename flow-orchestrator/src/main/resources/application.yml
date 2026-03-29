@@ -1,8 +1,17 @@
 spring:
   application:
     name: FlowOrchestrator
+  cloud:
+    openfeign:
+      client:
+        decode-slash: false
   devtools:
     restart:
       enabled: true
     livereload:
       enabled: true
+
+app:
+  issues-api:
+    default-page-size: 40
+    max-page-size: 100

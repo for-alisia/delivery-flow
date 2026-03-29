@@ -1,17 +1,13 @@
 package com.gitlabflow.floworchestrator.common.web;
 
-import java.time.Instant;
-
-import com.gitlabflow.floworchestrator.common.errors.ErrorCode;
+import java.util.List;
 
 public record ErrorResponse(
-        Instant timestamp,
-        int status,
-        ErrorCode code,
-        String source,
+        String code,
         String message,
-        String path,
-        String correlationId,
-        Long retryAfterSeconds
+        List<String> details
 ) {
+    public ErrorResponse {
+        details = details == null ? List.of() : List.copyOf(details);
+    }
 }

@@ -1,61 +1,47 @@
-@host = http://localhost:8080
+@baseUrl = http://localhost:8080
 
-### Search project issues with default pagination (body omitted)
-POST {{host}}/api/projects/76761463/issues/search
+### Default request (no body)
+POST {{baseUrl}}/api/issues
 
-###
-
-### Search project issues with explicit pagination
-POST {{host}}/api/projects/123/issues/search
+### Label-only filter
+POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
 {
-	"page": 2,
-	"pageSize": 5
+	"labels": ["backend"]
 }
 
-###
-
-### Validation error (invalid pagination)
-POST {{host}}/api/projects/123/issues/search
+### Assignee-only filter
+POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
 {
-	"page": 0,
+	"assignee": "alice"
+}
+
+### Combined filters with explicit pagination
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"labels": ["backend"],
+	"assignee": "alice",
+	"page": 2,
 	"pageSize": 20
 }
 
-###
+### Validation failure: labels max one value
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
 
-### Project not found
-POST {{host}}/api/projects/404/issues/search
+{
+	"labels": ["bug", "backend"]
+}
 
-###
+### Provider-failure smoke path (description)
+# If GitLab auth/network is unavailable, a valid request should return a sanitized 502 error envelope
+# with code INTEGRATION_* and no token/provider internals in the response body.
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
 
-### Upstream unavailable
-POST {{host}}/api/projects/upstream-down/issues/search
-
-###
-
-### Representative success response
-# {
-#   "items": [
-#     {
-#       "id": 1001,
-#       "iid": 101,
-#       "title": "Example issue",
-#       "state": "opened",
-#       "webUrl": "https://gitlab.example.com/group/project/-/issues/101"
-#     }
-#   ],
-#   "pagination": {
-#     "currentPage": 1,
-#     "pageSize": 20,
-#     "previousPage": null,
-#     "nextPage": 2,
-#     "totalItems": 40,
-#     "totalPages": 2
-#   }
-# }
-
-
+{}

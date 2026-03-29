@@ -1,26 +1,20 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
-import java.util.List;
-
+import com.gitlabflow.floworchestrator.integration.gitlab.dto.GitLabIssueResponse;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.gitlabflow.floworchestrator.integration.gitlab.models.dto.GitLabIssueResponseDTO;
+import java.util.List;
 
-@FeignClient(
-        name = "gitlabIssuesClient",
-        url = "#{@gitlabApiBaseUrl}",
-        configuration = GitlabIntegrationConfiguration.class
-)
-public interface GitlabIssuesClient {
+@FeignClient(name = "gitLabIssuesClient", url = "${app.gitlab.api-base-fallback-url:https://gitlab.com/api/v4}")
+public interface GitLabIssuesClient {
 
-    @GetMapping("/api/v4/projects/{id}/issues")
-    ResponseEntity<List<GitLabIssueResponseDTO>> listProjectIssues(
-            @PathVariable("id") String projectId,
-            @RequestParam("page") int page,
-            @RequestParam("per_page") int perPage
-    );
+    @GetMapping("/projects/{projectId}/issues")
+    List<GitLabIssueResponse> listIssues(@PathVariable("projectId") String projectId,
+                                         @RequestParam(name = "labels", required = false) String labels,
+                                         @RequestParam(name = "assignee_username[]", required = false) List<String> assigneeUsernames,
+                                         @RequestParam("page") int page,
+                                         @RequestParam("per_page") int perPage);
 }

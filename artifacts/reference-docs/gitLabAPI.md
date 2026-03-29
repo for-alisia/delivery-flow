@@ -42,6 +42,12 @@ Important:
 - Privileged resources: some standalone APIs are clearly admin-oriented, for example parts of `/admin/...`, token inspection, usage data, and instance settings.
 - FLOW note: resource rows should be updated from `NO` to `TRUE` as integrations become active. The project-scoped `Issues` resource is currently marked `TRUE`.
 - Maintenance rule: this file should stay in sync with `flow-orchestrator` GitLab Feign integrations.
+- Active FLOW endpoint details (`Issues` resource):
+	- HTTP endpoint: `GET /projects/:id/issues`
+	- Active query params in FLOW: `labels` (single string), `assignee_username[]` (single-value array), `page`, `per_page`
+	- FLOW maps client `labels` array (max one value) to GitLab `labels` string
+	- FLOW maps client `assignee` string to GitLab `assignee_username[]`
+	- FLOW reads GitLab `assignees` array for outward assignee data and does not expose deprecated `assignee`
 
 ## Recommended Usage Notes For FLOW
 
