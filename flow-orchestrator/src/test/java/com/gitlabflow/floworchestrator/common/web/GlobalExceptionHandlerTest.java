@@ -6,6 +6,8 @@ import com.gitlabflow.floworchestrator.common.errors.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.List;
 
@@ -13,27 +15,67 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler globalExceptionHandler = new GlobalExceptionHandler();
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    @DisplayName("maps validation exception to bad request with details")
-    void mapsValidationExceptionToBadRequestWithDetails() {
-        final var exception = new ValidationException("Invalid payload", List.of("labels must contain at most one value"));
+    @DisplayName("returns validation error for business validation exception")
+    void returnsValidationErrorForValidationException() {
+        final ValidationException exception = new ValidationException(
+                "Request validation failed",
+                List.of("pagination.perPage must be less than or equal to 100")
+        );
 
-        final var response = globalExceptionHandler.handleValidationException(exception);
+        final ResponseEntity<ErrorResponse> response = handler.handleValidationException(exception);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isEqualTo(new ErrorResponse(ErrorCode.VALIDATION_ERROR.name(), "Invalid payload", List.of("labels must contain at most one value")));
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
+        assertThat(response.getBody().message()).isEqualTo("Request validation failed");
+        assertThat(response.getBody().details())
+                .containsExactly("pagination.perPage must be less than or equal to 100");
     }
 
     @Test
-    @DisplayName("maps integration exception to bad gateway without leaking internals")
-    void mapsIntegrationExceptionToBadGatewayWithoutLeakingInternals() {
-        final var exception = new IntegrationException(ErrorCode.INTEGRATION_FAILURE, "Provider call failed", "gitlab");
+    @DisplayName("returns validation error for malformed json")
+    void returnsValidationErrorForMalformedJson() {
+        final HttpMessageNotReadableException exception = new HttpMessageNotReadableException("bad json");
 
-        final var response = globalExceptionHandler.handleIntegrationException(exception);
+        final ResponseEntity<ErrorResponse> response = handler.handleMalformedJson(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
+        assertThat(response.getBody().message()).isEqualTo("Request validation failed");
+        assertThat(response.getBody().details()).containsExactly("Malformed JSON request body");
+    }
+
+    @Test
+    @DisplayName("returns bad gateway for integration exception")
+    void returnsBadGatewayForIntegrationException() {
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_FAILURE,
+                "Unable to retrieve issues from GitLab",
+                "gitlab"
+        );
+
+        final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
-        assertThat(response.getBody()).isEqualTo(new ErrorResponse(ErrorCode.INTEGRATION_FAILURE.name(), "Provider call failed", List.of()));
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("INTEGRATION_FAILURE");
+        assertThat(response.getBody().message()).isEqualTo("Unable to retrieve issues from GitLab");
+        assertThat(response.getBody().details()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("returns internal error for unexpected exception")
+    void returnsInternalErrorForUnexpectedException() {
+        final ResponseEntity<ErrorResponse> response = handler.handleUnhandledException(new RuntimeException("boom"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().message()).isEqualTo("Unexpected error");
+        assertThat(response.getBody().details()).isEmpty();
     }
 }

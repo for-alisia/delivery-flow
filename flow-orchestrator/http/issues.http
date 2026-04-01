@@ -3,45 +3,29 @@
 ### Default request (no body)
 POST {{baseUrl}}/api/issues
 
-### Label-only filter
+### Filtered request
 POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
 {
-	"labels": ["backend"]
+	"pagination": {
+		"page": 2,
+		"perPage": 20
+	},
+	"filters": {
+		"state": "opened",
+		"labels": ["bug"],
+		"assignee": ["john.doe"],
+		"milestone": ["M1"]
+	}
 }
 
-### Assignee-only filter
+### Invalid request (multiple labels)
 POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
 {
-	"assignee": "alice"
+	"filters": {
+		"labels": ["bug", "infra"]
+	}
 }
-
-### Combined filters with explicit pagination
-POST {{baseUrl}}/api/issues
-Content-Type: application/json
-
-{
-	"labels": ["backend"],
-	"assignee": "alice",
-	"page": 2,
-	"pageSize": 20
-}
-
-### Validation failure: labels max one value
-POST {{baseUrl}}/api/issues
-Content-Type: application/json
-
-{
-	"labels": ["bug", "backend"]
-}
-
-### Provider-failure smoke path (description)
-# If GitLab auth/network is unavailable, a valid request should return a sanitized 502 error envelope
-# with code INTEGRATION_* and no token/provider internals in the response body.
-POST {{baseUrl}}/api/issues
-Content-Type: application/json
-
-{}

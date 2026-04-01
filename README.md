@@ -37,11 +37,9 @@ npm start
 
 - Request body is optional.
 - Baseline project comes from server configuration (`app.gitlab.url`), not from the client.
-- Optional filters:
-	- `labels`: array with at most one value
-	- `assignee`: single username string
-	- `page`: defaults to `1`
-	- `pageSize`: defaults to configured `app.issues-api.default-page-size` (expected `40`)
+- Pagination defaults to `page=1` and `perPage=40` when omitted.
+- Supported filters are `state`, `labels`, `assignee`, and `milestone`.
+- `labels`, `assignee`, and `milestone` must each contain at most one value.
 
 Request examples:
 
@@ -51,10 +49,16 @@ Request examples:
 
 ```json
 {
-	"labels": ["backend"],
-	"assignee": "alice",
-	"page": 2,
-	"pageSize": 20
+	"pagination": {
+		"page": 2,
+		"perPage": 20
+	},
+	"filters": {
+		"state": "opened",
+		"labels": ["backend"],
+		"assignee": ["alice"],
+		"milestone": ["M1"]
+	}
 }
 ```
 
@@ -62,25 +66,31 @@ Response shape:
 
 ```json
 {
-	"issues": [
+	"items": [
 		{
-			"issueNumber": 99,
+			"id": 99,
 			"title": "Mapped issue",
+			"description": "Issue description",
 			"state": "opened",
 			"labels": ["backend"],
-			"assignees": [
-				{
-					"username": "alice",
-					"name": "Alice",
-					"webUrl": "https://gitlab.com/alice"
-				}
-			],
-			"webUrl": "https://gitlab.com/group-a/project-a/-/issues/99",
-			"createdAt": "2026-03-29T10:00:00Z",
-			"updatedAt": "2026-03-29T12:00:00Z"
+			"assignee": "alice",
+			"milestone": "M1",
+			"parent": 42
 		}
 	],
-	"page": 2,
-	"pageSize": 20
+	"count": 1,
+	"page": 2
+}
+```
+
+Validation error shape:
+
+```json
+{
+	"code": "VALIDATION_ERROR",
+	"message": "Request validation failed",
+	"details": [
+		"filters.labels must contain at most 1 value"
+	]
 }
 ```

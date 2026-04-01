@@ -1,0 +1,153 @@
+{
+  "artifactType": "review-report",
+  "schemaVersion": "1.0",
+  "featureName": "<feature-name>",
+  "phase": "phase1",
+  "status": "pending",
+  "revisionEvidence": {
+    "changedFilesReviewed": [
+      "<path/to/reviewed/file>"
+    ],
+    "localQualityReportPaths": [
+      "<flow-orchestrator/target/report-path>"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "<path or short reference>",
+    "requirementLockSource": "<path or short reference>",
+    "storyPath": "artifacts/user-stories/<feature-name>.story.md",
+    "planPath": "artifacts/implementation-plans/<feature-name>.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/<feature-name>.report.json",
+    "relatedDocumentation": [
+      "<path/to/doc>"
+    ]
+  },
+  "phase1Checks": {
+    "originalRequestReviewed": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "lockedConstraintsUsable": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "storyPreservesRequest": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "storyIsBusinessFacingAndSpecific": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "planMatchesStoryWithoutReinterpretation": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "planRespectsConstitution": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "planCoversValidationErrorsConfigDocsVerification": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "planDefinesTestingMatrixAndExecutableSlices": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "noUnapprovedScopeDriftOrHiddenAssumptions": {
+      "status": "PENDING",
+      "evidence": []
+    }
+  },
+  "phase1Decision": {
+    "decision": "PENDING",
+    "reason": "",
+    "blockingIssues": []
+  },
+  "phase2Checks": {
+    "implementationMatchesPlanOrApprovedDeviations": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "codeRespectsConstitutionBoundaries": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "codeSatisfiesCodeGuidance": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "localStaticAnalysisExecutedAndPassed": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "testsSatisfyRequiredLevelsAndPrinciples": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "implementationReportIsCompleteTruthfulAndAligned": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "quickVerifyExecutedAndPassed": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "startupExecutedAndPassed": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "requiredSmokeChecksExecutedAndPassed": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "requiredDocumentationUpdatesPresent": {
+      "status": "PENDING",
+      "evidence": []
+    },
+    "noContradictoryOrUnresolvedEvidenceRemains": {
+      "status": "PENDING",
+      "evidence": []
+    }
+  },
+  "verification": {
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "NOT_RUN",
+      "result": ""
+    },
+    "localQuality": {
+      "command": "scripts/quality-check.sh",
+      "status": "NOT_RUN",
+      "result": "",
+      "reportPaths": [
+        "<flow-orchestrator/target/report-path>"
+      ]
+    },
+    "startup": {
+      "command": "<startup-command>",
+      "status": "NOT_RUN",
+      "result": ""
+    },
+    "smokeChecks": [
+      {
+        "name": "<smoke-check-name>",
+        "command": "<redacted-command>",
+        "status": "NOT_RUN",
+        "result": ""
+      }
+    ],
+    "commandRedactionNote": ""
+  },
+  "phase2Decision": {
+    "decision": "PENDING",
+    "reason": "",
+    "blockingIssues": []
+  },
+  "signOff": {
+    "finalReviewerStatus": "PENDING",
+    "redCardRerunRequired": false,
+    "signedOffBy": ""
+  }
+}

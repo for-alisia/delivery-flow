@@ -1,0 +1,90 @@
+{
+  "artifactType": "implementation-report",
+  "schemaVersion": "1.0",
+  "featureName": "<feature-name>",
+  "status": "draft",
+  "summary": "<short delivery summary>",
+  "sourceArtifacts": {
+    "originalRequestSource": "<path or short reference>",
+    "storyPath": "artifacts/user-stories/<feature-name>.story.md",
+    "planPath": "artifacts/implementation-plans/<feature-name>.plan.md",
+    "phase1ReviewPath": "artifacts/review-reports/<feature-name>.review.json"
+  },
+  "revisionEvidence": {
+    "changedFiles": [
+      "<path/to/changed/file>"
+    ],
+    "verificationLogPath": "artifacts/implementation-reports/<feature-name>-verification.log"
+  },
+  "delivery": {
+    "documentationUpdates": [
+      "<updated-doc-or-none>"
+    ],
+    "approvedDeviations": [
+      "<approved-deviation-or-none>"
+    ],
+    "assumptions": [
+      "<assumption-or-none>"
+    ]
+  },
+  "verification": {
+    "qualityGateStatus": "PENDING",
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "NOT_RUN",
+      "result": ""
+    },
+    "localQuality": {
+      "command": "scripts/quality-check.sh",
+      "status": "NOT_RUN",
+      "result": "",
+      "reportPaths": [
+        "<flow-orchestrator/target/report-path>"
+      ]
+    },
+    "startup": {
+      "command": "<startup-command>",
+      "status": "NOT_RUN",
+      "result": ""
+    },
+    "smokeChecks": [
+      {
+        "name": "<smoke-check-name>",
+        "command": "<redacted-command>",
+        "status": "NOT_RUN",
+        "result": ""
+      }
+    ],
+    "blockedChecks": [
+      {
+        "check": "<check-name>",
+        "command": "<redacted-command>",
+        "issue": "<why-blocked>",
+        "impact": "<impact>"
+      }
+    ]
+  },
+  "codeGuidanceLedger": {
+    "<gate-name>": {
+      "status": "PENDING",
+      "evidence": [
+        "<short evidence or approved deviation>"
+      ]
+    }
+  },
+  "acceptanceCriteriaEvidence": {
+    "AC1": {
+      "criterion": "<short criterion>",
+      "implementationEvidence": [
+        "<file/path or short evidence>"
+      ],
+      "verificationEvidence": [
+        "<command/result or short evidence>"
+      ],
+      "status": "PENDING"
+    }
+  },
+  "notes": [
+    "<short note>"
+  ]
+}

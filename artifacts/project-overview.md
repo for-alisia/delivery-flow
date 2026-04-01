@@ -82,4 +82,6 @@ When creating a user story in `artifacts/user-stories/<feature-name>.story.md`:
 
 - `README.md` for run and module basics.
 - `artifacts/constitution.md` for hard architecture and quality rules.
-- `artifacts/reference-docs/gitLabAPI.md` for GitLab API resource and endpoint references.
+- Official GitLab REST API docs for GitLab endpoint, parameter, and authentication details:
+  - `https://docs.gitlab.com/api/api_resources/`
+  - `https://docs.gitlab.com/api/rest/`

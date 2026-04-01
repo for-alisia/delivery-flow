@@ -1,10 +1,6 @@
 spring:
   application:
     name: FlowOrchestrator
-  cloud:
-    openfeign:
-      client:
-        decode-slash: false
   devtools:
     restart:
       enabled: true

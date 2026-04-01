@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!--
+      Intentionally empty. Add only narrow, justified exclusions when a specific
+      false positive is understood and documented in the implementation/review artifacts.
+    -->
+</FindBugsFilter>

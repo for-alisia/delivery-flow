@@ -1,0 +1,63 @@
+package com.gitlabflow.floworchestrator.integration.gitlab.issues;
+
+import com.gitlabflow.floworchestrator.orchestration.issues.Issue;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+@Slf4j
+@Component
+public class GitLabIssueMapper {
+
+    public Issue toIssue(final GitLabIssueResponse issueResponse) {
+        final String assignee = mapAssignee(issueResponse);
+        final String milestone = Optional.ofNullable(issueResponse.milestone())
+                .map(GitLabIssueResponse.GitLabMilestone::title)
+                .orElse(null);
+        final Long parent = Optional.ofNullable(issueResponse.epic())
+                .map(GitLabIssueResponse.GitLabEpic::id)
+                .orElse(null);
+
+        log.debug(
+                "Mapped GitLab issue id={} state={} labels={} assigneePresent={} milestonePresent={} parentPresent={}",
+                issueResponse.id(),
+                issueResponse.state(),
+                issueResponse.labels().size(),
+                assignee != null,
+                milestone != null,
+                parent != null
+        );
+
+        return new Issue(
+                issueResponse.id(),
+                issueResponse.title(),
+                issueResponse.description(),
+                issueResponse.state(),
+                issueResponse.labels(),
+                assignee,
+                milestone,
+                parent
+        );
+    }
+
+    private String mapAssignee(final GitLabIssueResponse issueResponse) {
+        final String firstAssignee = Optional.ofNullable(issueResponse.assignees())
+                .stream()
+                .flatMap(List::stream)
+                .map(GitLabIssueResponse.GitLabAssignee::username)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        if (firstAssignee != null) {
+            return firstAssignee;
+        }
+
+        return Optional.ofNullable(issueResponse.assignee())
+                .map(GitLabIssueResponse.GitLabAssignee::username)
+                .orElse(null);
+    }
+}

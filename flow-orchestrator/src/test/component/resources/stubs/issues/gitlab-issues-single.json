@@ -1,0 +1,20 @@
+[
+  {
+    "id": 123,
+    "title": "Issue title",
+    "description": "Issue description",
+    "state": "opened",
+    "labels": ["bug"],
+    "assignees": [
+      {
+        "username": "john.doe"
+      }
+    ],
+    "milestone": {
+      "title": "M1"
+    },
+    "epic": {
+      "id": 42
+    }
+  }
+]

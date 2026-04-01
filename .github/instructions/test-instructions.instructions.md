@@ -1,0 +1,28 @@
+---
+applyTo: "**/flow-orchestrator/**"
+description: "Use this instructions when writing/updating tests for the flow-orchestrator module."
+---
+
+## Test Instructions
+
+- All added or updated tests must follow this instruction. Deviations require explicit approval.
+- Mirror the production package path under every test root.
+- Keep fast isolated tests in `src/test/java` and name classes `*Test`.
+- Use `src/test/java` for unit logic, validation, defaulting, mapping, error translation, adapter tests with mocked collaborators, and lightweight config/context tests.
+- Keep Spring-backed integration tests in `src/test/integration/java` and name classes `*IT`.
+- Use `src/test/integration/java` for `@WebMvcTest` and other Spring-wired slice or integration tests that prove request binding, validation, response mapping, HTTP errors, or cross-bean behavior.
+- Keep running-application tests in `src/test/component/java` and name classes `*ComponentTest`.
+- Use `src/test/component/java` when the application must run on a real port or when outbound HTTP must be verified through stubs such as WireMock.
+- Keep component fixtures in `src/test/component/resources/stubs/...`.
+- Do not configure reusable stub servers or shared stub scenarios inline in test classes; keep them in dedicated support classes.
+- Prefer the smallest test level that proves the change.
+- Do not duplicate the same scenario across unit, integration, and component tests unless each level proves something different.
+- Every non-trivial logic, validation, defaulting, mapping, or error translation change requires unit coverage.
+- Any changed request contract or HTTP validation/error behavior requires integration coverage.
+- Any changed real HTTP flow to GitLab or another downstream requires component coverage.
+- API or startup changes still require smoke verification, but smoke checks do not replace automated tests.
+- Each test verifies one behavior.
+- Every test uses a descriptive name and `@DisplayName`.
+- Cover happy path, edge cases, and failure paths relevant to the change.
+- Mock only true layer-boundary collaborators; prefer real value objects and mappers when simpler.
+- Required module line coverage is `85%+`; `mvn verify` must stay green.

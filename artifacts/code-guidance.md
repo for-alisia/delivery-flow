@@ -27,6 +27,20 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - `@Builder` is used only when it improves readability for object construction.
 - Prefer builder-style object construction over direct `new Class(...)` calls when creating non-trivial objects, especially when there are multiple arguments, optional fields, or a risk of argument-order mistakes.
 
+## Naming Gate
+
+- Names must be short, clear, and business-oriented.
+- Do not use numeric suffixes without a real semantic reason. Avoid names like `issue1`, `issue2`, `test1`, or similar placeholder naming.
+- Prefer `get...` over `list...` for retrieval-oriented names unless `list` is required by an external API, protocol, or established domain term.
+- Do not name code after collection types or implementation mechanics. Pick the shortest name that stays unambiguous and understandable.
+
+## Null Handling Gate
+
+- Prefer `Optional.ofNullable(...)` inside method bodies for short null-safe extraction, mapping, or defaulting when it is clearer than repeated ternary checks.
+- Avoid repeated `value == null ? ... : ...` chains for field extraction or default resolution.
+- A simple `if (value == null)` is still preferred when it is the clearest form.
+- Do not use `Optional` for fields, record components, or public API return types unless there is a strong reason.
+
 ## Collections And Streams Gate
 
 - Streams are used for clear transformations.
@@ -39,25 +53,12 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 
 ## Testing Matrix
 
-Use the matrix below to decide what levels are required. Reviewer validates that the chosen levels are actually sufficient.
+All added or updated tests must follow
+[test-instructions.instructions.md](/Users/alisia/Projects/aiProjects/GitlabFlow/.github/instructions/test-instructions.instructions.md).
 
-| Level | When It Is Required | What It Must Prove | What Does Not Count |
-|---|---|---|---|
-| Unit | Any non-trivial logic, validation, defaulting, mapping, or error translation | Behavior in isolation with clear inputs and outputs | Relying only on manual smoke checks |
-| Web / Controller Slice | New or changed request binding, validation, response mapping, or HTTP error behavior | Request/response contract and boundary behavior | Pure unit tests that never exercise Spring MVC binding |
-| Integration | New or changed interaction between Spring-wired components or architectural layers | Wiring and behavior across component boundaries with controlled collaborators | Only Mockito unit tests or only adapter unit tests |
-| Live Smoke | Any changed runtime path that affects an API or startup behavior | The built application starts and the main runtime path works from the outside | Using smoke checks as the only evidence for behavior that should be automated |
+That instruction is mandatory to follow for writing/updating tests for the `flow-orchestrator` module. Deviations require explicit approval.
 
-Additional testing rules:
-
-- A feature that changes controller, orchestration, and integration interaction normally requires all four levels.
-- Integration adapter tests cover external API interaction, mapping, and error handling where applicable, but they are not a substitute for broader Spring-wired integration tests when component interaction changed.
-- Each test verifies one behavior.
-- All test names are descriptive and contain `@DisplayName`.
-- Tests cover happy path, edge cases, and failure paths.
-- Mocks are used only for true collaborators at the layer boundary.
-- Real mappers and value objects are used when simpler than mocks.
-- No acceptance criterion may be marked `Verified` from manual `curl` alone if it can and should be covered automatically.
+Reviewer must treat violations as `FAIL` unless an approved deviation is recorded.
 
 ## Evidence Expectations
 
@@ -70,28 +71,31 @@ Additional testing rules:
 - Review and sign-off evidence must identify the verified revision and scope: branch or worktree reference, head commit SHA when available, comparison base or reference when available, and changed files reviewed.
 - If a required check could not be executed, the status is `BLOCKED`, not `PASS`.
 
-## Sonar Gate
+## Local Static Analysis Gate
 
-For `flow-orchestrator`, Sonar analysis is a required static-quality gate before Reviewer Phase 2 can pass.
+For `flow-orchestrator`, the local static-analysis gate is required before Reviewer Phase 2 can pass.
 
-- Preferred command: `scripts/run-flow-orchestrator-sonar.sh`
-- Accepted raw command shape: `mvn verify sonar:sonar -Dsonar.host.url=... -Dsonar.organization=...` with `SONAR_TOKEN` supplied via environment variable
-- The Sonar quality gate must pass.
-- If Sonar is configured for the workflow but the environment variables or server access are unavailable, the status is `BLOCKED`, not `PASS`.
-- Sonar findings must be reviewed before startup and smoke-check sign-off.
-- Sonar is not treated as a replacement for Reviewer judgment on project-specific rules that the default Sonar rule set cannot enforce.
-- Sonar evidence must include the dashboard URL, CE task URL or ID, and analysis ID when it is available.
+Execution details, command order, and report locations are defined in [local-quality-flow-orchestrator.md](/Users/alisia/Projects/aiProjects/GitlabFlow/artifacts/reference-docs/local-quality-flow-orchestrator.md). Use that file as the operational source of truth.
 
-See [sonar-flow-orchestrator.md](/Users/alisia/Projects/aiProjects/GitlabFlow/artifacts/reference-docs/sonar-flow-orchestrator.md) for the current setup and limitations.
+- Preferred command: `scripts/quality-check.sh`
+- Accepted raw command shape: `mvn clean verify` or `mvn verify`
+- The local quality gate covers Checkstyle, PMD, CPD, SpotBugs, and JaCoCo coverage check.
+- If Maven or plugin execution is unavailable in the current environment, the status is `BLOCKED`, not `PASS`.
+- Local-tool findings must be reviewed before startup and smoke-check sign-off.
+- The local toolchain is not treated as a replacement for Reviewer judgment on project-specific rules it does not encode.
+- Static-analysis evidence must include the executed command and the generated report paths under `flow-orchestrator/target/`.
+- Repo-owned quality configuration files under `flow-orchestrator/config/quality/` are the source of truth for Checkstyle, PMD, and SpotBugs behavior.
+- PMD rule additions and SpotBugs exclusions must stay narrow, justified, and reviewable. Do not silence findings broadly to force a green build.
+
+See [local-quality-flow-orchestrator.md](/Users/alisia/Projects/aiProjects/GitlabFlow/artifacts/reference-docs/local-quality-flow-orchestrator.md) for the current setup and report locations.
 
 ## Final Verification
 
 - All applicable code standards and collections/streams gates are `PASS` or `Approved deviation`.
 - The testing matrix is satisfied for the change.
 - All acceptance criteria from the implementation plan are satisfied.
-- `mvn test` passes with all tests green.
-- `mvn -q -DskipTests compile` passes with no errors.
-- For `flow-orchestrator`, Sonar analysis ran and the Sonar quality gate passed.
+- `scripts/verify-quick.sh` passes.
+- For `flow-orchestrator`, `scripts/quality-check.sh` passes and produces current local quality reports.
 - The repository-supported startup command starts without errors and logs expected startup messages.
 - If an API is added or changed, the corresponding `<api-name>.http` file is created or updated in `/flow-orchestrator/http`.
 - API-facing changes are smoke-tested with `curl` by verifying the API returns expected responses for valid and invalid requests.
