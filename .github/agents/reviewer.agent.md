@@ -4,7 +4,7 @@ description: "Use when you need an independent validation gate before coding and
 target: vscode
 tools: [read, search, edit, execute, todo, web, vscode/memory]
 model: Gemini 3.1 Pro (Preview) (copilot)
-user-invocable: true
+user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide the feature name, review phase, original requirement source, and the artifact paths that must be validated."
 ---
@@ -26,19 +26,19 @@ If you reject Phase 2 implementation 3 times for test failures, bad quality, or 
 
 ### Phase 1 — Prompt, Story, And Plan Review
 
-Validate whether artifacts are safe to implement. Review: original request, requirement lock, story, plan, `artifacts/constitution.md`, `artifacts/code-guidance.md`.
+Validate whether artifacts are safe to implement. Review: original request, requirement lock, story, plan, `documentation/constitution.md`, `documentation/code-guidance.md`.
 
 Determine whether:
 - Story preserves the original request
 - Plan satisfies story and request without silent reinterpretation
-- Plan respects `artifacts/constitution.md`
+- Plan respects `documentation/constitution.md`
 - Plan includes payload examples when contract-relevant, validation boundary decisions, slice-level logging requirements, structure, testing expectations, documentation updates, and verification scope
 
 If Phase 1 fails, update the review report and **RAISE A BLOCKER**.
 
 ### Phase 2 — Code, Tests, And Verification Review
 
-Validate whether delivered implementation is correct and truly verified. Review: original request, plan at `artifacts/implementation-plans/<feature-name>.plan.md`, implementation report at `artifacts/implementation-reports/<feature-name>.report.json`, verification log (`artifacts/implementation-reports/<feature-name>-verification.log`), Phase 1 results, changed source and test files, `artifacts/constitution.md`, `artifacts/code-guidance.md`, `artifacts/reference-docs/local-quality-flow-orchestrator.md`.
+Validate whether delivered implementation is correct and truly verified. Review: original request, plan at `artifacts/implementation-plans/<feature-name>.plan.md`, implementation report at `artifacts/implementation-reports/<feature-name>.report.json`, verification log (`artifacts/implementation-reports/<feature-name>-verification.log`), Phase 1 results, changed source and test files, `documentation/constitution.md`, `documentation/code-guidance.md`.
 
 Verify the verification log directly — do not trust the Coder's markdown report alone.
 
@@ -58,7 +58,7 @@ If Team Lead issues a red card, rerun the full applicable Phase 2 set. No partia
 - Every `FAIL`/`BLOCKED` must explain what failed, where, and what must change.
 - Cite relevant files for code/test validation. Record exact commands and results for execution-based validation.
 - The local static-analysis gate is required for `flow-orchestrator` but does not replace Reviewer judgment on rules the tools cannot enforce.
-- Use `artifacts/reference-docs/local-quality-flow-orchestrator.md` as the source of truth for command order, report paths, and `FAIL` vs `BLOCKED` behavior.
+- The auto-injected `.github/instructions/local-quality-rules.instructions.md` is the source of truth for command order, report paths, and `FAIL` vs `BLOCKED` behavior.
 - Keep the JSON concise: short evidence strings, path references, and arrays instead of prose paragraphs.
 
 ## Steps

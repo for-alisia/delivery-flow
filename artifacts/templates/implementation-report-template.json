@@ -55,6 +55,13 @@
         "result": ""
       }
     ],
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": null,
+      "passCount": null,
+      "failCount": null,
+      "summary": ""
+    },
     "blockedChecks": [
       {
         "check": "<check-name>",

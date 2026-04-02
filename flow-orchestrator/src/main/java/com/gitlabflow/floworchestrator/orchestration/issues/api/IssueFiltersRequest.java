@@ -3,8 +3,6 @@ package com.gitlabflow.floworchestrator.orchestration.issues.api;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -19,29 +17,12 @@ public record IssueFiltersRequest(
         List<String> milestone
 ) {
     public IssueFiltersRequest {
-        labels = labels == null
-                ? List.of()
-                : Collections.unmodifiableList(new ArrayList<>(labels.stream().filter(Objects::nonNull).toList()));
-        assignee = assignee == null
-                ? List.of()
-                : Collections.unmodifiableList(new ArrayList<>(assignee.stream().filter(Objects::nonNull).toList()));
-        milestone = milestone == null
-                ? List.of()
-                : Collections.unmodifiableList(new ArrayList<>(milestone.stream().filter(Objects::nonNull).toList()));
+        labels = sanitize(labels);
+        assignee = sanitize(assignee);
+        milestone = sanitize(milestone);
     }
 
-    @Override
-    public List<String> labels() {
-        return List.copyOf(labels);
-    }
-
-    @Override
-    public List<String> assignee() {
-        return List.copyOf(assignee);
-    }
-
-    @Override
-    public List<String> milestone() {
-        return List.copyOf(milestone);
+    private static List<String> sanitize(final List<String> values) {
+        return values == null ? List.of() : values.stream().filter(Objects::nonNull).toList();
     }
 }

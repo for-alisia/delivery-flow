@@ -7,7 +7,4 @@ public record IssuePage(
         int count,
         int page
 ) {
-    public IssuePage {
-        items = items == null ? List.of() : List.copyOf(items);
-    }
 }

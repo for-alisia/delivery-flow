@@ -58,7 +58,7 @@ These choices are MVP defaults, not hard platform limits.
 - Domain and orchestration must remain provider-agnostic over time.
 - Security, validation, error sanitization, and boundary mapping rules are mandatory.
 
-For non-negotiable architecture rules, see `artifacts/constitution.md`.
+For non-negotiable architecture rules, see `documentation/constitution.md`.
 
 ## Guidance for Product Manager Agent
 
@@ -81,7 +81,7 @@ When creating a user story in `artifacts/user-stories/<feature-name>.story.md`:
 ## Related Documentation
 
 - `README.md` for run and module basics.
-- `artifacts/constitution.md` for hard architecture and quality rules.
+- `documentation/constitution.md` for hard architecture and quality rules.
 - Official GitLab REST API docs for GitLab endpoint, parameter, and authentication details:
   - `https://docs.gitlab.com/api/api_resources/`
   - `https://docs.gitlab.com/api/rest/`

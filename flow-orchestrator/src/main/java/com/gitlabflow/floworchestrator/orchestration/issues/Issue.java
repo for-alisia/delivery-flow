@@ -18,7 +18,4 @@ public record Issue(
         @Nullable
         Long parent
 ) {
-    public Issue {
-        labels = labels == null ? List.of() : List.copyOf(labels);
-    }
 }

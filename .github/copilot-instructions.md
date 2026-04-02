@@ -12,17 +12,15 @@
 - Quick verify: `scripts/verify-quick.sh`
 - Full local quality gate: `scripts/quality-check.sh`
 - Start: `mvn spring-boot:run` with `SPRING_PROFILES_ACTIVE=local` (run from `flow-orchestrator/`)
-- Shared verification reference and report-path guide: [local-quality-flow-orchestrator.md](../artifacts/reference-docs/local-quality-flow-orchestrator.md)
 - When recording verification evidence, prefer the shared scripts over raw Maven commands.
 
 ## Key References
 
 Read these on demand when relevant — do not load all upfront:
 
-- Architecture rules and non-negotiable boundaries: [constitution.md](../artifacts/constitution.md)
-- Coding standards, quality gates, and testing matrix: [code-guidance.md](../artifacts/code-guidance.md)
-- Shared local verification workflow and report paths: [local-quality-flow-orchestrator.md](../artifacts/reference-docs/local-quality-flow-orchestrator.md)
-- Project context and business goals: [project-overview.md](../artifacts/project-overview.md)
+- Architecture rules and non-negotiable boundaries: [constitution.md](../documentation/constitution.md)
+- Coding standards, quality gates, and testing matrix: [code-guidance.md](../documentation/code-guidance.md)
+- Project context and business goals: [project-overview.md](../documentation/project-overview.md)
 - Official GitLab REST API resource index: `https://docs.gitlab.com/api/api_resources/`
 - Official GitLab REST API overview: `https://docs.gitlab.com/api/rest/`
 - Official GitLab REST API authentication: `https://docs.gitlab.com/api/rest/authentication/`

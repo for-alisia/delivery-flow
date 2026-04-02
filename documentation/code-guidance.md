@@ -22,7 +22,7 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - Validation happens early at the correct boundary.
 - Logging is structured with SLF4J and includes relevant context for efficient debugging without exposing sensitive information.
 - Lombok is used only when it reduces boilerplate without hiding important behavior.
-- `@RequiredArgsConstructor` is preferred for constructor injection when Lombok is used.
+- `@RequiredArgsConstructor` is required for constructor injection when Lombok is on the classpath. Do not write explicit constructors for injection-only classes.
 - `@Slf4j` is used for structured logging when Lombok is used.
 - `@Builder` is used only when it improves readability for object construction.
 - Prefer builder-style object construction over direct `new Class(...)` calls when creating non-trivial objects, especially when there are multiple arguments, optional fields, or a risk of argument-order mistakes.
@@ -54,7 +54,7 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 ## Testing Matrix
 
 All added or updated tests must follow
-[test-instructions.instructions.md](/Users/alisia/Projects/aiProjects/GitlabFlow/.github/instructions/test-instructions.instructions.md).
+[test-instructions.instructions.md](../.github/instructions/test-instructions.instructions.md).
 
 That instruction is mandatory to follow for writing/updating tests for the `flow-orchestrator` module. Deviations require explicit approval.
 
@@ -75,7 +75,7 @@ Reviewer must treat violations as `FAIL` unless an approved deviation is recorde
 
 For `flow-orchestrator`, the local static-analysis gate is required before Reviewer Phase 2 can pass.
 
-Execution details, command order, and report locations are defined in [local-quality-flow-orchestrator.md](/Users/alisia/Projects/aiProjects/GitlabFlow/artifacts/reference-docs/local-quality-flow-orchestrator.md). Use that file as the operational source of truth.
+Execution details, command order, and report locations are auto-injected via `.github/instructions/local-quality-rules.instructions.md` for any agent working on `flow-orchestrator`.
 
 - Preferred command: `scripts/quality-check.sh`
 - Accepted raw command shape: `mvn clean verify` or `mvn verify`
@@ -87,7 +87,7 @@ Execution details, command order, and report locations are defined in [local-qua
 - Repo-owned quality configuration files under `flow-orchestrator/config/quality/` are the source of truth for Checkstyle, PMD, and SpotBugs behavior.
 - PMD rule additions and SpotBugs exclusions must stay narrow, justified, and reviewable. Do not silence findings broadly to force a green build.
 
-See [local-quality-flow-orchestrator.md](/Users/alisia/Projects/aiProjects/GitlabFlow/artifacts/reference-docs/local-quality-flow-orchestrator.md) for the current setup and report locations.
+See `.github/instructions/local-quality-rules.instructions.md` for the current setup and report locations.
 
 ## Final Verification
 

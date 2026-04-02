@@ -23,39 +23,39 @@
     ]
   },
   "phase1Checks": {
-    "originalRequestReviewed": {
+    "requestReviewed": {
       "status": "PENDING",
       "evidence": []
     },
-    "lockedConstraintsUsable": {
+    "constraintsUsable": {
       "status": "PENDING",
       "evidence": []
     },
-    "storyPreservesRequest": {
+    "storyAlignment": {
       "status": "PENDING",
       "evidence": []
     },
-    "storyIsBusinessFacingAndSpecific": {
+    "storyQuality": {
       "status": "PENDING",
       "evidence": []
     },
-    "planMatchesStoryWithoutReinterpretation": {
+    "planMatchesStory": {
       "status": "PENDING",
       "evidence": []
     },
-    "planRespectsConstitution": {
+    "constitutionCheck": {
       "status": "PENDING",
       "evidence": []
     },
-    "planCoversValidationErrorsConfigDocsVerification": {
+    "planCompleteness": {
       "status": "PENDING",
       "evidence": []
     },
-    "planDefinesTestingMatrixAndExecutableSlices": {
+    "testingAndSlices": {
       "status": "PENDING",
       "evidence": []
     },
-    "noUnapprovedScopeDriftOrHiddenAssumptions": {
+    "noScopeDrift": {
       "status": "PENDING",
       "evidence": []
     }
@@ -66,47 +66,47 @@
     "blockingIssues": []
   },
   "phase2Checks": {
-    "implementationMatchesPlanOrApprovedDeviations": {
+    "implMatchesPlan": {
       "status": "PENDING",
       "evidence": []
     },
-    "codeRespectsConstitutionBoundaries": {
+    "constitutionBoundaries": {
       "status": "PENDING",
       "evidence": []
     },
-    "codeSatisfiesCodeGuidance": {
+    "codeGuidance": {
       "status": "PENDING",
       "evidence": []
     },
-    "localStaticAnalysisExecutedAndPassed": {
+    "staticAnalysis": {
       "status": "PENDING",
       "evidence": []
     },
-    "testsSatisfyRequiredLevelsAndPrinciples": {
+    "testingMatrix": {
       "status": "PENDING",
       "evidence": []
     },
-    "implementationReportIsCompleteTruthfulAndAligned": {
+    "implReportComplete": {
       "status": "PENDING",
       "evidence": []
     },
-    "quickVerifyExecutedAndPassed": {
+    "quickVerify": {
       "status": "PENDING",
       "evidence": []
     },
-    "startupExecutedAndPassed": {
+    "startup": {
       "status": "PENDING",
       "evidence": []
     },
-    "requiredSmokeChecksExecutedAndPassed": {
+    "smokeChecks": {
       "status": "PENDING",
       "evidence": []
     },
-    "requiredDocumentationUpdatesPresent": {
+    "docUpdates": {
       "status": "PENDING",
       "evidence": []
     },
-    "noContradictoryOrUnresolvedEvidenceRemains": {
+    "noUnresolvedEvidence": {
       "status": "PENDING",
       "evidence": []
     }

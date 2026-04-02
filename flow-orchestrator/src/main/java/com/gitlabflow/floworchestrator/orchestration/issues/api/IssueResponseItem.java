@@ -7,18 +7,15 @@ import java.util.List;
 public record IssueResponseItem(
         long id,
         String title,
-    @Nullable
+        @Nullable
         String description,
         String state,
         List<String> labels,
-    @Nullable
+        @Nullable
         String assignee,
-    @Nullable
+        @Nullable
         String milestone,
-    @Nullable
+        @Nullable
         Long parent
 ) {
-    public IssueResponseItem {
-        labels = labels == null ? List.of() : List.copyOf(labels);
-    }
 }

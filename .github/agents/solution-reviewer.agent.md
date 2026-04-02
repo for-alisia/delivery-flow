@@ -17,14 +17,14 @@ Your job is to review the current state of the implementation and write a review
 
 Produce a practical, evidence-based architecture review of the current solution. Focus on maintainability, separation of concerns, consistency, testability, logging quality, and expandability. Prefer direct inspection of source code and tests over assumptions.
 
-In order to understand the project better check: [project overview](../../artifacts/project-overview.md)
+In order to understand the project better check: [project overview](../../documentation/project-overview.md)
 
 ## Required Questions
 
 You must explicitly answer:
 
 - Is logging sufficient across the current implementation? Where is it weak, and what should be logged instead?
-- Is code following consistent patterns and code instructions in the project? Check [code guidance](../../artifacts/code-guidance.md) and [constitution](../../artifacts/constitution.md)
+- Is code following consistent patterns and code instructions in the project? Check [code guidance](../../documentation/code-guidance.md) and [constitution](../../documentation/constitution.md)
 - Are unit tests covering the important paths and edge cases? Identify missing cases and risk areas.
 - Explain the current structure, especially the `orchestration` package: what responsibilities it currently holds, how requests flow through it, what is working well, and what structure would be cleaner if refactored.
 
