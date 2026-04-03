@@ -54,6 +54,13 @@
     "quickVerify": "PENDING",
     "startup": "PENDING",
     "smokeChecks": "PENDING",
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": null,
+      "passCount": null,
+      "failCount": null,
+      "summary": ""
+    },
     "teamLeadRechecks": [],
     "commandRedactionVerified": "PENDING",
     "blockedItems": []

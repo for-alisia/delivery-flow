@@ -67,9 +67,9 @@ On context loss or compaction, read the checkpoint before continuing.
 
 ## Context Loading
 
-- At requirement-lock time: read `artifacts/project-overview.md` and the original request.
+- At requirement-lock time: read `documentation/project-overview.md` and the original request.
 - At gate-check time: read only the specific artifact being validated.
-- Never read at Team Lead level: `artifacts/code-guidance.md` or full `artifacts/constitution.md` body — subagents own these.
+- Never read at Team Lead level: `documentation/code-guidance.md` or full `documentation/constitution.md` body — subagents own these.
 - Never re-read artifacts already validated and checkpointed.
 - Before invoking any subagent, refresh the checkpoint first.
 - Invoke subagents with one short line: `"<task> for <feature-name>. Load your context exclusively from /memories/session/<feature-name>-checkpoint.json and follow your instructions."`
@@ -84,7 +84,7 @@ Before delegating, extract and pass a requirement lock that captures:
 - Explicit exclusions and non-goals
 - Unresolved questions that must not be guessed away
 
-Read `artifacts/project-overview.md` and scan `artifacts/constitution.md` principle titles for constraint relevance. Ask clarification only when docs do not resolve ambiguity.
+Read `documentation/project-overview.md` and scan `documentation/constitution.md` principle titles for constraint relevance. Ask clarification only when docs do not resolve ambiguity.
 
 ## Delegation Gates
 
@@ -94,7 +94,7 @@ For each subagent, pass the required inputs and advance only if the output artif
 - **Java Architect** → `artifacts/implementation-plans/<feature-name>.plan.md`: exists, has `Requirement Lock / Source Of Truth`, `Payload Examples`, and `Validation Boundary Decision` sections, explicit class structure, executable slices with logging requirements, testing matrix, and documentation update requirements.
 - **Reviewer Phase 1** → `artifacts/review-reports/<feature-name>.review.json`: exists, all Phase 1 items marked, no `FAIL`/`BLOCKED`, declares pass.
 - **Java Coder** → `artifacts/implementation-reports/<feature-name>.report.json`: exists, ties to plan, records deviations, includes code-guidance evidence, and records verification commands and outcomes.
-- **Reviewer Phase 2** → `artifacts/review-reports/<feature-name>.review.json`: all Phase 2 items marked, verification commands recorded, revision evidence + local quality report paths present per `artifacts/reference-docs/local-quality-flow-orchestrator.md`, declares pass.
+- **Reviewer Phase 2** → `artifacts/review-reports/<feature-name>.review.json`: all Phase 2 items marked, verification commands recorded, revision evidence + local quality report paths present per `.github/instructions/local-quality-rules.instructions.md`, declares pass.
 
 ### Reviewer Phase 2 Brief
 
@@ -132,6 +132,8 @@ Invoke Reviewer with: `"Phase 2 review for <feature-name>. Load your context exc
 - Never assign more than 2 implementation slices to `Java Coder` in a single invocation.
 - When more than 2 slices remain, invoke `Java Coder` in successive batches of at most 2 named slices.
 - After each coder batch, verify the implementation report was updated, refresh the checkpoint, and independently run `mvn test` from `flow-orchestrator/` before another coder batch or Reviewer Phase 2.
+- Before advancing to Reviewer Phase 2, start the application and run `scripts/smoke-test.sh` (or manual `curl` commands) to verify API endpoints return expected responses. Record commands and results in the sign-off artifact. If smoke checks fail, return to `Java Coder` with the failed commands and observed results.
+- If the plan adds or changes API endpoints, verify that `scripts/smoke-test.sh` was updated by the Coder to cover the new/changed endpoints. If not, return to `Java Coder` with a request to update the script before advancing.
 - Do not rely on git commits in this flow; the checkpoint and on-disk artifacts are the batch boundary.
 
 ### Coder Verification Recheck And Red Card
@@ -140,6 +142,7 @@ Invoke Reviewer with: `"Phase 2 review for <feature-name>. Load your context exc
 - If the coder claimed other successful verification commands beyond tests, rerun at least one additional coder-claimed successful verification command. Prefer `scripts/verify-quick.sh` when broader recheck is useful.
 - If Team Lead recheck fails while the coder artifact claims the same verification passed, issue a `Java Coder` red card.
 - A `Java Coder` red card invalidates the coder handoff for that cycle. Do not advance to Reviewer Phase 2.
+- The red card counter (`circuitBreakerState.javaCoderFalsePositiveCount`) tracks only coder-caused false positives — cases where the coder artifact claims a verification passed but Team Lead recheck shows it failed. Reviewer rejections caused by plan ambiguity, missing test coverage requirements, or process gaps do NOT increment this counter; route those to `Java Architect` directly.
 - After each coder false-positive red card, increment `circuitBreakerState.javaCoderFalsePositiveCount` in the checkpoint.
 - On the first coder false-positive red card, return the exact failed command and observed result to `Java Coder` and require the implementation report and verification log to be corrected before retry.
 - On the second coder false-positive red card for the same feature, set `circuitBreakerState.architectPlanRevisionRequired` to `true`, stop retrying `Java Coder`, and invoke `Java Architect` with the failed commands, observed results, and the current plan path for revision.

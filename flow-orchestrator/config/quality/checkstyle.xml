@@ -28,5 +28,8 @@
             <property name="max" value="12"/>
             <property name="switchBlockAsSingleDecisionPoint" value="true"/>
         </module>
+        <module name="MultipleStringLiterals">
+            <property name="allowedDuplicates" value="2"/>
+        </module>
     </module>
 </module>

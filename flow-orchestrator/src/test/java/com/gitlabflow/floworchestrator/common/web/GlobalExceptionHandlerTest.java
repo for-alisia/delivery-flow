@@ -1,15 +1,17 @@
 package com.gitlabflow.floworchestrator.common.web;
 
-import com.gitlabflow.floworchestrator.common.errors.ErrorCode;
-import com.gitlabflow.floworchestrator.common.errors.IntegrationException;
-import com.gitlabflow.floworchestrator.common.errors.ValidationException;
+import com.gitlabflow.floworchestrator.common.error.ErrorCode;
+import com.gitlabflow.floworchestrator.common.error.IntegrationException;
+import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 
 import java.util.List;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,27 +28,30 @@ class GlobalExceptionHandlerTest {
         );
 
         final ResponseEntity<ErrorResponse> response = handler.handleValidationException(exception);
+        final ErrorResponse body = Objects.requireNonNull(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
-        assertThat(response.getBody().message()).isEqualTo("Request validation failed");
-        assertThat(response.getBody().details())
+        assertThat(body.code()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.message()).isEqualTo("Request validation failed");
+        assertThat(body.details())
                 .containsExactly("pagination.perPage must be less than or equal to 100");
     }
 
     @Test
     @DisplayName("returns validation error for malformed json")
     void returnsValidationErrorForMalformedJson() {
-        final HttpMessageNotReadableException exception = new HttpMessageNotReadableException("bad json");
+        final HttpMessageNotReadableException exception = new HttpMessageNotReadableException(
+                "bad json",
+                new MockHttpInputMessage(new byte[0])
+        );
 
         final ResponseEntity<ErrorResponse> response = handler.handleMalformedJson(exception);
+        final ErrorResponse body = Objects.requireNonNull(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
-        assertThat(response.getBody().message()).isEqualTo("Request validation failed");
-        assertThat(response.getBody().details()).containsExactly("Malformed JSON request body");
+        assertThat(body.code()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.message()).isEqualTo("Request validation failed");
+        assertThat(body.details()).containsExactly("Malformed JSON request body");
     }
 
     @Test
@@ -59,23 +64,23 @@ class GlobalExceptionHandlerTest {
         );
 
         final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
+        final ErrorResponse body = Objects.requireNonNull(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().code()).isEqualTo("INTEGRATION_FAILURE");
-        assertThat(response.getBody().message()).isEqualTo("Unable to retrieve issues from GitLab");
-        assertThat(response.getBody().details()).isEmpty();
+        assertThat(body.code()).isEqualTo("INTEGRATION_FAILURE");
+        assertThat(body.message()).isEqualTo("Unable to retrieve issues from GitLab");
+        assertThat(body.details()).isEmpty();
     }
 
     @Test
     @DisplayName("returns internal error for unexpected exception")
     void returnsInternalErrorForUnexpectedException() {
         final ResponseEntity<ErrorResponse> response = handler.handleUnhandledException(new RuntimeException("boom"));
+        final ErrorResponse body = Objects.requireNonNull(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().code()).isEqualTo("INTERNAL_ERROR");
-        assertThat(response.getBody().message()).isEqualTo("Unexpected error");
-        assertThat(response.getBody().details()).isEmpty();
+        assertThat(body.code()).isEqualTo("INTERNAL_ERROR");
+        assertThat(body.message()).isEqualTo("Unexpected error");
+        assertThat(body.details()).isEmpty();
     }
 }

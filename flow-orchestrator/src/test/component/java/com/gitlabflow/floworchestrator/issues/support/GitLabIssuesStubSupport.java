@@ -53,6 +53,7 @@ public final class GitLabIssuesStubSupport {
                 .withQueryParam("milestone", equalTo("M1")));
     }
 
+    @SuppressWarnings("null")
     private static String loadFixture(final String path) {
         try {
             return new String(new ClassPathResource(path).getInputStream().readAllBytes(), StandardCharsets.UTF_8);

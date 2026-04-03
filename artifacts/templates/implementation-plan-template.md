@@ -5,13 +5,6 @@
 **Plan date:** `<yyyy-mm-dd>`
 **Status:** `Draft`
 
-## Ownership
-
-- Architect owns this plan only.
-- Coder writes `artifacts/implementation-reports/<feature-name>.report.json`.
-- Reviewer writes `artifacts/review-reports/<feature-name>.review.json`.
-- Team Lead writes `artifacts/implementation-signoffs/<feature-name>.signoff.json`.
-
 ## Business Goal
 
 Precise paragraph describing the business or technical outcome.
@@ -28,44 +21,18 @@ Precise paragraph describing the business or technical outcome.
 
 Provide concrete examples when the change affects request/response or error contracts. Use `N/A` only when no payload contract is involved.
 
-### Request Example
-
 ```json
-{
-  "<field>": "<value>"
-}
-```
+// Request
+{ "<field>": "<value>" }
 
-### Success Response Example
+// Success Response
+{ "<field>": "<value>" }
 
-```json
-{
-  "<field>": "<value>"
-}
-```
+// Error Response
+{ "message": "<error message>", "status": 500 }
 
-### Error Response Example
-
-```json
-{
-  "message": "<error message>",
-  "status": 500
-}
-```
-
-### Validation Error Response Example
-
-```json
-{
-  "message": "<validation error summary>",
-  "status": 400,
-  "errors": [
-    {
-      "field": "<field>",
-      "message": "<reason>"
-    }
-  ]
-}
+// Validation Error Response
+{ "message": "<validation error summary>", "status": 400, "errors": [{ "field": "<field>", "message": "<reason>" }] }
 ```
 
 ## Validation Boundary Decision
@@ -123,14 +90,4 @@ Repeat the slice structure below for as many slices as needed. Keep each slice p
 - `scripts/verify-quick.sh`
 - Local static analysis via `scripts/quality-check.sh` for `flow-orchestrator` when production code changes
 - Repository-supported startup verification
-- Required `curl` smoke checks
-
-## Risks / Notes
-
-- 
-
-## Linked Handoff Artifacts
-
-- Implementation report target: `artifacts/implementation-reports/<feature-name>.report.json`
-- Review report target: `artifacts/review-reports/<feature-name>.review.json`
-- Sign-off target: `artifacts/implementation-signoffs/<feature-name>.signoff.json`
+- Required `curl` smoke checks via `scripts/smoke-test.sh`

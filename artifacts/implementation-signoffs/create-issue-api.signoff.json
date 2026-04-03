@@ -1,0 +1,149 @@
+{
+  "artifactType": "implementation-signoff",
+  "schemaVersion": "1.0",
+  "featureName": "create-issue-api",
+  "status": "accepted",
+  "revisionEvidence": {
+    "changedFilesInAcceptedScope": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/pom.xml",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueCommand.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssuePort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreatedIssue.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponseMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueRequest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponseMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueMapperTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabCreateIssueStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-create-issue-response.json",
+      "scripts/smoke-test.sh",
+      "artifacts/implementation-reports/create-issue-api-verification.log",
+      "artifacts/implementation-reports/create-issue-api.report.json",
+      "artifacts/review-reports/create-issue-api.review.json"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/spotbugsXml.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/feature-2-create-issue-api.md",
+    "storyPath": "artifacts/user-stories/create-issue-api.story.md",
+    "planPath": "artifacts/implementation-plans/create-issue-api.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/create-issue-api.report.json",
+    "reviewReportPath": "artifacts/review-reports/create-issue-api.review.json",
+    "relatedDocumentation": [
+      "flow-orchestrator/http/issues.http"
+    ]
+  },
+  "reviewerGateReview": {
+    "phase1Result": "PASS",
+    "phase2Result": "PASS",
+    "reviewReportCompleteness": "PASS",
+    "openFailedOrBlockedItems": []
+  },
+  "teamLeadAudit": {
+    "requirementsAlignedAcrossArtifacts": "PASS",
+    "artifactCompletenessAndConsistency": "PASS",
+    "spotChecks": [
+      {
+        "item": "Endpoint contract split",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesController.java",
+          "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesControllerIT.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed fetch is exposed at POST /api/issues/search and create is exposed at POST /api/issues with HTTP 201, and the integration tests cover both contracts."
+      },
+      {
+        "item": "API validation boundary",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequest.java",
+          "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesControllerIT.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed title uses boundary validation and labels enforce non-blank elements, with HTTP-level tests for blank title, blank labels, malformed JSON, missing body, and empty object."
+      },
+      {
+        "item": "GitLab id mapping",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueMapper.java",
+          "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-create-issue-response.json"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed the create-response mapper uses issueResponse.id() rather than iid, and the stub fixture includes both values to make that distinction testable."
+      },
+      {
+        "item": "Smoke gate runtime path",
+        "sourceArtifacts": [
+          "flow-orchestrator/pom.xml",
+          "scripts/smoke-test.sh",
+          "artifacts/implementation-reports/create-issue-api-verification.log"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed actuator support was added to match the repo smoke workflow, then independently observed health 200 and a full smoke suite pass with 5 passed and 0 failed."
+      }
+    ],
+    "redCardHistory": [
+      {
+        "agent": "Reviewer",
+        "reason": "Phase 2 chat summary claimed PASS but the artifact on disk was still the Phase 1 report.",
+        "actionTaken": "Phase 2 was invalidated and Reviewer was rerun until the review artifact was updated on disk."
+      }
+    ]
+  },
+  "verificationReview": {
+    "localStaticAnalysis": "PASS",
+    "postCoderMvnTest": "PASS",
+    "quickVerify": "PASS",
+    "startup": "PASS",
+    "smokeChecks": "PASS",
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": 0,
+      "passCount": 5,
+      "failCount": 0,
+      "summary": "Independent Team Lead smoke suite passed after the actuator-backed health endpoint was restored."
+    },
+    "teamLeadRechecks": [
+      "Branch: feature-2-v2.2.0",
+      "Head SHA: 10bcd8cce1b31abfec065d588170172f685143d6",
+      "Independent mvn test after final coder handoff passed with 58 tests, 0 failures, 0 errors.",
+      "Independent ./scripts/verify-quick.sh rerun passed with 58 tests, 0 failures, 0 errors.",
+      "Independent curl to /actuator/health returned HTTP 200.",
+      "Independent ./scripts/smoke-test.sh passed with 5 passed and 0 failed."
+    ],
+    "commandRedactionVerified": "PASS",
+    "blockedItems": []
+  },
+  "deviationsAndApprovals": [],
+  "documentationReview": [
+    "flow-orchestrator/http/issues.http contains updated examples for POST /api/issues/search and POST /api/issues.",
+    "scripts/smoke-test.sh covers the renamed search route and the new create route, including validation failure coverage."
+  ],
+  "risksAndFollowUp": [
+    "GitLab missing-label auto-creation remains accepted based on the official GitLab contract and local stub coverage rather than a live GitLab project check in this run.",
+    "Reviewer Phase 2 required one rerun because the first chat summary did not correspond to an updated on-disk artifact."
+  ],
+  "finalDecision": {
+    "decision": "PASS",
+    "reason": "Requirement lock, story, plan, implementation, reviewer gates, Team Lead rechecks, startup validation, and smoke verification are aligned and complete.",
+    "signedOffBy": "GitHub Copilot"
+  }
+}

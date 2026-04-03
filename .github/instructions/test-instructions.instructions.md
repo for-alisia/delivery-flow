@@ -25,4 +25,7 @@ description: "Use this instructions when writing/updating tests for the flow-orc
 - Every test uses a descriptive name and `@DisplayName`.
 - Cover happy path, edge cases, and failure paths relevant to the change.
 - Mock only true layer-boundary collaborators; prefer real value objects and mappers when simpler.
+- When using Mockito argument matchers (`any()`, `eq()`, `argThat()`), ALL arguments in the same stubbing or verification call must use matchers. Do not mix raw values with matchers — wrap raw values with `eq()`.
+- Do not duplicate string literals across test files. Extract repeated test constants (URLs, paths, fixture values) into `private static final` fields or a shared test-support class.
+- Each plan slice must include at least one edge-case or boundary-condition test. If the slice has no edge cases, document why in the plan.
 - Required module line coverage is `85%+`; `mvn verify` must stay green.
