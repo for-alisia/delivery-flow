@@ -9,16 +9,17 @@ Use repository files as the primary evidence source. When current GitHub Copilot
 
 Your goals are to:
 
-If you are asked to analize the log:
+If you are asked to analyze the flow orchestration system:
 
 - assess the effectiveness of the current agent team and workflow
 - identify strengths, gaps, and productivity bottlenecks
 - pay special attention to context rot and context compaction failure modes
 - recommend prompt, workflow, and control improvements that make the next iteration stronger
+- assess the architectural design of the app and coding practices for maintainability, scalability, and ease of improvement
 
 If you are asked to implement the improvements:
 
-- familirie with current agentic-flow design and behavior using the logs and linked files
+- familiarize yourself with current agentic-flow design and behavior using the logs and linked files
 - plan and implement the approved improvements in the provided log file
 
 Keep the analysis concise, structured, and grounded in the linked files. Prefer clear, human-readable explanation over academic wording. Use diagrams only when they materially improve clarity.

@@ -16,10 +16,10 @@ check() {
   actual_status=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$@" "$url") || true
   if [[ "$actual_status" == "$expected_status" ]]; then
     RESULTS+="  PASS  $name (HTTP $actual_status)\n"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     RESULTS+="  FAIL  $name (expected $expected_status, got $actual_status)\n"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -29,13 +29,24 @@ echo "=== Smoke Test: ${BASE_URL} ==="
 check "GET /actuator/health" GET "${BASE_URL}/actuator/health" 200
 
 # Issues API — default request (empty body)
-check "POST /api/issues (default)" POST "${BASE_URL}/api/issues" 200 \
+check "POST /api/issues/search (default)" POST "${BASE_URL}/api/issues/search" 200 \
   -H "Content-Type: application/json" -d '{}'
 
 # Issues API — filtered request
-check "POST /api/issues (filtered)" POST "${BASE_URL}/api/issues" 200 \
+check "POST /api/issues/search (filtered)" POST "${BASE_URL}/api/issues/search" 200 \
   -H "Content-Type: application/json" \
   -d '{"pagination":{"page":1,"perPage":5},"filters":{"state":"opened"}}'
+
+# Issues API — create request
+SMOKE_CREATE_TITLE="Smoke test issue $(date -u +%Y%m%d%H%M%S)"
+check "POST /api/issues (create)" POST "${BASE_URL}/api/issues" 201 \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"${SMOKE_CREATE_TITLE}\",\"description\":\"Created by smoke test\",\"labels\":[\"smoke\",\"api\"]}"
+
+# Issues API — create validation failure
+check "POST /api/issues (create validation error)" POST "${BASE_URL}/api/issues" 400 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"   "}'
 
 echo ""
 printf "%b" "$RESULTS"

@@ -1,0 +1,221 @@
+{
+  "artifactType": "review-report",
+  "schemaVersion": "1.0",
+  "featureName": "create-issue-api",
+  "phase": "phase2",
+  "status": "PASS",
+  "revisionEvidence": {
+    "changedFilesReviewed": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/pom.xml",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueCommand.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssuePort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/CreatedIssue.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponseMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueRequest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/CreateIssueServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/api/CreateIssueResponseMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabCreateIssueMapperTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/api/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabCreateIssueStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-create-issue-response.json",
+      "scripts/smoke-test.sh"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/feature-2-create-issue-api.md",
+    "requirementLockSource": "artifacts/user-prompts/feature-2-create-issue-api.md",
+    "storyPath": "artifacts/user-stories/create-issue-api.story.md",
+    "planPath": "artifacts/implementation-plans/create-issue-api.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/create-issue-api.report.json",
+    "relatedDocumentation": []
+  },
+  "phase1Checks": {
+    "requestReviewed": {
+      "status": "PASS",
+      "evidence": [
+        "Read user-prompts/feature-2-create-issue-api.md"
+      ]
+    },
+    "constraintsUsable": {
+      "status": "PASS",
+      "evidence": [
+        "Locked request constraints identified and usable"
+      ]
+    },
+    "storyAlignment": {
+      "status": "PASS",
+      "evidence": [
+        "Story aligns perfectly with locked requests"
+      ]
+    },
+    "storyQuality": {
+      "status": "PASS",
+      "evidence": [
+        "Well written story, covers acceptance criteria"
+      ]
+    },
+    "planMatchesStory": {
+      "status": "PASS",
+      "evidence": [
+        "Tasks in plan directly map to story requirements"
+      ]
+    },
+    "constitutionCheck": {
+      "status": "PASS",
+      "evidence": [
+        "Follows architectural constraints, relies on configured profile only"
+      ]
+    },
+    "planCompleteness": {
+      "status": "PASS",
+      "evidence": [
+        "Includes controller rename, mapping, errors, models, and payloads"
+      ]
+    },
+    "testingAndSlices": {
+      "status": "PASS",
+      "evidence": [
+        "Clear slice-by-slice strategy with component tests assigned to slices"
+      ]
+    },
+    "noScopeDrift": {
+      "status": "PASS",
+      "evidence": [
+        "Strict pass-through structure, explicitly excludes out-of-scope logic"
+      ]
+    }
+  },
+  "phase1Decision": {
+    "decision": "PASS",
+    "reason": "The story and plan satisfy all requirements without scope drift, following architecture and testing rules.",
+    "blockingIssues": []
+  },
+  "phase2Checks": {
+    "implMatchesPlan": {
+      "status": "PASS",
+      "evidence": [
+        "Implementation matches plan and constraints"
+      ]
+    },
+    "constitutionBoundaries": {
+      "status": "PASS",
+      "evidence": [
+        "Boundaries respected, integration map layers used"
+      ]
+    },
+    "codeGuidance": {
+      "status": "PASS",
+      "evidence": [
+        "No raw exceptions, logging follows standards"
+      ]
+    },
+    "staticAnalysis": {
+      "status": "PASS",
+      "evidence": [
+        "All local static analysis scripts run successfully"
+      ]
+    },
+    "testingMatrix": {
+      "status": "PASS",
+      "evidence": [
+        "Component and Integration tests provide full coverage"
+      ]
+    },
+    "implReportComplete": {
+      "status": "PASS",
+      "evidence": [
+        "Implementation report details matches actual implementation"
+      ]
+    },
+    "quickVerify": {
+      "status": "PASS",
+      "evidence": [
+        "Compiled and unit tests passed properly without errors"
+      ]
+    },
+    "startup": {
+      "status": "PASS",
+      "evidence": [
+        "Spring App starts correctly"
+      ]
+    },
+    "smokeChecks": {
+      "status": "PASS",
+      "evidence": [
+        "Smoke tests covering 200, 201, and 400 cases passed locally"
+      ]
+    },
+    "docUpdates": {
+      "status": "PASS",
+      "evidence": [
+        "http client docs updated for search and create endpoints"
+      ]
+    },
+    "noUnresolvedEvidence": {
+      "status": "PASS",
+      "evidence": [
+        "All verification requirements are satisfied"
+      ]
+    }
+  },
+  "verification": {
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "PASS",
+      "result": "Tests run: 58, Failures: 0, Errors: 0, Skipped: 0"
+    },
+    "localQuality": {
+      "command": "scripts/quality-check.sh",
+      "status": "PASS",
+      "result": "Tests run: 20, Failures: 0, Errors: 0, Skipped: 0",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "startup": {
+      "command": "mvn spring-boot:run -Dspring-boot.run.profiles=local",
+      "status": "PASS",
+      "result": "Application starts up correctly"
+    },
+    "smokeChecks": [
+      {
+        "name": "smoke-tests",
+        "command": "scripts/smoke-test.sh",
+        "status": "PASS",
+        "result": "=== Results: 5 passed, 0 failed ==="
+      }
+    ],
+    "commandRedactionNote": ""
+  },
+  "phase2Decision": {
+    "decision": "PASS",
+    "reason": "All Phase 2 testing, compilation, static checks and smoke tests succeeded.",
+    "blockingIssues": []
+  },
+  "signOff": {
+    "finalReviewerStatus": "PASS",
+    "redCardRerunRequired": false,
+    "blockerEscalations": []
+  }
+}

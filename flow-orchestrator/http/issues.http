@@ -1,10 +1,10 @@
 @baseUrl = http://localhost:8080
 
-### Default request (no body)
-POST {{baseUrl}}/api/issues
+### Default search request (no body)
+POST {{baseUrl}}/api/issues/search
 
-### Filtered request
-POST {{baseUrl}}/api/issues
+### Filtered search request
+POST {{baseUrl}}/api/issues/search
 Content-Type: application/json
 
 {
@@ -20,12 +20,38 @@ Content-Type: application/json
 	}
 }
 
-### Invalid request (multiple labels)
-POST {{baseUrl}}/api/issues
+### Invalid search request (multiple labels)
+POST {{baseUrl}}/api/issues/search
 Content-Type: application/json
 
 {
 	"filters": {
 		"labels": ["bug", "infra"]
 	}
+}
+
+### Create issue request (full payload)
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"title": "Deploy failure",
+	"description": "Step 3 failed",
+	"labels": ["bug", "deploy"]
+}
+
+### Create issue request (title only)
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"title": "Reporting bug"
+}
+
+### Invalid create issue request (blank title)
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"title": "   "
 }

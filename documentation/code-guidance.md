@@ -34,6 +34,26 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - Prefer `get...` over `list...` for retrieval-oriented names unless `list` is required by an external API, protocol, or established domain term.
 - Do not name code after collection types or implementation mechanics. Pick the shortest name that stays unambiguous and understandable.
 
+## Package Structure And Model Gate
+
+- Capability code under `orchestration` is organized by feature and role:
+	- `orchestration/<capability>/model` for orchestration models.
+	- `orchestration/<capability>/rest` for REST controller entry points.
+	- `orchestration/<capability>/rest/dto` for REST request/response records.
+	- `orchestration/<capability>/rest/mapper` for REST-to-model and model-to-REST mapping.
+- Provider integration code is organized by provider and capability:
+	- `integration/<provider>/<capability>/dto` for provider request/response records.
+	- `integration/<provider>/<capability>/mapper` for provider-to-model mapping.
+- Use entity-centric output models. Avoid operation-specific output variants when they represent the same business entity.
+- For issue flows, prefer `Issue` as the orchestration output model for both search and create operations.
+- Use neutral input names like `<Action><Entity>Input` when there is no command bus or CQRS infrastructure.
+
+## DTO Consistency Gate
+
+- Keep one primary response DTO per entity when endpoint responses represent the same entity shape.
+- Search/list wrappers may still use operation-specific container DTOs (for example `SearchIssuesResponse`) while item payloads use a single entity DTO (for example `IssueDto`).
+- Create endpoints should return the same entity DTO used by retrieval endpoints unless a documented contract requirement demands a different shape.
+
 ## Null Handling Gate
 
 - Prefer `Optional.ofNullable(...)` inside method bodies for short null-safe extraction, mapping, or defaulting when it is clearer than repeated ternary checks.
@@ -50,6 +70,12 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - Ordering is explicit when it matters.
 - Public methods that can return no value are annotated with `@Nullable` and return `null` explicitly instead of `Optional`.
 - `Optional` is used only inside method bodies when it makes nested null-safe access or transformation clearer than chained explicit `null` checks.
+
+## Defensive Copy Gate
+
+- Any record with collection fields must defensively copy those collections in a compact constructor.
+- REST input DTOs may preserve `null` to represent "not provided" while still sanitizing null elements when required.
+- Orchestration models and REST output DTOs should normalize null collections to immutable empty collections unless a contract explicitly requires nullable collections.
 
 ## Testing Matrix
 

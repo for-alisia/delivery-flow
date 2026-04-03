@@ -3,6 +3,7 @@ package com.gitlabflow.floworchestrator.issues;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.gitlabflow.floworchestrator.issues.support.GitLabCreateIssueStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabIssuesStubSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -13,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -63,7 +65,7 @@ class IssuesApiComponentTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         final HttpEntity<Void> request = new HttpEntity<>(headers);
 
-        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues", request, String.class);
+        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues/search", request, String.class);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         final JsonNode json = objectMapper.readTree(response.getBody());
@@ -100,9 +102,62 @@ class IssuesApiComponentTest {
                 }
                 """, headers);
 
-        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues", request, String.class);
+        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues/search", request, String.class);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         GitLabIssuesStubSupport.verifyFilteredIssuesRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("creates issue and returns mapped response")
+    void createsIssueAndReturnsMappedResponse() throws Exception {
+        wireMockServer.resetAll();
+        GitLabCreateIssueStubSupport.stubCreateIssueSuccess(wireMockServer);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                {
+                  "title": "Deploy failure",
+                  "description": "Step 3 failed",
+                  "labels": ["bug", "deploy"]
+                }
+                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues", request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("id").asLong()).isEqualTo(700L);
+        assertThat(json.path("title").asText()).isEqualTo("Deploy failure");
+        assertThat(json.path("description").asText()).isEqualTo("Step 3 failed");
+        assertThat(json.path("state").asText()).isEqualTo("opened");
+        assertThat(json.path("labels").get(0).asText()).isEqualTo("bug");
+        assertThat(json.path("labels").get(1).asText()).isEqualTo("deploy");
+
+        GitLabCreateIssueStubSupport.verifyCreateIssueRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("maps gitlab authentication failure to bad gateway response")
+    void mapsGitLabAuthenticationFailureToBadGatewayResponse() throws Exception {
+        wireMockServer.resetAll();
+        GitLabCreateIssueStubSupport.stubCreateIssueUnauthorized(wireMockServer);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                {
+                  "title": "Deploy failure",
+                  "description": "Step 3 failed",
+                  "labels": ["bug", "deploy"]
+                }
+                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues", request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_AUTHENTICATION_FAILED");
     }
 }

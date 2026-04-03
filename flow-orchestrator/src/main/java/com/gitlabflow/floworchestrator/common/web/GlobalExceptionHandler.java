@@ -1,8 +1,8 @@
 package com.gitlabflow.floworchestrator.common.web;
 
-import com.gitlabflow.floworchestrator.common.errors.ErrorCode;
-import com.gitlabflow.floworchestrator.common.errors.IntegrationException;
-import com.gitlabflow.floworchestrator.common.errors.ValidationException;
+import com.gitlabflow.floworchestrator.common.error.ErrorCode;
+import com.gitlabflow.floworchestrator.common.error.IntegrationException;
+import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

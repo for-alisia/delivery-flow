@@ -1,0 +1,37 @@
+package com.gitlabflow.floworchestrator.orchestration.issues.model;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class IssuePageTest {
+
+    @Test
+    @DisplayName("normalizes null items to empty immutable list")
+    void normalizesNullItemsToEmptyImmutableList() {
+        final IssuePage page = new IssuePage(null, 0, 1);
+
+        assertThat(page.items()).isEmpty();
+        assertThatThrownBy(() -> page.items().add(null))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("defensively copies and detaches from mutable input list")
+    void defensivelyCopiesAndDetachesFromMutableInputList() {
+        final List<Issue> items = new ArrayList<>();
+        items.add(new Issue(1L, "A", null, "opened", List.of("bug"), null, null, null));
+
+        final IssuePage page = new IssuePage(items, 1, 1);
+        items.clear();
+
+        assertThat(page.items()).hasSize(1);
+        assertThatThrownBy(() -> page.items().add(null))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+}
