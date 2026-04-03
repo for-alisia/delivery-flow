@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-- `flow-orchestrator/`: Java Spring Boot application — layers: `orchestration`, `domain`, `integration`, `config`
+- `flow-orchestrator/`: Java Spring Boot application — root packages: `common`, `config`, `orchestration`, `integration`
 - `mcp-server/`: TypeScript MCP server — thin client of `flow-orchestrator`, no business logic here
 
 ## Build And Verify Commands
@@ -10,7 +10,7 @@
 - Compile: `mvn -q -DskipTests compile` (run from `flow-orchestrator/`)
 - Test: `mvn test` (run from `flow-orchestrator/`)
 - Quick verify: `scripts/verify-quick.sh`
-- Full local quality gate: `scripts/quality-check.sh`
+- Final verification: `scripts/final-check.sh`
 - Start: `mvn spring-boot:run` with `SPRING_PROFILES_ACTIVE=local` (run from `flow-orchestrator/`)
 - When recording verification evidence, prefer the shared scripts over raw Maven commands.
 

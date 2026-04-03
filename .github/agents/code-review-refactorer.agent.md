@@ -71,7 +71,7 @@ If a framework or external API behavior is uncertain, verify it with official do
 Run and record these checks:
 
 1. `scripts/verify-quick.sh`
-2. `scripts/quality-check.sh`
+2. `scripts/final-check.sh`
 3. Start the application from `flow-orchestrator/` with:
    - `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
 4. Run `scripts/smoke-test.sh`
@@ -122,7 +122,7 @@ Do not finish until all of the following are true, or explicitly marked `BLOCKED
 - constitution and code-guidance gates are satisfied
 - tests were updated where needed
 - `scripts/verify-quick.sh` passed
-- `scripts/quality-check.sh` passed
+- `scripts/final-check.sh` passed
 - the application started successfully
 - main affected API endpoints were smoke-tested and returned expected responses
 

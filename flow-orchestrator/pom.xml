@@ -26,6 +26,8 @@
         <maven.checkstyle.plugin.version>3.6.0</maven.checkstyle.plugin.version>
         <maven.pmd.plugin.version>3.28.0</maven.pmd.plugin.version>
         <spotbugs.maven.plugin.version>4.9.8.2</spotbugs.maven.plugin.version>
+        <spotless.maven.plugin.version>3.0.0</spotless.maven.plugin.version>
+        <palantir.java.format.version>2.90.0</palantir.java.format.version>
     </properties>
 
     <dependencies>
@@ -201,6 +203,37 @@
                 <executions>
                     <execution>
                         <id>checkstyle</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.maven.plugin.version}</version>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                            <include>src/test/integration/java/**/*.java</include>
+                            <include>src/test/component/java/**/*.java</include>
+                        </includes>
+                        <palantirJavaFormat>
+                            <version>${palantir.java.format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <forbidWildcardImports/>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
                         <phase>validate</phase>
                         <goals>
                             <goal>check</goal>

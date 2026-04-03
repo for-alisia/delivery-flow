@@ -6,11 +6,10 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInp
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -30,8 +29,7 @@ public class IssuesService {
                 query.state() != null,
                 query.label() != null,
                 query.assignee() != null,
-                query.milestone() != null
-        );
+                query.milestone() != null);
 
         final IssuePage issuePage = issuesPort.getIssues(query);
         log.info("Issues retrieved count={} page={}", issuePage.count(), issuePage.page());
@@ -50,8 +48,7 @@ public class IssuesService {
         if (perPage > issuesApiProperties.maxPageSize()) {
             throw new ValidationException(
                     "Request validation failed",
-                    List.of("pagination.perPage must be less than or equal to " + issuesApiProperties.maxPageSize())
-            );
+                    List.of("pagination.perPage must be less than or equal to " + issuesApiProperties.maxPageSize()));
         }
     }
 }

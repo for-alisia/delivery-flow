@@ -3,6 +3,7 @@ package com.gitlabflow.floworchestrator.common.web;
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,24 +13,24 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.List;
-
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(final ValidationException exception) {
-        log.warn("Validation failure message={} detailCount={}", exception.getMessage(), exception.details().size());
+        log.warn(
+                "Validation failure message={} detailCount={}",
+                exception.getMessage(),
+                exception.details().size());
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(ErrorCode.VALIDATION_ERROR.name(), exception.getMessage(), exception.details()));
+                .body(new ErrorResponse(
+                        ErrorCode.VALIDATION_ERROR.name(), exception.getMessage(), exception.details()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(final MethodArgumentNotValidException exception) {
-        final List<String> details = exception.getBindingResult()
-                .getAllErrors()
-                .stream()
+        final List<String> details = exception.getBindingResult().getAllErrors().stream()
                 .map(error -> {
                     if (error instanceof final FieldError fieldError) {
                         return fieldError.getField() + " " + fieldError.getDefaultMessage();
@@ -45,18 +46,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleMalformedJson(final HttpMessageNotReadableException exception) {
-        log.warn("Validation failure message=Malformed JSON request body category={}", exception.getClass().getSimpleName());
+        log.warn(
+                "Validation failure message=Malformed JSON request body category={}",
+                exception.getClass().getSimpleName());
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(
                         ErrorCode.VALIDATION_ERROR.name(),
                         "Request validation failed",
-                        List.of("Malformed JSON request body")
-                ));
+                        List.of("Malformed JSON request body")));
     }
 
     @ExceptionHandler(IntegrationException.class)
     public ResponseEntity<ErrorResponse> handleIntegrationException(final IntegrationException exception) {
-        log.warn("Integration failure source={} code={}", exception.source(), exception.errorCode().name());
+        log.warn(
+                "Integration failure source={} code={}",
+                exception.source(),
+                exception.errorCode().name());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(new ErrorResponse(exception.errorCode().name(), exception.getMessage(), List.of()));
     }

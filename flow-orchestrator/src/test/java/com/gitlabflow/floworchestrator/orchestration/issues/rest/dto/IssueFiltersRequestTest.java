@@ -1,13 +1,12 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class IssueFiltersRequestTest {
 
@@ -20,8 +19,7 @@ class IssueFiltersRequestTest {
         assertThat(request.assignee()).isEmpty();
         assertThat(request.milestone()).isEmpty();
         final List<String> labels = request.labels();
-        assertThatThrownBy(() -> labels.add("bug"))
-                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> labels.add("bug")).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
@@ -31,18 +29,13 @@ class IssueFiltersRequestTest {
         labels.add(null);
 
         final IssueFiltersRequest request = new IssueFiltersRequest(
-                "all",
-                labels,
-                new ArrayList<>(List.of("alice")),
-                new ArrayList<>(List.of("M1"))
-        );
+                "all", labels, new ArrayList<>(List.of("alice")), new ArrayList<>(List.of("M1")));
 
         labels.clear();
 
         assertThat(request.labels()).containsExactly("bug", "backend");
         assertThat(request.assignee()).containsExactly("alice");
         assertThat(request.milestone()).containsExactly("M1");
-        assertThatThrownBy(() -> request.assignee().add("bob"))
-            .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> request.assignee().add("bob")).isInstanceOf(UnsupportedOperationException.class);
     }
 }

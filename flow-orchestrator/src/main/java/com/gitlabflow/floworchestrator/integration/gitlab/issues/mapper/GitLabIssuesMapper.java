@@ -4,12 +4,11 @@ import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabCreat
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -31,8 +30,7 @@ public class GitLabIssuesMapper {
                 issueResponse.labels().size(),
                 assignee != null,
                 milestone != null,
-                parent != null
-        );
+                parent != null);
 
         return new Issue(
                 issueResponse.id(),
@@ -42,25 +40,22 @@ public class GitLabIssuesMapper {
                 issueResponse.labels(),
                 assignee,
                 milestone,
-                parent
-        );
+                parent);
     }
 
-        public GitLabCreateIssueRequest toCreateRequest(final CreateIssueInput input) {
-                final String labels = input.labels().isEmpty() ? null : String.join(",", input.labels());
+    public GitLabCreateIssueRequest toCreateRequest(final CreateIssueInput input) {
+        final String labels = input.labels().isEmpty() ? null : String.join(",", input.labels());
 
-                log.debug(
-                                "Mapped create issue request descriptionPresent={} labelCount={}",
-                                input.description() != null,
-                                input.labels().size()
-                );
+        log.debug(
+                "Mapped create issue request descriptionPresent={} labelCount={}",
+                input.description() != null,
+                input.labels().size());
 
-                return new GitLabCreateIssueRequest(input.title(), input.description(), labels);
-        }
+        return new GitLabCreateIssueRequest(input.title(), input.description(), labels);
+    }
 
     private String mapAssignee(final GitLabIssueResponse issueResponse) {
-        final String firstAssignee = Optional.ofNullable(issueResponse.assignees())
-                .stream()
+        final String firstAssignee = Optional.ofNullable(issueResponse.assignees()).stream()
                 .flatMap(List::stream)
                 .map(GitLabIssueResponse.GitLabAssignee::username)
                 .filter(Objects::nonNull)

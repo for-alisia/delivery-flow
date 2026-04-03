@@ -11,10 +11,7 @@ public class IssuesResponseMapper {
 
     public SearchIssuesResponse toSearchIssuesResponse(final IssuePage issuePage) {
         return new SearchIssuesResponse(
-                issuePage.items().stream().map(this::toIssueDto).toList(),
-                issuePage.count(),
-                issuePage.page()
-        );
+                issuePage.items().stream().map(this::toIssueDto).toList(), issuePage.count(), issuePage.page());
     }
 
     public IssueDto toIssueDto(final Issue issue) {
@@ -26,7 +23,6 @@ public class IssuesResponseMapper {
                 issue.labels(),
                 issue.assignee(),
                 issue.milestone(),
-                issue.parent()
-        );
+                issue.parent());
     }
 }

@@ -1,13 +1,12 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class CreateIssueRequestTest {
 
@@ -29,7 +28,6 @@ class CreateIssueRequestTest {
         labels.clear();
 
         assertThat(request.labels()).containsExactly("bug", "deploy");
-        assertThatThrownBy(() -> request.labels().add("infra"))
-                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> request.labels().add("infra")).isInstanceOf(UnsupportedOperationException.class);
     }
 }

@@ -6,9 +6,5 @@ import org.springframework.lang.Nullable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GitLabCreateIssueRequest(
         String title,
-        @Nullable
-        String description,
-        @Nullable
-        String labels
-) {
-}
+        @Nullable String description,
+        @Nullable String labels) {}

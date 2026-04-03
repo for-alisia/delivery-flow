@@ -1,12 +1,12 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClientResponseException;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class GitLabExceptionMapperTest {
 

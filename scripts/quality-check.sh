@@ -11,6 +11,7 @@ cd "${MODULE_DIR}"
 echo "[quality-check] Running full local quality gate"
 mvn -B clean verify
 
+echo "[quality-check] Formatting is validated during Maven validate via Spotless"
 echo "[quality-check] Reports generated:"
 echo "  - ${MODULE_DIR}/target/checkstyle-result.xml"
 echo "  - ${MODULE_DIR}/target/pmd.xml"

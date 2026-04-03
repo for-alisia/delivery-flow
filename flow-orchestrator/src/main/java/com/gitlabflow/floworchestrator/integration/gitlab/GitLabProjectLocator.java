@@ -1,11 +1,10 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
 import com.gitlabflow.floworchestrator.config.GitLabProperties;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.util.Arrays;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -19,8 +18,7 @@ public final class GitLabProjectLocator {
         log.info(
                 "Resolved GitLab project reference apiBaseUrl={} projectPath={}",
                 projectReference.apiBaseUrl(),
-                projectReference.projectPath()
-        );
+                projectReference.projectPath());
     }
 
     public ProjectReference projectReference() {
@@ -57,6 +55,5 @@ public final class GitLabProjectLocator {
         return new IllegalStateException("Invalid app.gitlab.url project URL: " + projectUrl);
     }
 
-    public record ProjectReference(String apiBaseUrl, String projectPath) {
-    }
+    public record ProjectReference(String apiBaseUrl, String projectPath) {}
 }

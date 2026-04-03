@@ -48,7 +48,7 @@ You are a Senior Java Developer for the `flow-orchestrator` Spring Boot module. 
 ### Verification
 
 1. Verify implementation satisfies plan, acceptance criteria, `documentation/code-guidance.md`, and `documentation/constitution.md`.
-2. Follow the shared local-quality workflow: use `scripts/verify-quick.sh` during implementation and `scripts/quality-check.sh` before handoff, piping both to the verification log.
+2. Follow the shared local-quality workflow: use `scripts/verify-quick.sh` during implementation and run `scripts/final-check.sh` before handoff, piping the executed commands to the verification log.
 3. Run the local quality gate before treating static verification as complete.
 4. Run final verification per `documentation/code-guidance.md`. Fix gaps before handoff.
 5. If the plan adds or changes API endpoints, update `scripts/smoke-test.sh` to include `check` calls for the new/changed endpoints (happy path and at least one error case). The smoke-test script must stay current with the implemented API surface.

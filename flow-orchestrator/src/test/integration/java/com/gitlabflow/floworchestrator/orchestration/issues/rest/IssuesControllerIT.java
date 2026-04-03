@@ -1,5 +1,13 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
@@ -18,6 +26,8 @@ import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssue
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesResponseMapper;
+import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,17 +36,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-import java.util.Objects;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = IssuesController.class)
 @Import(GlobalExceptionHandler.class)
@@ -91,19 +90,12 @@ class IssuesControllerIT {
     void acceptsValidFilterBody() throws Exception {
         final SearchIssuesRequest request = new SearchIssuesRequest(
                 new PaginationRequest(2, 20),
-                new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1"))
-        );
+                new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1")));
         final IssueQuery query = new IssueQuery(2, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1");
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)),
-                1,
-                2
-        );
+                List.of(new Issue(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
         final SearchIssuesResponse response = new SearchIssuesResponse(
-                List.of(new IssueDto(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)),
-                1,
-                2
-        );
+                List.of(new IssueDto(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
 
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class))).thenReturn(query);
         when(issuesService.getIssues(query)).thenReturn(issuePage);
@@ -121,9 +113,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects multiple labels")
     void rejectsMultipleLabels() throws Exception {
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "filters": {
                                     "labels": ["bug", "infra"]
@@ -137,9 +127,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects multiple assignees")
     void rejectsMultipleAssignees() throws Exception {
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "filters": {
                                     "assignee": ["john", "jane"]
@@ -153,9 +141,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects multiple milestones")
     void rejectsMultipleMilestones() throws Exception {
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "filters": {
                                     "milestone": ["m1", "m2"]
@@ -169,9 +155,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects invalid pagination values")
     void rejectsInvalidPaginationValues() throws Exception {
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "pagination": {
                                     "page": 0,
@@ -186,9 +170,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects malformed json body")
     void rejectsMalformedJsonBody() throws Exception {
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("{"))
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("{"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
                 .andExpect(jsonPath("$.message").value("Request validation failed"))
@@ -200,15 +182,11 @@ class IssuesControllerIT {
     void mapsIntegrationExceptionsToBadGateway() throws Exception {
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class)))
                 .thenReturn(new IssueQuery(1, 40, null, null, null, null));
-        when(issuesService.getIssues(any(IssueQuery.class))).thenThrow(new IntegrationException(
-                ErrorCode.INTEGRATION_RATE_LIMITED,
-                "GitLab issues operation failed",
-                "gitlab"
-        ));
+        when(issuesService.getIssues(any(IssueQuery.class)))
+                .thenThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_RATE_LIMITED, "GitLab issues operation failed", "gitlab"));
 
-        mockMvc.perform(post(SEARCH_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("{}"))
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_RATE_LIMITED"))
                 .andExpect(jsonPath("$.message").value("GitLab issues operation failed"));
@@ -217,38 +195,17 @@ class IssuesControllerIT {
     @Test
     @DisplayName("creates issue with full payload and returns 201")
     void createsIssueWithFullPayloadAndReturns201() throws Exception {
-        final CreateIssueRequest request = new CreateIssueRequest(
-                "Deploy failure",
-                "Step 3 failed",
-                List.of("bug", "deploy")
-        );
-        final CreateIssueInput input = new CreateIssueInput(
-                "Deploy failure",
-                "Step 3 failed",
-                List.of("bug", "deploy")
-        );
-        final Issue issue = new Issue(
-                84L,
-                "Deploy failure",
-                "Step 3 failed",
-                OPENED,
-                List.of("bug", "deploy"),
-                null,
-                null,
-                null
-        );
+        final CreateIssueRequest request =
+                new CreateIssueRequest("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
+        final CreateIssueInput input =
+                new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
+        final Issue issue =
+                new Issue(84L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
         final IssueDto response = new IssueDto(
-                84L,
-                "Deploy failure",
-                "Step 3 failed",
-                OPENED,
-                List.of("bug", "deploy"),
-                null,
-                null,
-                null
-        );
+                84L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
 
-        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class))).thenReturn(input);
+        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
+                .thenReturn(input);
         when(issuesService.createIssue(input)).thenReturn(issue);
         when(issuesResponseMapper.toIssueDto(issue)).thenReturn(response);
 
@@ -273,13 +230,12 @@ class IssuesControllerIT {
         final Issue issue = new Issue(85L, "Reporting bug", null, OPENED, List.of(), null, null, null);
         final IssueDto response = new IssueDto(85L, "Reporting bug", null, OPENED, List.of(), null, null, null);
 
-        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class))).thenReturn(input);
+        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
+                .thenReturn(input);
         when(issuesService.createIssue(input)).thenReturn(issue);
         when(issuesResponseMapper.toIssueDto(issue)).thenReturn(response);
 
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "title": "Reporting bug"
                                 }
@@ -295,9 +251,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects create request with blank title")
     void rejectsCreateRequestWithBlankTitle() throws Exception {
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "title": "   "
                                 }
@@ -311,9 +265,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects create request with blank label element")
     void rejectsCreateRequestWithBlankLabelElement() throws Exception {
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "title": "Deploy failure",
                                   "labels": ["bug", " "]
@@ -328,9 +280,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects malformed json body for create request")
     void rejectsMalformedJsonBodyForCreateRequest() throws Exception {
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("{"))
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("{"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
                 .andExpect(jsonPath("$.message").value("Request validation failed"))
@@ -341,16 +291,13 @@ class IssuesControllerIT {
     @DisplayName("maps create integration exceptions to bad gateway")
     void mapsCreateIntegrationExceptionsToBadGateway() throws Exception {
         final CreateIssueInput input = new CreateIssueInput("Deploy failure", null, List.of());
-        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class))).thenReturn(input);
-        when(issuesService.createIssue(input)).thenThrow(new IntegrationException(
-                ErrorCode.INTEGRATION_AUTHENTICATION_FAILED,
-                "GitLab create issue operation failed",
-                "gitlab"
-        ));
+        when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
+                .thenReturn(input);
+        when(issuesService.createIssue(input))
+                .thenThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_AUTHENTICATION_FAILED, "GitLab create issue operation failed", "gitlab"));
 
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("""
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
                                   "title": "Deploy failure"
                                 }
@@ -363,8 +310,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects create request with missing body")
     void rejectsCreateRequestWithMissingBody() throws Exception {
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON))
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE));
     }
@@ -372,9 +318,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("rejects create request with empty object")
     void rejectsCreateRequestWithEmptyObject() throws Exception {
-        mockMvc.perform(post(CREATE_ENDPOINT)
-                        .contentType(APPLICATION_JSON)
-                        .content("{}"))
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
                 .andExpect(jsonPath("$.details[0]", containsString("title")));

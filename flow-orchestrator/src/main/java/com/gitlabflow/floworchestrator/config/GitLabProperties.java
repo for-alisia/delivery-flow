@@ -7,7 +7,4 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.gitlab")
 public record GitLabProperties(
-        @NotBlank String url,
-        @NotBlank String token
-) {
-}
+        @NotBlank String url, @NotBlank String token) {}

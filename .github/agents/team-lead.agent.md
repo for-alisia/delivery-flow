@@ -174,7 +174,7 @@ Invoke Reviewer with: `"Phase 2 review for <feature-name>. Load your context exc
 Accept only when:
 - Requirement lock, story, plan, and implementation are aligned (or deviations reconciled)
 - Reviewer Phase 1 and Phase 2 both passed
-- Verification evidence exists for the shared local-quality workflow (`scripts/verify-quick.sh`, `scripts/quality-check.sh`) plus startup and smoke checks
+- Verification evidence exists for the shared local-quality workflow (`scripts/verify-quick.sh`, `scripts/final-check.sh`) plus startup and smoke checks
 - Independent `mvn test` recheck by `Team Lead` is recorded when the coder claimed tests passed
 - Required documentation is updated (story, plan, review report, sign-off, `.http` files, `README.md`, and other consumer-facing API docs as applicable)
 - Spot checks passed, no unresolved red cards

@@ -10,17 +10,16 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInp
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
-import org.springframework.core.ParameterizedTypeReference;
+import java.net.URI;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Component
@@ -66,19 +65,19 @@ public class GitLabIssuesAdapter implements IssuesPort {
     }
 
     private List<Issue> fetchIssues(final IssueQuery query) {
-        final List<GitLabIssueResponse> gitLabIssues = gitLabRestClient.get()
+        final List<GitLabIssueResponse> gitLabIssues = gitLabRestClient
+                .get()
                 .uri(uriBuilder -> {
                     final URI requestUri = buildUri(query, uriBuilder);
                     log.debug("Calling GitLab uri={}", requestUri);
                     return requestUri;
                 })
                 .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+                .body(new ParameterizedTypeReference<>() {});
 
         return gitLabIssues == null
                 ? List.of()
-            : gitLabIssues.stream().map(gitLabIssuesMapper::toIssue).toList();
+                : gitLabIssues.stream().map(gitLabIssuesMapper::toIssue).toList();
     }
 
     private URI buildUri(final IssueQuery query, final org.springframework.web.util.UriBuilder uriBuilder) {
@@ -115,13 +114,14 @@ public class GitLabIssuesAdapter implements IssuesPort {
         return new IssuePage(issues, issues.size(), query.page());
     }
 
-        private GitLabIssueResponse requestIssue(final CreateIssueInput input) {
-        final GitLabIssueResponse issueResponse = gitLabRestClient.post()
+    private GitLabIssueResponse requestIssue(final CreateIssueInput input) {
+        final GitLabIssueResponse issueResponse = gitLabRestClient
+                .post()
                 .uri(uriBuilder -> uriBuilder
                         .path("/projects/{projectPath}/issues")
                         .build(gitLabProjectLocator.projectReference().projectPath()))
                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-            .body(Objects.requireNonNull(gitLabIssuesMapper.toCreateRequest(input)))
+                .body(Objects.requireNonNull(gitLabIssuesMapper.toCreateRequest(input)))
                 .retrieve()
                 .body(GitLabIssueResponse.class);
 
@@ -131,21 +131,14 @@ public class GitLabIssuesAdapter implements IssuesPort {
         return issueResponse;
     }
 
-    private IntegrationException mapHttpFailure(
-            final RestClientResponseException exception,
-            final String resource
-    ) {
-        final IntegrationException mappedException = gitLabExceptionMapper.fromHttpFailure(
-                exception,
-                SOURCE_GITLAB,
-                resource
-        );
+    private IntegrationException mapHttpFailure(final RestClientResponseException exception, final String resource) {
+        final IntegrationException mappedException =
+                gitLabExceptionMapper.fromHttpFailure(exception, SOURCE_GITLAB, resource);
         log.warn(
                 "GitLab request failed resource={} status={} category={}",
                 resource,
                 exception.getStatusCode().value(),
-                mappedException.errorCode().name()
-        );
+                mappedException.errorCode().name());
         return mappedException;
     }
 

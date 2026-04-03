@@ -44,7 +44,7 @@ Verify the verification log directly — do not trust the Coder's markdown repor
 
 Run and record the shared local-quality workflow yourself:
 - `scripts/verify-quick.sh`
-- `scripts/quality-check.sh`
+- `scripts/final-check.sh`
 - Application startup
 - Required `curl` smoke checks for changed APIs
 

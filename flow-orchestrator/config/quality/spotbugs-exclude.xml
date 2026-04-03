@@ -1,12 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FindBugsFilter>
-    <!--
-      This project intentionally does not enforce SpotBugs defensive-copying
-      recommendations for collection-bearing value objects and records.
-      Those rules tend to push noisy boilerplate that conflicts with the
-      code style we want in the orchestrator module.
-    -->
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
-    </Match>
 </FindBugsFilter>

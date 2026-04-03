@@ -1,17 +1,16 @@
 package com.gitlabflow.floworchestrator.issues.support;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import org.springframework.core.io.ClassPathResource;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
 
 public final class GitLabCreateIssueStubSupport {
 
@@ -24,8 +23,7 @@ public final class GitLabCreateIssueStubSupport {
             }
             """;
 
-    private GitLabCreateIssueStubSupport() {
-    }
+    private GitLabCreateIssueStubSupport() {}
 
     public static void stubCreateIssueSuccess(final WireMockServer wireMockServer) {
         wireMockServer.stubFor(post(urlPathEqualTo(ISSUES_PATH))
@@ -36,8 +34,8 @@ public final class GitLabCreateIssueStubSupport {
     }
 
     public static void stubCreateIssueUnauthorized(final WireMockServer wireMockServer) {
-        wireMockServer.stubFor(post(urlPathEqualTo(ISSUES_PATH))
-                .willReturn(aResponse().withStatus(401)));
+        wireMockServer.stubFor(
+                post(urlPathEqualTo(ISSUES_PATH)).willReturn(aResponse().withStatus(401)));
     }
 
     public static void verifyCreateIssueRequest(final WireMockServer wireMockServer) {

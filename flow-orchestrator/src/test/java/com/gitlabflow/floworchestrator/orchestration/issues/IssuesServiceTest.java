@@ -1,5 +1,10 @@
 package com.gitlabflow.floworchestrator.orchestration.issues;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
@@ -9,19 +14,13 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class IssuesServiceTest {
@@ -33,10 +32,7 @@ class IssuesServiceTest {
 
     @BeforeEach
     void setUp() {
-        issuesService = new IssuesService(
-                issuesPort,
-                new IssuesApiProperties(40, 100)
-        );
+        issuesService = new IssuesService(issuesPort, new IssuesApiProperties(40, 100));
     }
 
     @Test
@@ -91,21 +87,10 @@ class IssuesServiceTest {
     @Test
     @DisplayName("delegates create input to port and returns issue")
     void delegatesCreateInputToPortAndReturnsIssue() {
-        final CreateIssueInput input = new CreateIssueInput(
-                "Deploy failure",
-                "Step 3 failed",
-                List.of("bug", "deploy")
-        );
-        final Issue issue = new Issue(
-                84L,
-                "Deploy failure",
-                "Step 3 failed",
-                "opened",
-                List.of("bug", "deploy"),
-                null,
-                null,
-                null
-        );
+        final CreateIssueInput input =
+                new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
+        final Issue issue =
+                new Issue(84L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), null, null, null);
         when(issuesPort.createIssue(input)).thenReturn(issue);
 
         final Issue response = issuesService.createIssue(input);
@@ -133,13 +118,9 @@ class IssuesServiceTest {
     void propagatesIntegrationExceptionWithoutWrapping() {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
         final IntegrationException exception = new IntegrationException(
-                ErrorCode.INTEGRATION_FAILURE,
-                "GitLab create issue operation failed",
-                "gitlab"
-        );
+                ErrorCode.INTEGRATION_FAILURE, "GitLab create issue operation failed", "gitlab");
         when(issuesPort.createIssue(input)).thenThrow(exception);
 
-        assertThatThrownBy(() -> issuesService.createIssue(input))
-                .isSameAs(exception);
+        assertThatThrownBy(() -> issuesService.createIssue(input)).isSameAs(exception);
     }
 }

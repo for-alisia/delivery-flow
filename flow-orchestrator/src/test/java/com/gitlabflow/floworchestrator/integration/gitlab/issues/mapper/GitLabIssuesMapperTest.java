@@ -1,15 +1,14 @@
 package com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabCreateIssueRequest;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class GitLabIssuesMapperTest {
 
@@ -18,11 +17,8 @@ class GitLabIssuesMapperTest {
     @Test
     @DisplayName("joins labels as comma separated string")
     void joinsLabelsAsCommaSeparatedString() {
-        final CreateIssueInput input = new CreateIssueInput(
-                "Deploy failure",
-                "Step 3 failed",
-                List.of("bug", "deploy")
-        );
+        final CreateIssueInput input =
+                new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
 
         final GitLabCreateIssueRequest request = mapper.toCreateRequest(input);
 
@@ -54,8 +50,7 @@ class GitLabIssuesMapperTest {
                 List.of(new GitLabIssueResponse.GitLabAssignee("john")),
                 null,
                 new GitLabIssueResponse.GitLabMilestone("M1"),
-                new GitLabIssueResponse.GitLabEpic(42L)
-        );
+                new GitLabIssueResponse.GitLabEpic(42L));
 
         final Issue issue = mapper.toIssue(response);
 
@@ -77,8 +72,7 @@ class GitLabIssuesMapperTest {
                 List.of(),
                 new GitLabIssueResponse.GitLabAssignee("legacy"),
                 null,
-                null
-        );
+                null);
 
         final Issue issue = mapper.toIssue(response);
 
@@ -92,16 +86,7 @@ class GitLabIssuesMapperTest {
     @DisplayName("returns null assignee when both assignee sources are missing")
     void returnsNullAssigneeWhenBothSourcesAreMissing() {
         final GitLabIssueResponse response = new GitLabIssueResponse(
-                102L,
-                "No Assignee",
-                "Desc",
-                "opened",
-                List.of("backend"),
-                null,
-                null,
-                null,
-                null
-        );
+                102L, "No Assignee", "Desc", "opened", List.of("backend"), null, null, null, null);
 
         final Issue issue = mapper.toIssue(response);
 
@@ -120,8 +105,7 @@ class GitLabIssuesMapperTest {
                 List.of(new GitLabIssueResponse.GitLabAssignee(null)),
                 new GitLabIssueResponse.GitLabAssignee("fallback-user"),
                 null,
-                null
-        );
+                null);
 
         final Issue issue = mapper.toIssue(response);
 

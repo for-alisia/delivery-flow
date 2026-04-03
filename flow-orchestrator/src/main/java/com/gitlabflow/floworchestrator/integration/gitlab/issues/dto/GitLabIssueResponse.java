@@ -1,7 +1,6 @@
 package com.gitlabflow.floworchestrator.integration.gitlab.issues.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -14,22 +13,18 @@ public record GitLabIssueResponse(
         List<GitLabAssignee> assignees,
         GitLabAssignee assignee,
         GitLabMilestone milestone,
-        GitLabEpic epic
-) {
+        GitLabEpic epic) {
     public GitLabIssueResponse {
         labels = labels == null ? List.of() : List.copyOf(labels);
         assignees = assignees == null ? List.of() : List.copyOf(assignees);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GitLabAssignee(String username) {
-    }
+    public record GitLabAssignee(String username) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GitLabMilestone(String title) {
-    }
+    public record GitLabMilestone(String title) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GitLabEpic(Long id) {
-    }
+    public record GitLabEpic(Long id) {}
 }

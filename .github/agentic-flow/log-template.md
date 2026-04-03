@@ -44,44 +44,44 @@ Suggested content:
 
 ### Planning Phase Diagram
 
-```mermaid
-flowchart LR
-    TL1[1. Team Lead<br/>Requirement lock + checkpoint] -->|handoff: checkpoint + locked request| PM[2. Product Manager]
-    PM -->|artifact: story| TL2[3. Team Lead<br/>Story gate]
-    TL2 -->|artifact: artifacts/user-stories/<feature>.story.md| ARCH[4. Architect]
-    ARCH -->|artifact: plan| TL3[5. Team Lead<br/>Plan gate]
-    TL3 -->|artifacts: story + plan + checkpoint| REV1[6. Reviewer Phase 1]
-    REV1 -->|artifact: artifacts/review-reports/<feature>.review.json| TL4[7. Team Lead<br/>Phase 1 gate]
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        INTENDED FLOW                                 │
+│                                                                      │
+│   1:TL ──────► 2:PM ──────► 3:TL ──────► 4:ARCH ──────► 5:TL      │
+│    chkpt+req    story.md     story.md      plan.md       story+plan  │
+│                                                                      │
+│   5:TL ──────────────────────────► 6:REV1 ──────────────► 7:TL     │
+│    story + plan + chkpt             review.json (Phase 1)            │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Implementation Phase Diagram
 
-```mermaid
-flowchart LR
-    TL4[Phase 1 gate passed] -->|handoff: approved plan slices| CODER[8. Coder]
-    CODER -->|artifacts: implementation report + verification log| TL5[9. Team Lead<br/>Coder gate]
-    TL5 -->|artifacts: phase2 brief + approved implementation evidence| REV2[10. Reviewer Phase 2]
-    REV2 -->|artifact: artifacts/review-reports/<feature>.review.json| TL6[11. Team Lead<br/>Final audit gate]
-    TL6 -->|artifact: sign-off| SIGNOFF[12. Accepted delivery]
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
+│    approved slices               report.json                         │
+│                                                                      │
+│   9:TL ──────────────────────► 10:REV2 ─────────────────► 11:TL    │
+│    brief + impl evidence          review.json              sign-off  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Flow Step Clarification
 
-Use this table to explain what each arrow means in the setup diagram.
-
-| Phase | Step | Triggered by | Handoff / output | Quality gate |
-|------|------|--------------|------------------|--------------|
-| Planning | Team Lead -> Product Manager | Team Lead | Checkpoint + locked request | PM must produce a valid story artifact |
-| Planning | Product Manager -> Team Lead | Product Manager | `artifacts/user-stories/<feature>.story.md` | Story preserves locked scope and acceptance criteria |
-| Planning | Team Lead -> Architect | Team Lead | Checkpoint + approved story | Architect must produce an executable plan |
-| Planning | Architect -> Team Lead | Architect | `artifacts/implementation-plans/<feature>.plan.md` | Plan includes slices, payloads, validation, logging, tests |
-| Planning | Team Lead -> Reviewer Phase 1 | Team Lead | Request source + story + plan + checkpoint | Reviewer confirms implementation readiness |
-| Planning | Reviewer Phase 1 -> Team Lead | Reviewer | `artifacts/review-reports/<feature>.review.json` | No `FAIL` or `BLOCKED` items in Phase 1 |
-| Implementation | Team Lead -> Coder | Team Lead | Approved slices + checkpoint | Coder implements only approved scope |
-| Implementation | Coder -> Team Lead | Coder | `artifacts/implementation-reports/<feature>.report.json` and `artifacts/implementation-reports/<feature>-verification.log` | Evidence must be complete and recheckable |
-| Implementation | Team Lead -> Reviewer Phase 2 | Team Lead | Phase 2 brief + approved implementation evidence | Reviewer validates code, tests, runtime, and docs |
-| Implementation | Reviewer Phase 2 -> Team Lead | Reviewer | `artifacts/review-reports/<feature>.review.json` | No unresolved verification gaps |
-| Implementation | Team Lead -> Sign-off | Team Lead | `artifacts/implementation-signoffs/<feature>.signoff.json` | Final audit, rechecks, and acceptance completed |
+- **1:TL** — Requirement lock, writes checkpoint; hands off `chkpt + locked request` to PM
+- **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria
+- **3:TL** — Story gate; hands off `story.md` to Architect
+- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.md`; plan must include slices, payloads, validation boundaries, logging, and tests
+- **5:TL** — Plan gate; hands off `story + plan + chkpt` to Reviewer Phase 1
+- **6:REV1** — Produces `artifacts/review-reports/<feature>.review.json`; no `FAIL` or `BLOCKED` items allowed
+- **7:TL** — Phase 1 gate; hands off approved slices to Coder
+- **8:CODER** — Produces `artifacts/implementation-reports/<feature>.report.json`; evidence must be complete and recheckable
+- **9:TL** — Coder gate, independent verification; hands off `brief + impl evidence` to Reviewer Phase 2
+- **10:REV2** — Produces `artifacts/review-reports/<feature>.review.json`; no unresolved verification gaps
+- **11:TL** — Final audit gate; produces `artifacts/implementation-signoffs/<feature>.signoff.json`
 
 ---
 
@@ -229,51 +229,41 @@ Capture deviations such as:
 
 ##### Planning Phase - Actual
 
-```mermaid
-flowchart LR
-    TL1[Team Lead] --> PM1[Product Manager attempt 1]
-    PM1 -->|story rejected / clarified| TL2[Team Lead]
-    TL2 --> PM2[Product Manager attempt 2]
-    PM2 --> TL3[Team Lead]
-    TL3 --> ARCH[Architect]
-    ARCH --> TL4[Team Lead]
-    TL4 --> REV1[Reviewer Phase 1]
-    REV1 --> TL5[Team Lead]
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        ACTUAL FLOW — vX.Y.Z                          │
+│                                                                      │
+│   1:TL ── 2:PM ── 3:TL ── 4:ARCH ── 5:TL ── 6:REV1 ── 7:TL        │
+│   chkpt   story   story    plan      story    review.j               │
+│                                                                      │
+│  (annotate retries inline, e.g.: 2:PM×2 if PM was re-invoked)       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ##### Implementation Phase - Actual
 
-```mermaid
-flowchart LR
-    TL5[Phase 1 gate passed] --> CODER1[Coder batch / attempt 1]
-    CODER1 --> TL6[Team Lead]
-    TL6 -->|handoff rejected| CODER2[Coder retry]
-    CODER2 --> TL7[Team Lead]
-    TL7 -->|handoff rejected again if needed| CODER3[Coder retry]
-    CODER3 --> TL8[Team Lead]
-    TL8 --> REV2A[Reviewer Phase 2]
-    REV2A -->|artifact mismatch / gate failed| TL9[Team Lead]
-    TL9 --> REV2B[Reviewer rerun]
-    REV2B --> TL10[Team Lead]
-    TL10 --> SIGNOFF[Sign-off]
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✗─ 8:CODER×4 ─✓─ 9:TL     │
+│   <reason>      <reason>        <reason>        report.json              │
+│                                                                          │
+│   9:TL ── 10:REV2×1 ─✗─ 10:REV2×2 ─✗─  BLOCKED / DONE               │
+│   brief    <reason>      <reason>                                        │
+│                                                                          │
+│  CTX   ████  ██  ████  ██  ███  ██  ████████████  ██  ▓▓▓▓  ░░░░      │
+│                                            ↑                  ↑         │
+│                                       compacted            corrupt       │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-##### Actual Flow Step Clarification
+##### Actual Flow Deviations
 
-Use this table to explain how the actual run deviated from the intended flow.
-
-| Phase | Step / loop | What happened | Impact |
-|------|-------------|---------------|--------|
-| Planning | PM retry / story clarification |  |  |
-| Planning | Architect / Phase 1 review path |  |  |
-| Implementation | Coder handoff rejection loop |  |  |
-| Implementation | Reviewer rerun / red card |  |  |
-| Implementation | Final acceptance path |  |  |
-
-Add a short explanation below the diagram:
-- What the expected path was
-- What the actual deviations were
-- Which deviation had the biggest cost or quality impact
+Describe what deviated from the intended flow and the cost of each deviation:
+- **Planning deviations** (PM retries, Architect re-invocations, Phase 1 rejections):
+- **Coder loops** (count, root cause per loop, false positives):
+- **Reviewer reruns** (count, root cause, context state at time of failure):
+- **Biggest single cost or quality impact:**
 
 ### 4. Cost And Context Efficiency
 

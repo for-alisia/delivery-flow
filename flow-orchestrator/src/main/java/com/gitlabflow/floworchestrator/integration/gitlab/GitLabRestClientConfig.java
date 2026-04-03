@@ -1,11 +1,10 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
 import com.gitlabflow.floworchestrator.config.GitLabProperties;
+import java.util.Objects;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
-
-import java.util.Objects;
 
 @Configuration
 public class GitLabRestClientConfig {
@@ -14,10 +13,10 @@ public class GitLabRestClientConfig {
     public RestClient gitLabRestClient(
             final RestClient.Builder restClientBuilder,
             final GitLabProperties gitLabProperties,
-            final GitLabProjectLocator gitLabProjectLocator
-    ) {
+            final GitLabProjectLocator gitLabProjectLocator) {
         return restClientBuilder
-            .baseUrl(Objects.requireNonNull(gitLabProjectLocator.projectReference().apiBaseUrl()))
+                .baseUrl(Objects.requireNonNull(
+                        gitLabProjectLocator.projectReference().apiBaseUrl()))
                 .defaultHeader("PRIVATE-TOKEN", gitLabProperties.token())
                 .build();
     }

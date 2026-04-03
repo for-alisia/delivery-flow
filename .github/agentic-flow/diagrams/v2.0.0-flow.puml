@@ -1,0 +1,51 @@
+@startuml
+title Agentic Flow v2.0.0 - Actual Run Flow
+
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequenceMessageAlign center
+
+actor "Team Lead" as TL
+participant "Product Manager" as PM
+participant "Java Architect" as ARCH
+participant "Reviewer" as REV
+participant "Java Coder" as CODER
+
+note over TL,CODER #E2E8F0
+Green = passed gate
+Yellow = rejected / returned / degraded state
+Red = red card
+end note
+
+group Planning Phase
+TL -> PM : Create story
+PM -[#22C55E]> TL : Story returned and accepted
+
+TL -> ARCH : Create plan
+ARCH -[#F59E0B]> TL : Plan returned\nwrong model picked;\nplan too generic
+TL -[#22C55E]> TL : Plan accepted
+
+TL -> REV : Phase 1 review
+REV -[#22C55E]> TL : PASS
+end
+
+group Implementation Phase
+TL -> CODER : Start implementation
+loop 4+ coder loops
+CODER --> TL : Handoff / verification claim
+TL -[#F59E0B]> TL : Reject\nfalse positives,\nmissing handoff,\nquality gate not satisfied
+TL -> CODER : Retry with failure evidence
+end
+
+TL -[#22C55E]> TL : Code evidence stabilized\nTests, app, API, and Sonar passed
+
+TL -> REV : Phase 2 review
+REV -[#F59E0B]> TL : Review artifact malformed / corrupted
+TL -[#DC2626]> TL : Red card\nReviewer inconsistency / malformed artifact
+TL -> REV : Reviewer rerun
+REV -[#F59E0B]> TL : Artifact still malformed
+
+TL -[#F59E0B]> TL : Final acceptance blocked\nimplementation evidence stable,\nreview artifact unusable
+end
+
+@enduml

@@ -1,5 +1,13 @@
 package com.gitlabflow.floworchestrator.integration.gitlab.issues;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.config.GitLabProperties;
@@ -11,26 +19,17 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestClient;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 
 @SuppressWarnings("null")
 class GitLabIssuesAdapterTest {
@@ -39,22 +38,21 @@ class GitLabIssuesAdapterTest {
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
     private static final MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
-    private static final CreateIssueInput CREATE_INPUT = new CreateIssueInput(
-            "Deploy failure",
-            "Step 3 failed",
-            List.of("bug", "deploy")
-    );
+    private static final CreateIssueInput CREATE_INPUT =
+            new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
 
     private MockRestServiceServer server;
     private GitLabIssuesAdapter adapter;
 
-    private static GitLabIssuesAdapter createAdapter(final RestClient.Builder builder, final GitLabProjectLocator locator) {
+    private static GitLabIssuesAdapter createAdapter(
+            final RestClient.Builder builder, final GitLabProjectLocator locator) {
         return new GitLabIssuesAdapter(
-                builder.baseUrl(Objects.requireNonNull(locator.projectReference().apiBaseUrl())).build(),
+                builder.baseUrl(Objects.requireNonNull(
+                                locator.projectReference().apiBaseUrl()))
+                        .build(),
                 locator,
                 new GitLabIssuesMapper(),
-                new GitLabExceptionMapper()
-        );
+                new GitLabExceptionMapper());
     }
 
     @BeforeEach
@@ -68,7 +66,8 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("sends expected GitLab query parameters")
     void sendsExpectedQueryParameters() {
-        server.expect(requestTo(API_URL + "?page=2&per_page=20&state=opened&labels=bug&assignee_username=jane&milestone=M1"))
+        server.expect(requestTo(
+                        API_URL + "?page=2&per_page=20&state=opened&labels=bug&assignee_username=jane&milestone=M1"))
                 .andExpect(method(Objects.requireNonNull(HttpMethod.GET)))
                 .andExpect(queryParam("page", "2"))
                 .andExpect(queryParam("per_page", "20"))
@@ -110,13 +109,13 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("maps transport failures to generic integration error")
     void mapsTransportFailuresToGenericIntegrationError() {
-        server.expect(requestTo(API_URL + "?page=1&per_page=40"))
-                .andRespond(request -> {
-                    throw new IOException("connection reset");
-                });
+        server.expect(requestTo(API_URL + "?page=1&per_page=40")).andRespond(request -> {
+            throw new IOException("connection reset");
+        });
 
         assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))
-                .isInstanceOfSatisfying(IntegrationException.class,
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
     }
 
@@ -124,9 +123,8 @@ class GitLabIssuesAdapterTest {
     @DisplayName("returns empty page when gitlab response body is null")
     void returnsEmptyPageWhenGitLabResponseBodyIsNull() {
         server.expect(requestTo(API_URL + "?page=1&per_page=40"))
-                .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(APPLICATION_JSON)
-                        .body("null"));
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("null"));
 
         final IssuePage result = adapter.getIssues(DEFAULT_QUERY);
 
@@ -139,9 +137,8 @@ class GitLabIssuesAdapterTest {
     @DisplayName("maps multiple gitlab issues into issue page")
     void mapsMultipleGitLabIssuesIntoIssuePage() {
         server.expect(requestTo(API_URL + "?page=1&per_page=40"))
-                .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(APPLICATION_JSON)
-                        .body("""
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("""
                                 [
                                   {
                                     "id": 101,
@@ -236,13 +233,13 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("maps create issue transport failures to generic integration error")
     void mapsCreateIssueTransportFailuresToGenericIntegrationError() {
-        server.expect(requestTo(API_URL))
-                .andRespond(request -> {
-                    throw new IOException("connection reset");
-                });
+        server.expect(requestTo(API_URL)).andRespond(request -> {
+            throw new IOException("connection reset");
+        });
 
         assertThatThrownBy(() -> adapter.createIssue(CREATE_INPUT))
-                .isInstanceOfSatisfying(IntegrationException.class,
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
     }
 
@@ -251,7 +248,8 @@ class GitLabIssuesAdapterTest {
                 .andRespond(withStatus(Objects.requireNonNull(status)));
 
         assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))
-                .isInstanceOfSatisfying(IntegrationException.class,
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
     }
 
@@ -259,7 +257,8 @@ class GitLabIssuesAdapterTest {
         server.expect(requestTo(API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
 
         assertThatThrownBy(() -> adapter.createIssue(CREATE_INPUT))
-                .isInstanceOfSatisfying(IntegrationException.class,
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
     }
 }

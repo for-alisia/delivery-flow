@@ -1,0 +1,65 @@
+@startuml
+title Agentic Flow v2.1.0 - Actual Run Flow
+
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequenceMessageAlign center
+
+actor "Team Lead" as TL
+participant "Product Manager" as PM
+participant "Java Architect" as ARCH
+participant "Reviewer" as REV
+participant "Java Coder" as CODER
+
+note over TL,CODER #E2E8F0
+Green = passed gate
+Yellow = rejected / returned
+Red = red card
+end note
+
+group Planning Phase
+TL -> PM : Create story
+PM -[#22C55E]> TL : Story returned and accepted
+
+TL -> ARCH : Create plan
+ARCH -[#F59E0B]> TL : Plan returned\nwrong model picked;\nplan too large (~400 lines)
+TL -[#22C55E]> TL : Plan accepted
+
+TL -> REV : Phase 1 review
+REV -[#22C55E]> TL : PASS
+end
+
+group Implementation Phase
+TL -> CODER : Batch 1 (slices 1-2)
+CODER --> TL : Handoff attempt
+TL -[#F59E0B]> TL : Reject\nmissing implementation report\nand verification log
+
+TL -> CODER : Batch 1 retry
+CODER -[#22C55E]> TL : Valid batch 1 handoff
+
+TL -> CODER : Batch 2 (slices 3-4)
+CODER --> TL : Handoff attempt
+TL -[#F59E0B]> TL : Reject\nmissing summary / no curl evidence
+
+TL -> CODER : Batch 2 retry
+CODER -[#22C55E]> TL : Summary returned
+TL -[#22C55E]> TL : Build and tests accepted
+end
+
+group Review And Acceptance
+TL -> REV : Phase 2 review
+REV -[#F59E0B]> TL : PASS claimed\nwithout smoke evidence
+TL -[#F59E0B]> TL : Reject reviewer result\nhandoff mismatch
+
+TL -> REV : Reviewer rerun
+REV -[#F59E0B]> TL : PASS claimed again\nstill no smoke evidence
+TL -[#F59E0B]> TL : Reject reviewer result\nsmoke checks missing
+
+TL -> REV : Reviewer rerun with curl verification
+REV -[#22C55E]> TL : PASS with smoke evidence
+
+TL -[#22C55E]> TL : Audit checks passed
+TL -[#22C55E]> TL : Final sign-off
+end
+
+@enduml

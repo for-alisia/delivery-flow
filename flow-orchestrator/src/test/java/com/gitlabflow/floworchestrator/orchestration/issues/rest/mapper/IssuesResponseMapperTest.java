@@ -1,15 +1,14 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class IssuesResponseMapperTest {
 
@@ -19,10 +18,7 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue page to API response contract")
     void mapsIssuePageToApiResponse() {
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)),
-                1,
-                2
-        );
+                List.of(new Issue(123L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)), 1, 2);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -38,11 +34,8 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("keeps nullable fields as null")
     void keepsNullableFieldsAsNull() {
-        final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(1L, "T", null, "closed", List.of(), null, null, null)),
-                1,
-                1
-        );
+        final IssuePage issuePage =
+                new IssuePage(List.of(new Issue(1L, "T", null, "closed", List.of(), null, null, null)), 1, 1);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -69,11 +62,9 @@ class IssuesResponseMapperTest {
         final IssuePage issuePage = new IssuePage(
                 List.of(
                         new Issue(11L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
-                        new Issue(12L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)
-                ),
+                        new Issue(12L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)),
                 2,
-                4
-        );
+                4);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -89,15 +80,7 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue fields to issue dto")
     void mapsIssueFieldsToIssueDto() {
         final Issue issue = new Issue(
-                84L,
-                "Deploy failure",
-                "Step 3 failed",
-                "opened",
-                List.of("bug", "deploy"),
-                "john",
-                "M1",
-                42L
-        );
+                84L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), "john", "M1", 42L);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
