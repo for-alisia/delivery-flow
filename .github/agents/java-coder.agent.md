@@ -3,7 +3,7 @@ name: "Java Coder"
 description: "Use when implementing Java features, fixing Java bugs, or refactoring Java code in flow-orchestrator using a concise implementation-first workflow. Reads the provided implementation plan, follows it exactly, and verifies the full module before finalizing."
 target: vscode
 tools: [read, search, edit, execute, todo, io.github.upstash/context7/*, web, vscode/memory]
-model: codex-5.3 # IDE: GPT-5.3-Codex (copilot)
+model: GPT-5.3-Codex (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide the feature name, constraints, and target package/module"
