@@ -30,7 +30,7 @@ Search and create GitLab issues through a provider-agnostic orchestration layer.
 - **Tests:** 12 unit, 1 integration (`IssuesControllerIT`), 1 component (`IssuesApiComponentTest`)
 - **Design notes:**
   - `Issue` is the unified output model for both search and create
-  - `IssueDto` is the single API response shape for all issue endpoints
+  - `IssueDto` is the single API response shape for all issue endpoints; fields: `id` (GitLab global id), `issueId` (project-scoped number, maps from GitLab `iid`), `title`, `description`, `state`, `labels`, `assignee`, `milestone`, `parent`
   - `GitLabIssuesAdapter` handles both search (GET) and create (POST) via `RestClient`
   - Pagination is GitLab header-based, mapped in adapter
 

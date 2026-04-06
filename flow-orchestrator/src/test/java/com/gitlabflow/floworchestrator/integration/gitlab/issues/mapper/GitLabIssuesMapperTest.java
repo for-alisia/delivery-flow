@@ -43,6 +43,7 @@ class GitLabIssuesMapperTest {
     void mapsLabelsMilestoneEpicAndAssigneeList() {
         final GitLabIssueResponse response = new GitLabIssueResponse(
                 100L,
+                5L,
                 "Title",
                 "Desc",
                 "opened",
@@ -55,6 +56,7 @@ class GitLabIssuesMapperTest {
         final Issue issue = mapper.toIssue(response);
 
         assertThat(issue.id()).isEqualTo(100L);
+        assertThat(issue.issueId()).isEqualTo(5L);
         assertThat(issue.assignee()).isEqualTo("john");
         assertThat(issue.milestone()).isEqualTo("M1");
         assertThat(issue.parent()).isEqualTo(42L);
@@ -65,6 +67,7 @@ class GitLabIssuesMapperTest {
     void fallsBackToSingleAssigneeAndNullables() {
         final GitLabIssueResponse response = new GitLabIssueResponse(
                 101L,
+                6L,
                 "Title",
                 null,
                 "closed",
@@ -86,7 +89,7 @@ class GitLabIssuesMapperTest {
     @DisplayName("returns null assignee when both assignee sources are missing")
     void returnsNullAssigneeWhenBothSourcesAreMissing() {
         final GitLabIssueResponse response = new GitLabIssueResponse(
-                102L, "No Assignee", "Desc", "opened", List.of("backend"), null, null, null, null);
+                102L, 7L, "No Assignee", "Desc", "opened", List.of("backend"), null, null, null, null);
 
         final Issue issue = mapper.toIssue(response);
 
@@ -98,6 +101,7 @@ class GitLabIssuesMapperTest {
     void fallsBackToSingleAssigneeWhenAssigneeListHasNullUsernames() {
         final GitLabIssueResponse response = new GitLabIssueResponse(
                 103L,
+                8L,
                 "Fallback Assignee",
                 "Desc",
                 "opened",
@@ -110,5 +114,16 @@ class GitLabIssuesMapperTest {
         final Issue issue = mapper.toIssue(response);
 
         assertThat(issue.assignee()).isEqualTo("fallback-user");
+    }
+
+    @Test
+    @DisplayName("maps iid to issueId")
+    void mapsIidToIssueId() {
+        final GitLabIssueResponse response =
+                new GitLabIssueResponse(200L, 42L, "Any Title", null, "opened", List.of(), null, null, null, null);
+
+        final Issue issue = mapper.toIssue(response);
+
+        assertThat(issue.issueId()).isEqualTo(42L);
     }
 }

@@ -23,7 +23,7 @@ class SearchIssuesResponseTest {
     @DisplayName("defensively copies and detaches from mutable input list")
     void defensivelyCopiesAndDetachesFromMutableInputList() {
         final List<IssueDto> items = new ArrayList<>();
-        items.add(new IssueDto(1L, "A", null, "opened", List.of("bug"), null, null, null));
+        items.add(new IssueDto(1L, 1L, "A", null, "opened", List.of("bug"), null, null, null));
 
         final SearchIssuesResponse response = new SearchIssuesResponse(items, 1, 1);
         items.clear();

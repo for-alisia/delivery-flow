@@ -6,6 +6,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GitLabIssueResponse(
         long id,
+        long iid,
         String title,
         String description,
         String state,

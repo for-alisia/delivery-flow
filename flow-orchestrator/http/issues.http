@@ -30,7 +30,7 @@ Content-Type: application/json
 	}
 }
 
-### Create issue request (full payload)
+### Create issue request (full payload) — response includes issueId (project-scoped number from GitLab iid)
 POST {{baseUrl}}/api/issues
 Content-Type: application/json
 

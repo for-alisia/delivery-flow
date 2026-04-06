@@ -5,6 +5,7 @@ import org.springframework.lang.Nullable;
 
 public record Issue(
         long id,
+        long issueId,
         String title,
         @Nullable String description,
         String state,

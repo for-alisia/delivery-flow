@@ -9,6 +9,20 @@ PASS=0
 FAIL=0
 RESULTS=""
 
+check_field() {
+  local name="$1" method="$2" url="$3" field="$4"
+  shift 4
+  local body
+  body=$(curl -s -X "$method" "$@" "$url") || true
+  if echo "$body" | grep -q "\"${field}\""; then
+    RESULTS+="  PASS  $name (field '${field}' present)\n"
+    PASS=$((PASS + 1))
+  else
+    RESULTS+="  FAIL  $name (field '${field}' missing)\n"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
 check() {
   local name="$1" method="$2" url="$3" expected_status="$4"
   shift 4
@@ -47,6 +61,15 @@ check "POST /api/issues (create)" POST "${BASE_URL}/api/issues" 201 \
 check "POST /api/issues (create validation error)" POST "${BASE_URL}/api/issues" 400 \
   -H "Content-Type: application/json" \
   -d '{"title":"   "}'
+
+# issueId field presence — verify additive field appears in both endpoints
+check_field "POST /api/issues/search issueId present" POST "${BASE_URL}/api/issues/search" "issueId" \
+  -H "Content-Type: application/json" -d '{}'
+
+SMOKE_FIELD_TITLE="Smoke field check $(date -u +%Y%m%d%H%M%S)"
+check_field "POST /api/issues issueId present" POST "${BASE_URL}/api/issues" "issueId" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"${SMOKE_FIELD_TITLE}\",\"description\":\"Created by smoke test\",\"labels\":[\"smoke\",\"api\"]}"
 
 echo ""
 printf "%b" "$RESULTS"

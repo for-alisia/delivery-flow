@@ -93,9 +93,9 @@ class IssuesControllerIT {
                 new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1")));
         final IssueQuery query = new IssueQuery(2, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1");
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
+                List.of(new Issue(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
         final SearchIssuesResponse response = new SearchIssuesResponse(
-                List.of(new IssueDto(123L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
+                List.of(new IssueDto(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
 
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class))).thenReturn(query);
         when(issuesService.getIssues(query)).thenReturn(issuePage);
@@ -107,7 +107,8 @@ class IssuesControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(1))
                 .andExpect(jsonPath("$.page").value(2))
-                .andExpect(jsonPath("$.items[0].id").value(123));
+                .andExpect(jsonPath("$.items[0].id").value(123))
+                .andExpect(jsonPath("$.items[0].issueId").value(5));
     }
 
     @Test
@@ -199,10 +200,10 @@ class IssuesControllerIT {
                 new CreateIssueRequest("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
         final CreateIssueInput input =
                 new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
-        final Issue issue =
-                new Issue(84L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
+        final Issue issue = new Issue(
+                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
         final IssueDto response = new IssueDto(
-                84L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
+                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
 
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
                 .thenReturn(input);
@@ -214,6 +215,7 @@ class IssuesControllerIT {
                         .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(84L))
+                .andExpect(jsonPath("$.issueId").value(10))
                 .andExpect(jsonPath("$.title").value("Deploy failure"))
                 .andExpect(jsonPath("$.description").value("Step 3 failed"))
                 .andExpect(jsonPath("$.state").value(OPENED))
@@ -227,8 +229,8 @@ class IssuesControllerIT {
     @DisplayName("creates issue with title only and returns 201")
     void createsIssueWithTitleOnlyAndReturns201() throws Exception {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
-        final Issue issue = new Issue(85L, "Reporting bug", null, OPENED, List.of(), null, null, null);
-        final IssueDto response = new IssueDto(85L, "Reporting bug", null, OPENED, List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null);
+        final IssueDto response = new IssueDto(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null);
 
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
                 .thenReturn(input);
@@ -242,6 +244,7 @@ class IssuesControllerIT {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(85L))
+                .andExpect(jsonPath("$.issueId").value(11))
                 .andExpect(jsonPath("$.title").value("Reporting bug"))
                 .andExpect(jsonPath("$.description").isEmpty())
                 .andExpect(jsonPath("$.state").value(OPENED))

@@ -72,6 +72,7 @@ class IssuesApiComponentTest {
         assertThat(json.path("count").asInt()).isEqualTo(1);
         assertThat(json.path("page").asInt()).isEqualTo(1);
         assertThat(json.path("items").get(0).path("id").asLong()).isEqualTo(123L);
+        assertThat(json.path("items").get(0).path("issueId").asLong()).isEqualTo(7L);
         assertThat(json.path("items").get(0).path("assignee").asText()).isEqualTo("john.doe");
         assertThat(json.path("items").get(0).path("milestone").asText()).isEqualTo("M1");
         assertThat(json.path("items").get(0).path("parent").asLong()).isEqualTo(42L);
@@ -129,6 +130,7 @@ class IssuesApiComponentTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         final JsonNode json = objectMapper.readTree(response.getBody());
         assertThat(json.path("id").asLong()).isEqualTo(700L);
+        assertThat(json.path("issueId").asLong()).isEqualTo(12L);
         assertThat(json.path("title").asText()).isEqualTo("Deploy failure");
         assertThat(json.path("description").asText()).isEqualTo("Step 3 failed");
         assertThat(json.path("state").asText()).isEqualTo("opened");

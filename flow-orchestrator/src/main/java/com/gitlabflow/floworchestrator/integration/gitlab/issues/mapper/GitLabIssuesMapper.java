@@ -24,8 +24,9 @@ public class GitLabIssuesMapper {
                 .orElse(null);
 
         log.debug(
-                "Mapped GitLab issue id={} state={} labels={} assigneePresent={} milestonePresent={} parentPresent={}",
+                "Mapped GitLab issue id={} issueId={} state={} labels={} assigneePresent={} milestonePresent={} parentPresent={}",
                 issueResponse.id(),
+                issueResponse.iid(),
                 issueResponse.state(),
                 issueResponse.labels().size(),
                 assignee != null,
@@ -34,6 +35,7 @@ public class GitLabIssuesMapper {
 
         return new Issue(
                 issueResponse.id(),
+                issueResponse.iid(),
                 issueResponse.title(),
                 issueResponse.description(),
                 issueResponse.state(),

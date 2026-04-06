@@ -17,6 +17,7 @@ public class IssuesResponseMapper {
     public IssueDto toIssueDto(final Issue issue) {
         return new IssueDto(
                 issue.id(),
+                issue.issueId(),
                 issue.title(),
                 issue.description(),
                 issue.state(),

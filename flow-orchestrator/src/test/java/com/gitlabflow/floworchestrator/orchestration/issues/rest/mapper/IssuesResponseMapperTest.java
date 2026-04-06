@@ -18,7 +18,9 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue page to API response contract")
     void mapsIssuePageToApiResponse() {
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)), 1, 2);
+                List.of(new Issue(123L, 5L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)),
+                1,
+                2);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -26,6 +28,7 @@ class IssuesResponseMapperTest {
         assertThat(response.page()).isEqualTo(2);
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().getFirst().id()).isEqualTo(123L);
+        assertThat(response.items().getFirst().issueId()).isEqualTo(5L);
         assertThat(response.items().getFirst().assignee()).isEqualTo("john");
         assertThat(response.items().getFirst().milestone()).isEqualTo("M1");
         assertThat(response.items().getFirst().parent()).isEqualTo(42L);
@@ -35,7 +38,7 @@ class IssuesResponseMapperTest {
     @DisplayName("keeps nullable fields as null")
     void keepsNullableFieldsAsNull() {
         final IssuePage issuePage =
-                new IssuePage(List.of(new Issue(1L, "T", null, "closed", List.of(), null, null, null)), 1, 1);
+                new IssuePage(List.of(new Issue(1L, 2L, "T", null, "closed", List.of(), null, null, null)), 1, 1);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -61,8 +64,8 @@ class IssuesResponseMapperTest {
     void mapsMultipleIssuesIntoMultipleResponseItems() {
         final IssuePage issuePage = new IssuePage(
                 List.of(
-                        new Issue(11L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
-                        new Issue(12L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)),
+                        new Issue(11L, 3L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
+                        new Issue(12L, 4L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)),
                 2,
                 4);
 
@@ -70,7 +73,9 @@ class IssuesResponseMapperTest {
 
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().getFirst().id()).isEqualTo(11L);
+        assertThat(response.items().getFirst().issueId()).isEqualTo(3L);
         assertThat(response.items().get(1).id()).isEqualTo(12L);
+        assertThat(response.items().get(1).issueId()).isEqualTo(4L);
         assertThat(response.items().get(1).assignee()).isEqualTo("bob");
         assertThat(response.count()).isEqualTo(2);
         assertThat(response.page()).isEqualTo(4);
@@ -80,11 +85,12 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue fields to issue dto")
     void mapsIssueFieldsToIssueDto() {
         final Issue issue = new Issue(
-                84L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), "john", "M1", 42L);
+                84L, 6L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), "john", "M1", 42L);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
         assertThat(response.id()).isEqualTo(84L);
+        assertThat(response.issueId()).isEqualTo(6L);
         assertThat(response.title()).isEqualTo("Deploy failure");
         assertThat(response.description()).isEqualTo("Step 3 failed");
         assertThat(response.state()).isEqualTo("opened");
@@ -97,12 +103,22 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("keeps nullable description as null for issue dto")
     void keepsNullableDescriptionAsNullForIssueDto() {
-        final Issue issue = new Issue(85L, "Reporting bug", null, "opened", List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 7L, "Reporting bug", null, "opened", List.of(), null, null, null);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
         assertThat(response.id()).isEqualTo(85L);
         assertThat(response.description()).isNull();
         assertThat(response.labels()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("maps issueId from issue to dto")
+    void mapsIssueIdFromIssueToDto() {
+        final Issue issue = new Issue(1L, 99L, "Title", null, "opened", List.of(), null, null, null);
+
+        final IssueDto dto = mapper.toIssueDto(issue);
+
+        assertThat(dto.issueId()).isEqualTo(99L);
     }
 }

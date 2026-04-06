@@ -89,8 +89,8 @@ class IssuesServiceTest {
     void delegatesCreateInputToPortAndReturnsIssue() {
         final CreateIssueInput input =
                 new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
-        final Issue issue =
-                new Issue(84L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), null, null, null);
+        final Issue issue = new Issue(
+                84L, 10L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), null, null, null);
         when(issuesPort.createIssue(input)).thenReturn(issue);
 
         final Issue response = issuesService.createIssue(input);
@@ -103,7 +103,7 @@ class IssuesServiceTest {
     @DisplayName("returns null description unchanged when port returns null description")
     void returnsNullDescriptionUnchanged() {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
-        final Issue issue = new Issue(85L, "Reporting bug", null, "opened", List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, "opened", List.of(), null, null, null);
         when(issuesPort.createIssue(input)).thenReturn(issue);
 
         final Issue response = issuesService.createIssue(input);
