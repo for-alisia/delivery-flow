@@ -44,6 +44,12 @@ public class IssuesService {
         return issue;
     }
 
+    public void deleteIssue(final long issueId) {
+        log.info("Deleting issue issueId={}", issueId);
+        issuesPort.deleteIssue(issueId);
+        log.info("Issue deleted issueId={}", issueId);
+    }
+
     private void validatePerPage(final int perPage) {
         if (perPage > issuesApiProperties.maxPageSize()) {
             throw new ValidationException(

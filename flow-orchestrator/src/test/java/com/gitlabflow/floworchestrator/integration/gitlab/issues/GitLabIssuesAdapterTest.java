@@ -36,6 +36,7 @@ class GitLabIssuesAdapterTest {
 
     private static final String PROJECT_URL = "https://gitlab.example.com/group/project";
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
+    private static final String DELETE_API_URL = API_URL + "/12";
     private static final MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
     private static final CreateIssueInput CREATE_INPUT =
@@ -243,6 +244,43 @@ class GitLabIssuesAdapterTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
     }
 
+    @Test
+    @DisplayName("deletes issue with expected endpoint and returns without error")
+    void deletesIssueWithExpectedEndpointAndReturnsWithoutError() {
+        server.expect(requestTo(DELETE_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.DELETE)))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+
+        adapter.deleteIssue(12L);
+
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("maps delete issue 404 to not found integration error")
+    void mapsDeleteIssue404ToNotFoundIntegrationError() {
+        assertDeleteStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.INTEGRATION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("maps delete issue 403 to forbidden integration error")
+    void mapsDeleteIssue403ToForbiddenIntegrationError() {
+        assertDeleteStatusIsMappedToError(HttpStatus.FORBIDDEN, ErrorCode.INTEGRATION_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("maps delete issue transport failures to generic integration error")
+    void mapsDeleteIssueTransportFailuresToGenericIntegrationError() {
+        server.expect(requestTo(DELETE_API_URL)).andRespond(request -> {
+            throw new IOException("connection reset");
+        });
+
+        assertThatThrownBy(() -> adapter.deleteIssue(12L))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+    }
+
     private void assertStatusIsMappedToError(final HttpStatus status, final ErrorCode expectedErrorCode) {
         server.expect(requestTo(API_URL + "?page=1&per_page=40"))
                 .andRespond(withStatus(Objects.requireNonNull(status)));
@@ -257,6 +295,15 @@ class GitLabIssuesAdapterTest {
         server.expect(requestTo(API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
 
         assertThatThrownBy(() -> adapter.createIssue(CREATE_INPUT))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
+    }
+
+    private void assertDeleteStatusIsMappedToError(final HttpStatus status, final ErrorCode expectedErrorCode) {
+        server.expect(requestTo(DELETE_API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
+
+        assertThatThrownBy(() -> adapter.deleteIssue(12L))
                 .isInstanceOfSatisfying(
                         IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));

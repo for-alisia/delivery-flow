@@ -1,5 +1,6 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest;
 
+import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesService;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +29,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/issues")
 @RequiredArgsConstructor
 public class IssuesController {
+
+    private static final String REQUEST_VALIDATION_FAILED = "Request validation failed";
+    private static final String ISSUE_ID_POSITIVE_MESSAGE = "issueId must be a positive number";
 
     private final IssuesService issuesService;
     private final IssuesRequestMapper issuesRequestMapper;
@@ -53,5 +59,19 @@ public class IssuesController {
         final IssueDto response = issuesResponseMapper.toIssueDto(issue);
         log.info("Create issue response returned id={}", response.id());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/{issueId}")
+    public ResponseEntity<Void> deleteIssue(@PathVariable final long issueId) {
+        validateIssueId(issueId);
+        log.info("Delete issue request received issueId={}", issueId);
+        issuesService.deleteIssue(issueId);
+        return ResponseEntity.noContent().build();
+    }
+
+    private void validateIssueId(final long issueId) {
+        if (issueId <= 0) {
+            throw new ValidationException(REQUEST_VALIDATION_FAILED, List.of(ISSUE_ID_POSITIVE_MESSAGE));
+        }
     }
 }

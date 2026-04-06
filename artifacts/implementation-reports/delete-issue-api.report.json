@@ -1,0 +1,194 @@
+{
+  "artifactType": "implementation-report",
+  "schemaVersion": "1.0",
+  "featureName": "delete-issue-api",
+  "status": "complete",
+  "summary": "Completed Slice 1 and Slice 2 implementation, fixed the component test 401 transport behavior using JdkClientHttpRequestFactory, and passed scripts/final-check.sh.",
+  "sourceArtifacts": {
+    "originalRequestSource": "artifacts/user-prompts/feature-4-delete-issue-api.md",
+    "storyPath": "artifacts/user-stories/delete-issue-api.story.md",
+    "planPath": "artifacts/implementation-plans/delete-issue-api.plan.md",
+    "phase1ReviewPath": "artifacts/review-reports/delete-issue-api.review.json"
+  },
+  "revisionEvidence": {
+    "worktreeRef": "feature/4",
+    "headCommitSha": "d887ed64e2f0f93d7dfde74169760b3e1a13324f",
+    "changedFilesReviewed": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/error/ErrorCode.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandlerTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "scripts/smoke-test.sh"
+    ],
+    "changedFiles": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/error/ErrorCode.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandlerTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "scripts/smoke-test.sh",
+      "artifacts/implementation-reports/delete-issue-api-verification.log",
+      "artifacts/implementation-reports/delete-issue-api.report.json"
+    ],
+    "verificationLogPath": "artifacts/implementation-reports/delete-issue-api-verification.log"
+  },
+  "delivery": {
+    "documentationUpdates": [
+      "flow-orchestrator/http/issues.http",
+      "scripts/smoke-test.sh"
+    ],
+    "approvedDeviations": [
+      "none"
+    ],
+    "assumptions": [
+      "none"
+    ]
+  },
+  "verification": {
+    "qualityGateStatus": "PASS",
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "PASS",
+      "result": "exit_code=0; tests=75; failures=0; errors=0; skipped=0"
+    },
+    "localQuality": {
+      "command": "scripts/final-check.sh",
+      "status": "PASS",
+      "result": "exit_code=0; unit_tests=75; integration_component_tests=26; checkstyle=PASS; spotless=PASS; pmd=PASS; cpd=PASS; spotbugs=PASS; jacoco=PASS",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/spotbugsXml.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "startup": {
+      "command": "mvn spring-boot:run (SPRING_PROFILES_ACTIVE=local)",
+      "status": "PASS",
+      "result": "Application started on port 8080 in 2.513 seconds. Verified by Team Lead."
+    },
+    "smokeChecks": [
+      "DELETE /api/issues/{issueId} (existing) → 204",
+      "DELETE /api/issues/{issueId} (deleted again) → 404",
+      "DELETE /api/issues/0 (validation error) → 400"
+    ],
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": 0,
+      "passCount": 11,
+      "failCount": 0,
+      "summary": "All 11 smoke checks passed including new delete flow. Verified by Team Lead."
+    },
+    "blockedChecks": []
+  },
+  "codeGuidanceLedger": {
+    "Testing Matrix": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/verify-quick.sh passed with 75 tests and zero failures.",
+        "scripts/final-check.sh passed with 75 unit tests and 26 integration/component tests, zero failures."
+      ]
+    },
+    "Static Analysis And Coverage": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/final-check.sh completed successfully.",
+        "JaCoCo coverage check passed and SpotBugs reported no warnings/errors.",
+        "Quality report artifacts generated under flow-orchestrator/target."
+      ]
+    },
+    "Evidence Gate": {
+      "status": "PASS",
+      "evidence": [
+        "Verification log includes a failed final-check attempt with root cause and a successful rerun.",
+        "Revision evidence includes worktree reference, head commit SHA, and reviewed changed files."
+      ]
+    }
+  },
+  "acceptanceCriteriaEvidence": {
+    "AC1": {
+      "criterion": "DELETE /api/issues/{issueId} with valid existing issue returns 204 No Content",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "scripts/final-check.sh"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC2": {
+      "criterion": "GitLab 404 during delete is mapped to 404 with standard ErrorResponse",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC3": {
+      "criterion": "GitLab 403 during delete is mapped to 403 with standard ErrorResponse",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/error/ErrorCode.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapperTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC4": {
+      "criterion": "Responses do not expose GitLab internals or stack traces",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC5": {
+      "criterion": "issueId path variable maps to GitLab iid via URL-encoded project path",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    }
+  },
+  "notes": [
+    "Initial final-check attempt failed due to NoClassDefFoundError from HttpComponents request factory in component test runtime classpath.",
+    "Switched component test to JdkClientHttpRequestFactory and final-check passed on rerun."
+  ]
+}

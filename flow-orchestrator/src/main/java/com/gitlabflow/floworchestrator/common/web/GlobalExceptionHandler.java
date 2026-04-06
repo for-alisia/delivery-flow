@@ -12,10 +12,13 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final String REQUEST_VALIDATION_FAILED = "Request validation failed";
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(final ValidationException exception) {
@@ -41,7 +44,7 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation failure message=Request validation failed detailCount={}", details.size());
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(ErrorCode.VALIDATION_ERROR.name(), "Request validation failed", details));
+                .body(new ErrorResponse(ErrorCode.VALIDATION_ERROR.name(), REQUEST_VALIDATION_FAILED, details));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -52,8 +55,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(
                         ErrorCode.VALIDATION_ERROR.name(),
-                        "Request validation failed",
+                        REQUEST_VALIDATION_FAILED,
                         List.of("Malformed JSON request body")));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            final MethodArgumentTypeMismatchException exception) {
+        final String parameterName = exception.getName();
+        log.warn("Validation failure message=Request validation failed parameter={}", parameterName);
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(
+                        ErrorCode.VALIDATION_ERROR.name(),
+                        REQUEST_VALIDATION_FAILED,
+                        List.of(parameterName + " must be a positive number")));
     }
 
     @ExceptionHandler(IntegrationException.class)
@@ -62,8 +77,18 @@ public class GlobalExceptionHandler {
                 "Integration failure source={} code={}",
                 exception.source(),
                 exception.errorCode().name());
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+        return ResponseEntity.status(mapStatus(exception.errorCode()))
                 .body(new ErrorResponse(exception.errorCode().name(), exception.getMessage(), List.of()));
+    }
+
+    private HttpStatus mapStatus(final ErrorCode errorCode) {
+        return switch (errorCode) {
+            case INTEGRATION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case INTEGRATION_FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case INTEGRATION_AUTHENTICATION_FAILED -> HttpStatus.UNAUTHORIZED;
+            case INTEGRATION_RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            default -> HttpStatus.BAD_GATEWAY;
+        };
     }
 
     @ExceptionHandler(Exception.class)

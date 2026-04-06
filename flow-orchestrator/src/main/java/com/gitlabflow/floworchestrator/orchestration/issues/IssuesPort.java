@@ -10,4 +10,6 @@ public interface IssuesPort {
     IssuePage getIssues(IssueQuery query);
 
     Issue createIssue(CreateIssueInput input);
+
+    void deleteIssue(long issueId);
 }

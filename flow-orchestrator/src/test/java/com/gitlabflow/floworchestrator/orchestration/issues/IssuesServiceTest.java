@@ -123,4 +123,12 @@ class IssuesServiceTest {
 
         assertThatThrownBy(() -> issuesService.createIssue(input)).isSameAs(exception);
     }
+
+    @Test
+    @DisplayName("delegates delete issue to port")
+    void delegatesDeleteIssueToPort() {
+        issuesService.deleteIssue(42L);
+
+        verify(issuesPort).deleteIssue(42L);
+    }
 }

@@ -29,6 +29,7 @@ public class GitLabIssuesAdapter implements IssuesPort {
     private static final String SOURCE_GITLAB = "gitlab";
     private static final String RESOURCE_ISSUES = "issues";
     private static final String RESOURCE_CREATE_ISSUE = "create issue";
+    private static final String RESOURCE_DELETE_ISSUE = "delete issue";
     private static final String EMPTY_BODY_CATEGORY = "EmptyBody";
 
     private final RestClient gitLabRestClient;
@@ -61,6 +62,24 @@ public class GitLabIssuesAdapter implements IssuesPort {
             throw mapHttpFailure(exception, RESOURCE_CREATE_ISSUE);
         } catch (final RuntimeException exception) {
             throw mapTransportFailure(exception.getClass().getSimpleName(), RESOURCE_CREATE_ISSUE);
+        }
+    }
+
+    @Override
+    public void deleteIssue(final long issueId) {
+        try {
+            gitLabRestClient
+                    .delete()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/projects/{projectPath}/issues/{issueId}")
+                            .build(gitLabProjectLocator.projectReference().projectPath(), issueId))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("GitLab issue deleted issueId={}", issueId);
+        } catch (final RestClientResponseException exception) {
+            throw mapHttpFailure(exception, RESOURCE_DELETE_ISSUE);
+        } catch (final RuntimeException exception) {
+            throw mapTransportFailure(exception.getClass().getSimpleName(), RESOURCE_DELETE_ISSUE);
         }
     }
 

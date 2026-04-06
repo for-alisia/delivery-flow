@@ -3,7 +3,7 @@ name: "Reviewer"
 description: "Use when you need an independent validation gate before coding and before final acceptance. Reviews the original prompt, story, plan, implementation, tests, and runtime verification evidence, and produces a checklist-driven review report."
 target: vscode
 tools: [read, search, edit, execute, todo, web, vscode/memory]
-model: Gemini 3.1 Pro (Preview) (copilot)
+model: GPT-5.3-Codex (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide the feature name, review phase, original requirement source, and the artifact paths that must be validated."

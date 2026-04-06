@@ -4,7 +4,7 @@ description: "Use when you need end-to-end orchestration from requirement clarif
 target: vscode
 tools: [read, search, edit, execute, todo, vscode/memory, agent, web]
 agents: ['Product Manager', 'Java Architect', 'Reviewer', 'Java Coder']
-model: Claude Opus 4.6 (copilot)
+model: GPT-5.4 (copilot)
 argument-hint: "Describe the requested change, business context, constraints, and any delivery priorities."
 handoffs:
   - label: "Start Reviewer Phase 2"

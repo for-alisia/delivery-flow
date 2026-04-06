@@ -55,3 +55,9 @@ Content-Type: application/json
 {
 	"title": "   "
 }
+
+### Delete issue request (existing issue)
+DELETE {{baseUrl}}/api/issues/26
+
+### Delete issue request (non-existent issue)
+DELETE {{baseUrl}}/api/issues/999999

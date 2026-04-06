@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 class GlobalExceptionHandlerTest {
 
@@ -49,8 +50,8 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("returns bad gateway for integration exception")
-    void returnsBadGatewayForIntegrationException() {
+    @DisplayName("returns bad gateway for generic integration failure")
+    void returnsBadGatewayForGenericIntegrationFailure() {
         final IntegrationException exception = new IntegrationException(
                 ErrorCode.INTEGRATION_FAILURE, "Unable to retrieve issues from GitLab", "gitlab");
 
@@ -61,6 +62,65 @@ class GlobalExceptionHandlerTest {
         assertThat(body.code()).isEqualTo("INTEGRATION_FAILURE");
         assertThat(body.message()).isEqualTo("Unable to retrieve issues from GitLab");
         assertThat(body.details()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("returns not found for integration not found")
+    void returnsNotFoundForIntegrationNotFound() {
+        final IntegrationException exception =
+                new IntegrationException(ErrorCode.INTEGRATION_NOT_FOUND, "GitLab issues operation failed", "gitlab");
+
+        final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("returns forbidden for integration forbidden")
+    void returnsForbiddenForIntegrationForbidden() {
+        final IntegrationException exception =
+                new IntegrationException(ErrorCode.INTEGRATION_FORBIDDEN, "GitLab issues operation failed", "gitlab");
+
+        final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("returns unauthorized for integration authentication failure")
+    void returnsUnauthorizedForIntegrationAuthenticationFailure() {
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_AUTHENTICATION_FAILED, "GitLab issues operation failed", "gitlab");
+
+        final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("returns too many requests for integration rate limited")
+    void returnsTooManyRequestsForIntegrationRateLimited() {
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_RATE_LIMITED, "GitLab issues operation failed", "gitlab");
+
+        final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    @DisplayName("returns validation error for path variable type mismatch")
+    void returnsValidationErrorForPathVariableTypeMismatch() {
+        final MethodArgumentTypeMismatchException exception =
+                new MethodArgumentTypeMismatchException("abc", Long.class, "issueId", null, null);
+
+        final ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentTypeMismatch(exception);
+        final ErrorResponse body = Objects.requireNonNull(response.getBody());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(body.code()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.message()).isEqualTo("Request validation failed");
+        assertThat(body.details()).containsExactly("issueId must be a positive number");
     }
 
     @Test

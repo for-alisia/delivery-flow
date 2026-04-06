@@ -2,9 +2,12 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,8 +47,10 @@ class IssuesControllerIT {
 
     private static final String SEARCH_ENDPOINT = "/api/issues/search";
     private static final String CREATE_ENDPOINT = "/api/issues";
+    private static final String DELETE_ENDPOINT = "/api/issues/{issueId}";
     private static final String CODE_PATH = "$.code";
     private static final String VALIDATION_CODE = "VALIDATION_ERROR";
+    private static final String ISSUE_ID_POSITIVE_MESSAGE = "issueId must be a positive number";
     private static final String OPENED = "opened";
     private static final String JOHN_DOE = "john.doe";
     private static final MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
@@ -179,8 +184,8 @@ class IssuesControllerIT {
     }
 
     @Test
-    @DisplayName("maps integration exceptions to bad gateway")
-    void mapsIntegrationExceptionsToBadGateway() throws Exception {
+    @DisplayName("maps search integration rate limit to too many requests")
+    void mapsSearchIntegrationRateLimitToTooManyRequests() throws Exception {
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class)))
                 .thenReturn(new IssueQuery(1, 40, null, null, null, null));
         when(issuesService.getIssues(any(IssueQuery.class)))
@@ -188,7 +193,7 @@ class IssuesControllerIT {
                         ErrorCode.INTEGRATION_RATE_LIMITED, "GitLab issues operation failed", "gitlab"));
 
         mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadGateway())
+                .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_RATE_LIMITED"))
                 .andExpect(jsonPath("$.message").value("GitLab issues operation failed"));
     }
@@ -291,8 +296,8 @@ class IssuesControllerIT {
     }
 
     @Test
-    @DisplayName("maps create integration exceptions to bad gateway")
-    void mapsCreateIntegrationExceptionsToBadGateway() throws Exception {
+    @DisplayName("maps create integration auth failure to unauthorized")
+    void mapsCreateIntegrationAuthFailureToUnauthorized() throws Exception {
         final CreateIssueInput input = new CreateIssueInput("Deploy failure", null, List.of());
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
                 .thenReturn(input);
@@ -305,9 +310,74 @@ class IssuesControllerIT {
                                   "title": "Deploy failure"
                                 }
                                 """))
-                .andExpect(status().isBadGateway())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_AUTHENTICATION_FAILED"))
                 .andExpect(jsonPath("$.message").value("GitLab create issue operation failed"));
+    }
+
+    @Test
+    @DisplayName("deletes issue and returns 204 with empty body")
+    void deletesIssueAndReturns204WithEmptyBody() throws Exception {
+        mockMvc.perform(delete(DELETE_ENDPOINT, 42L))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(issuesService).deleteIssue(42L);
+    }
+
+    @Test
+    @DisplayName("rejects delete request when issue id is zero")
+    void rejectsDeleteRequestWhenIssueIdIsZero() throws Exception {
+        mockMvc.perform(delete(DELETE_ENDPOINT, 0L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("rejects delete request when issue id is negative")
+    void rejectsDeleteRequestWhenIssueIdIsNegative() throws Exception {
+        mockMvc.perform(delete(DELETE_ENDPOINT, -1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("rejects delete request when issue id is non numeric")
+    void rejectsDeleteRequestWhenIssueIdIsNonNumeric() throws Exception {
+        mockMvc.perform(delete(DELETE_ENDPOINT, "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("maps delete integration not found to 404")
+    void mapsDeleteIntegrationNotFoundTo404() throws Exception {
+        doThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_NOT_FOUND, "GitLab delete issue operation failed", "gitlab"))
+                .when(issuesService)
+                .deleteIssue(777L);
+
+        mockMvc.perform(delete(DELETE_ENDPOINT, 777L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("GitLab delete issue operation failed"));
+    }
+
+    @Test
+    @DisplayName("maps delete integration forbidden to 403")
+    void mapsDeleteIntegrationForbiddenTo403() throws Exception {
+        doThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_FORBIDDEN, "GitLab delete issue operation failed", "gitlab"))
+                .when(issuesService)
+                .deleteIssue(778L);
+
+        mockMvc.perform(delete(DELETE_ENDPOINT, 778L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_FORBIDDEN"))
+                .andExpect(jsonPath("$.message").value("GitLab delete issue operation failed"));
     }
 
     @Test

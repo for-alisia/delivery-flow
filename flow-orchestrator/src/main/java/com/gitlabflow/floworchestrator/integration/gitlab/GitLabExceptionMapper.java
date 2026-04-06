@@ -16,6 +16,9 @@ public class GitLabExceptionMapper {
         if (statusCode.value() == 401) {
             return new IntegrationException(ErrorCode.INTEGRATION_AUTHENTICATION_FAILED, failureMessage, source);
         }
+        if (statusCode.value() == 403) {
+            return new IntegrationException(ErrorCode.INTEGRATION_FORBIDDEN, failureMessage, source);
+        }
         if (statusCode.value() == 404) {
             return new IntegrationException(ErrorCode.INTEGRATION_NOT_FOUND, failureMessage, source);
         }

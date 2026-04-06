@@ -11,9 +11,9 @@ Agents and humans use this to locate code by capability without scanning the ful
 
 ### issues
 
-Search and create GitLab issues through a provider-agnostic orchestration layer.
+Search, create, and delete GitLab issues through a provider-agnostic orchestration layer.
 
-- **Endpoints:** `POST /api/issues/search`, `POST /api/issues`
+- **Endpoints:** `POST /api/issues/search`, `POST /api/issues`, `DELETE /api/issues/{issueId}`
 - **Orchestration**
   - Service: `orchestration/issues/IssuesService`
   - Port: `orchestration/issues/IssuesPort`

@@ -3,7 +3,7 @@ name: "Product Manager"
 description: "Use when you need a business-facing user story before architecture or implementation work starts. Analyzes project context and the incoming requirement, then writes a concise user story to artifacts/user-stories/<feature-name>.story.md with clear business value, scope, and acceptance criteria."
 target: vscode
 tools: [read, search, edit, vscode/memory]
-model: Claude Sonnet 4.6 (copilot)
+model: Claude Haiku 4.5 (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Describe the feature, change, or problem to be shaped into a user story. Include the actor, business problem, value, constraints, and any known assumptions."

@@ -20,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -141,10 +142,11 @@ class IssuesApiComponentTest {
     }
 
     @Test
-    @DisplayName("maps gitlab authentication failure to bad gateway response")
-    void mapsGitLabAuthenticationFailureToBadGatewayResponse() throws Exception {
+    @DisplayName("maps gitlab authentication failure to unauthorized response")
+    void mapsGitLabAuthenticationFailureToUnauthorizedResponse() throws Exception {
         wireMockServer.resetAll();
         GitLabCreateIssueStubSupport.stubCreateIssueUnauthorized(wireMockServer);
+        useJdkRequestFactory();
 
         final HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -158,8 +160,12 @@ class IssuesApiComponentTest {
 
         final ResponseEntity<String> response = restTemplate.postForEntity("/api/issues", request, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         final JsonNode json = objectMapper.readTree(response.getBody());
         assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_AUTHENTICATION_FAILED");
+    }
+
+    private void useJdkRequestFactory() {
+        restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
     }
 }

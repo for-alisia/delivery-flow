@@ -3,7 +3,7 @@ name: "Java Architect"
 description: "Use when you need a precise, executable implementation plan before handing work to Java Coder. Produces a slice-based implementation plan with explicit class structure, contract examples, validation decisions, logging requirements, required verification, and documentation updates."
 target: vscode
 tools: [read, search, edit, todo, io.github.upstash/context7/*, web, vscode/memory, execute]
-model: Claude Opus 4.6 (copilot)
+model: Claude Sonnet 4.6 (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Describe the feature, bug, refactor, or technical task. Include the requirement source, constraints, and affected area if known."

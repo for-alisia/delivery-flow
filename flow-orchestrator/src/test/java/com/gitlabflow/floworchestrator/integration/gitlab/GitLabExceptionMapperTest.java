@@ -25,6 +25,14 @@ class GitLabExceptionMapperTest {
     }
 
     @Test
+    @DisplayName("maps 403 to forbidden")
+    void mapsForbiddenToForbidden() {
+        final IntegrationException exception = mapper.fromHttpFailure(httpFailure(403), SOURCE, RESOURCE_ISSUES);
+
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FORBIDDEN);
+    }
+
+    @Test
     @DisplayName("maps 404 to not found")
     void mapsNotFoundToNotFound() {
         final IntegrationException exception = mapper.fromHttpFailure(httpFailure(404), SOURCE, RESOURCE_ISSUES);
