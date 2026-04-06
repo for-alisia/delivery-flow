@@ -47,8 +47,8 @@ The quality config is intentionally repo-owned so the same rules run in local te
 
 - During slice-by-slice implementation, run `scripts/verify-quick.sh`.
 - Before coder handoff, run `scripts/final-check.sh`.
-- After the coder claims tests passed, Team Lead independently reruns `mvn test` from `flow-orchestrator/` before Reviewer Phase 2.
-- During Reviewer Phase 2, rerun both scripts plus startup and required smoke checks.
+- After the coder handoff, Team Lead runs `scripts/final-check.sh` as independent recheck, starts the application, and runs `scripts/smoke-test.sh`. Team Lead owns the verification log and implementation report evidence.
+- During Reviewer Phase 2, validate Team Lead evidence and rerun `scripts/final-check.sh` only when evidence is missing or suspect. Do not re-run application startup or smoke tests. Focus review effort on code quality checks that automated tooling cannot catch.
 - Reviewer Phase 2 can pass only when the shared local-quality workflow succeeds and report paths are captured.
 - Record the exact command, the observed result, and the generated report paths in the implementation, review, or sign-off artifact.
 - If Maven or plugin execution is unavailable, mark the check `BLOCKED`, not `PASS`.

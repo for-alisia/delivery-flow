@@ -18,6 +18,7 @@
 
 Read these on demand when relevant — do not load all upfront:
 
+- Codebase capability map and package index: [context-map.md](../documentation/context-map.md)
 - Architecture rules and non-negotiable boundaries: [constitution.md](../documentation/constitution.md)
 - Coding standards, quality gates, and testing matrix: [code-guidance.md](../documentation/code-guidance.md)
 - Project context and business goals: [project-overview.md](../documentation/project-overview.md)
