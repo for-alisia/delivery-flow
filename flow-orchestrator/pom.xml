@@ -20,6 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <wiremock.version>3.13.1</wiremock.version>
+        <karate.version>2.0.0</karate.version>
         <jacoco.version>0.8.14</jacoco.version>
         <jacoco.minimum.line.coverage>0.85</jacoco.minimum.line.coverage>
         <build.helper.maven.plugin.version>3.6.0</build.helper.maven.plugin.version>
@@ -70,6 +71,12 @@
             <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.karatelabs</groupId>
+            <artifactId>karate-core</artifactId>
+            <version>${karate.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -89,6 +96,7 @@
                             <sources>
                                 <source>src/test/integration/java</source>
                                 <source>src/test/component/java</source>
+                                <source>src/test/karate/java</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -102,6 +110,9 @@
                             <resources>
                                 <resource>
                                     <directory>src/test/component/resources</directory>
+                                </resource>
+                                <resource>
+                                    <directory>src/test/karate/resources</directory>
                                 </resource>
                             </resources>
                         </configuration>
@@ -129,6 +140,7 @@
                     <excludes>
                         <exclude>**/*IT.java</exclude>
                         <exclude>**/*ComponentTest.java</exclude>
+                        <exclude>**/*KarateTest.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -221,6 +233,7 @@
                             <include>src/test/java/**/*.java</include>
                             <include>src/test/integration/java/**/*.java</include>
                             <include>src/test/component/java/**/*.java</include>
+                            <include>src/test/karate/java/**/*.java</include>
                         </includes>
                         <palantirJavaFormat>
                             <version>${palantir.java.format.version}</version>
@@ -292,4 +305,32 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>karate</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*KarateTest.java</include>
+                            </includes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>karate-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

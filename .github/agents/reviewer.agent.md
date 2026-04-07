@@ -42,11 +42,11 @@ Validate whether delivered implementation is correct and truly verified. Review:
 
 #### Evidence Validation
 
-Team Lead owns runtime verification (final-check, app startup, smoke tests) and writes the verification log and implementation report evidence. Your job is to validate that evidence, not to re-execute it.
+Team Lead owns runtime verification (final-check, app startup, Karate smoke tests) and writes the verification log and implementation report evidence. Your job is to validate that evidence, not to re-execute it.
 
-- Read the verification log and implementation report. Confirm that `final-check.sh`, startup, and smoke-test results are recorded, consistent, and cover the changed API surface.
+- Read the verification log and implementation report. Confirm that `final-check.sh`, startup, and `karate-test.sh` results are recorded, consistent, and cover the changed API surface.
 - If evidence is missing, inconsistent, or suspect, re-run `scripts/final-check.sh` yourself and record the result. Mark `FAIL` if findings differ from recorded evidence.
-- Do NOT re-run application startup or smoke tests. If startup or smoke evidence is missing, mark the item `BLOCKED` with an explanation.
+- Do NOT re-run application startup or Karate tests (`scripts/karate-test.sh`). If startup or Karate evidence is missing, mark the item `BLOCKED` with an explanation.
 
 If Team Lead issues a red card, rerun the full applicable Phase 2 set. No partial reruns.
 

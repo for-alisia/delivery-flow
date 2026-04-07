@@ -13,7 +13,8 @@ Use it for command choice, execution order, expected reports, and artifact evide
 - Default final verification command: `scripts/final-check.sh`
 - Supporting formatting command: `scripts/format-code.sh`
 - Supporting static-analysis command: `scripts/quality-check.sh`
-- Default smoke-test command: `scripts/smoke-test.sh` (requires a running application; verifies health + API endpoints with `curl`)
+- Default smoke-test command: `scripts/karate-test.sh` (requires a running application; executes Karate API scenarios via `mvn failsafe -Pkarate`)
+- Legacy smoke-test command: `scripts/smoke-test.sh` (deprecated — kept as fallback; uses `curl`)
 - Prefer these scripts over raw Maven commands when recording implementation, review, or sign-off evidence.
 - Use raw `mvn` commands only for focused debugging when the scripts are not enough.
 
@@ -47,7 +48,8 @@ The quality config is intentionally repo-owned so the same rules run in local te
 
 - During slice-by-slice implementation, run `scripts/verify-quick.sh`.
 - Before coder handoff, run `scripts/final-check.sh`.
-- After the coder handoff, Team Lead runs `scripts/final-check.sh` as independent recheck, starts the application, and runs `scripts/smoke-test.sh`. Team Lead owns the verification log and implementation report evidence.
+- After the coder handoff, Team Lead runs `scripts/final-check.sh` as independent recheck, starts the application, and runs `scripts/karate-test.sh` for API smoke verification. Team Lead owns the verification log and implementation report evidence.
+- Karate tests are isolated from unit and quality-gate test runs: `mvn test` and `mvn verify` (without `-Pkarate`) never execute Karate. Only `scripts/karate-test.sh` or explicit `-Pkarate` activation runs Karate scenarios.
 - During Reviewer Phase 2, validate Team Lead evidence and rerun `scripts/final-check.sh` only when evidence is missing or suspect. Do not re-run application startup or smoke tests. Focus review effort on code quality checks that automated tooling cannot catch.
 - Reviewer Phase 2 can pass only when the shared local-quality workflow succeeds and report paths are captured.
 - Record the exact command, the observed result, and the generated report paths in the implementation, review, or sign-off artifact.

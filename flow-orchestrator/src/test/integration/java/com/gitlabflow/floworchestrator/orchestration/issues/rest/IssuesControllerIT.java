@@ -38,11 +38,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = IssuesController.class)
 @Import(GlobalExceptionHandler.class)
-@SuppressWarnings("null")
 class IssuesControllerIT {
 
     private static final String SEARCH_ENDPOINT = "/api/issues/search";
@@ -53,7 +53,7 @@ class IssuesControllerIT {
     private static final String ISSUE_ID_POSITIVE_MESSAGE = "issueId must be a positive number";
     private static final String OPENED = "opened";
     private static final String JOHN_DOE = "john.doe";
-    private static final MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
+    private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
 
     @Autowired
     private MockMvc mockMvc;
@@ -266,8 +266,8 @@ class IssuesControllerIT {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
-                .andExpect(jsonPath("$.details[0]", containsString("title")))
-                .andExpect(jsonPath("$.details[0]", containsString("must not be blank")));
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("title"))))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not be blank"))));
     }
 
     @Test
@@ -281,8 +281,8 @@ class IssuesControllerIT {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
-                .andExpect(jsonPath("$.details[0]", containsString("labels")))
-                .andExpect(jsonPath("$.details[0]", containsString("must not be blank")));
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("labels"))))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not be blank"))));
     }
 
     @Test
@@ -394,6 +394,6 @@ class IssuesControllerIT {
         mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
-                .andExpect(jsonPath("$.details[0]", containsString("title")));
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("title"))));
     }
 }

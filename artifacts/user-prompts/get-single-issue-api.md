@@ -1,18 +1,39 @@
 Hi Team,
 
-Client needs more extensive information about the issue, so we decided to implement an endpoint, which will return more details ebout single issue. What our client whats to call:
+Client needs more extensive information about a single GitLab issue, so we decided to implement:
 
-```
+```http
 GET /api/issues/{issueId}
 ```
 
-And the client expects to receive the following information:
+This is story 1 of 2 for the full single-issue details capability. This is still pass-through feature, no need to implement domain logic yet. 2 layers here - intergation and orchestration.
 
-```
+## Full Intended Capability
+
+The final capability should return detailed issue data and issue change history (for now just for label related events):
+
+- Story 1, this prompt: return detailed single issue data from GitLab issue details.
+- Story 2, separate prompt `label-events-api.md`: populate `changeSets` from GitLab label events.
+
+Important architectural note:
+
+- Agents must design Story 1 knowing that `changeSets` is coming in Story 2.
+- Do not make architectural choices that make change history hard to add later.
+- Do not overload the existing search issue DTO/model if that would force a flat model or mix search-specific fields with detailed single-issue fields.
+- Prefer dedicated single-issue detail types, with a reserved `changeSets` field.
+- Story 1 must return `changeSets: []` as an empty array placeholder.
+- Story 1 must not call GitLab label events yet.
+- Story 1 must not implement real `changeSets` mapping yet.
+
+## Story 1 Expected Response
+
+For now, the client expects the response shape below. `changeSets` is intentionally present but empty until Story 2.
+
+```json
 {
-  "issueId": "string",
-  "title": "string",
-  "description": "string",
+  "issueId": 7,
+  "title": "Issue title",
+  "description": "Issue description",
   "state": "opened",
   "labels": ["backend", "api", "gitlab"],
   "assignees": [
@@ -22,7 +43,7 @@ And the client expects to receive the following information:
       "name": "Alice Example"
     }
   ],
-   "milestone": {
+  "milestone": {
     "id": 11,
     "milestoneId": 3,
     "title": "v2.3.0",
@@ -31,50 +52,38 @@ And the client expects to receive the following information:
   },
   "createdAt": "2024-06-01T12:00:00Z",
   "updatedAt": "2024-06-01T12:00:00Z",
-  "closedAt": null, // optional, null if the issue is still open
-  "changeSets": [
-    {
-      "changeType": "add" // enum, can be "add","remove" for now
-      "changedBy": { // Here and in assignee and in creator no need to have separate models, 1 should cover
-        "id": 1,
-        "username": "root",
-        "name": "Administrator",
-      },
-      "change": {
-        "field": "label", // enum, for now label only, in future will be added milestone, weight and so on.
-        "id": 73,
-        "name": "backend"
-      },
-      "changedAt": "2024-06-01T12:00:00Z"
-    }
-  ]
+  "closedAt": null,
+  "changeSets": []
 }
-
 ```
 
-### Mapping to GitLab REST API
+## Mapping To GitLab REST API
 
-The contract above stays as-is. The implementation should map it to GitLab fields as follows:
-
-#### Main issue details source
+### Main Issue Details Source
 
 Use:
 
-- `GET /projects/:id/issues/:issue_iid`
+```http
+GET /projects/:id/issues/:issue_iid
+```
 
 Important:
 
-- our public `GET /api/issues/{issueId}` path parameter should map to GitLab `issue_iid`
+- Our public `GET /api/issues/{issueId}` path parameter maps to GitLab `issue_iid`.
+- The configured GitLab project remains the only project source. Clients must not pass project id, project path, or project URL.
+- Confirm exact GitLab field names against official GitLab REST API docs before implementation.
 
-#### Label history source
+### Label History Source - Not In This Story
 
-Use:
+Do not call this endpoint in Story 1:
 
-- `GET /projects/:id/issues/:issue_iid/resource_label_events`
+```http
+GET /projects/:id/issues/:issue_iid/resource_label_events
+```
 
-For now, `changeSets` is built only from label events. In future this should be expanded with other event sources like milestone/state/weight when needed.
+This endpoint is reserved for Story 2 in `label-events-api.md`.
 
-### Field Mapping
+## Story 1 Field Mapping
 
 | Our field | Source endpoint | GitLab field | Optional |
 |---|---|---|---|
@@ -96,42 +105,55 @@ For now, `changeSets` is built only from label events. In future this should be 
 | `createdAt` | issue details | `created_at` | no |
 | `updatedAt` | issue details | `updated_at` | no |
 | `closedAt` | issue details | `closed_at` | yes, may be `null` |
-| `changeSets` | label events | aggregated from `resource_label_events[]` | no, but may be empty |
-| `changeSets[].changeType` | label events | `action` | no |
-| `changeSets[].changedBy` | label events | `user` | no |
-| `changeSets[].changedBy.id` | label events | `user.id` | no |
-| `changeSets[].changedBy.username` | label events | `user.username` | no |
-| `changeSets[].changedBy.name` | label events | `user.name` | no |
-| `changeSets[].change.field` | label events | constant mapped value: `label` | no |
-| `changeSets[].change.id` | label events | `label.id` | no |
-| `changeSets[].change.name` | label events | `label.name` | no |
-| `changeSets[].changedAt` | label events | `created_at` | no |
+| `changeSets` | reserved for Story 2 | always return `[]` in Story 1 | no, empty array |
 
-### Layering Rules
+## Future Change Sets Contract
 
-- Integration layer should not combine GitLab responses into the final API response.
-- Integration layer should expose separate methods for fetching single issue details and fetching issue label events.
-- Orchestration layer should call both methods and combine them into the final response contract.
-- Mapping from raw GitLab DTOs into the final client-facing response should happen at orchestration layer or an orchestration-facing mapper, not inside the GitLab integration adapter.
+The fields below are not implemented in Story 1, but the model/response design must leave room for them in Story 2:
 
-### Error Handling
+```json
+{
+  "changeType": "add",
+  "changedBy": {
+    "id": 1,
+    "username": "root",
+    "name": "Administrator"
+  },
+  "change": {
+    "field": "label",
+    "id": 73,
+    "name": "backend"
+  },
+  "changedAt": "2024-06-01T12:00:00Z"
+}
+```
 
-- Partial failure is not allowed.
-- If fetching issue details fails, the whole request returns error.
-- If fetching label events fails, the whole request returns error.
-- If either GitLab call fails, the endpoint should not return partial data.
+Future constraints:
 
-### Change Sets Scope
+- `changeSets` will initially represent label history only.
+- `changeType` will map GitLab label event actions like `add` and `remove`.
+- `change.field` will initially always be `label`.
+- In the future, `changeSets` may be expanded with milestone, state, weight, or other change sources while keeping the public contract backward compatible.
 
-- `changeSets` currently represents label history only.
-- `changeType` should currently map only GitLab label event actions like `add` and `remove`.
-- `change.field` should currently always be `label`.
-- In future, `changeSets` can be expanded with additional event types, for example milestone changes or state changes, but this contract should stay backward compatible.
+## Layering Rules
 
-### Notes
+- Integration layer must expose a method for fetching single issue details.
+- Integration layer must not call or combine label events in Story 1.
+- Integration layer must not build the final client-facing API response.
+- Mapping from raw GitLab DTOs into the client-facing response should happen at orchestration layer or an orchestration-facing mapper, not inside the GitLab integration adapter.
+- If placeholder `changeSets` types are introduced now, keep them minimal and aligned with the future contract above.
 
-- `changeSets` should be returned in deterministic order. Recommended order: ascending by `changedAt`.
-- `changeSets` should not be sorted from the latest event to the oldest one.
-- Empty label history should return `changeSets: []`.
+## Error Handling
+
+- If fetching issue details fails, the whole request returns the standard sanitized error response.
+- No partial response is allowed.
+- Since Story 1 does not call label events, label-event failures are not applicable yet.
+
+## Notes
+
+- Empty or missing `labels` should return `labels: []`.
+- Empty or missing `assignees` should return `assignees: []`.
 - A missing milestone should return `milestone: null`.
+- `description` may be `null`.
 - `closedAt` should be `null` when the issue is not closed.
+- `changeSets` must be present and must be `[]` in Story 1.

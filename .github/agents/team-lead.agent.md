@@ -133,9 +133,9 @@ Invoke Reviewer with: `"Phase 2 review for <feature-name>. Load your context exc
 - Never assign more than 2 implementation slices to `Java Coder` in a single invocation.
 - When more than 2 slices remain, invoke `Java Coder` in successive batches of at most 2 named slices.
 - After each coder batch, verify changed files exist on disk, refresh the checkpoint, and run `scripts/final-check.sh`. If findings fail, return to `Java Coder` with the exact failure output.
-- After the final coder batch passes `scripts/final-check.sh`, start the application and run `scripts/smoke-test.sh` to verify API endpoints return expected responses. If smoke checks fail, return to `Java Coder` with the failed commands and observed results.
-- After all coder batches are accepted, update the verification log at `artifacts/implementation-reports/<feature-name>-verification.log` and the implementation report at `artifacts/implementation-reports/<feature-name>.report.json` with: final-check result, startup outcome, smoke-test result, and local quality report paths under `flow-orchestrator/target/`.
-- If the plan includes `scripts/smoke-test.sh` updates, verify the Coder implemented them before running smoke checks.
+- After the final coder batch passes `scripts/final-check.sh`, start the application and run `scripts/karate-test.sh` to verify API endpoints return expected responses. If Karate tests fail, return to `Java Coder` with the failed commands and observed results.
+- After all coder batches are accepted, update the verification log at `artifacts/implementation-reports/<feature-name>-verification.log` and the implementation report at `artifacts/implementation-reports/<feature-name>.report.json` with: final-check result, startup outcome, karate-test result, and local quality report paths under `flow-orchestrator/target/`.
+- If the plan includes Karate test-case updates (new or changed `.feature` files under `src/test/karate/`), verify the Coder implemented them before running Karate checks.
 - Do not rely on git commits in this flow; the checkpoint and on-disk artifacts are the batch boundary.
 
 ### Coder Verification Recheck And Red Card
@@ -176,7 +176,7 @@ Invoke Reviewer with: `"Phase 2 review for <feature-name>. Load your context exc
 Accept only when:
 - Requirement lock, story, plan, and implementation are aligned (or deviations reconciled)
 - Reviewer Phase 1 and Phase 2 both passed
-- Verification evidence exists for the shared local-quality workflow (`scripts/verify-quick.sh`, `scripts/final-check.sh`) plus startup and smoke checks
+- Verification evidence exists for the shared local-quality workflow (`scripts/verify-quick.sh`, `scripts/final-check.sh`) plus startup and Karate smoke checks (`scripts/karate-test.sh`)
 - Independent `scripts/final-check.sh` recheck by `Team Lead` is recorded after each coder batch
 - Required documentation is updated (story, plan, review report, sign-off, `.http` files, `README.md`, and other consumer-facing API docs as applicable)
 - `documentation/context-map.md` is updated if the feature added or changed capabilities, endpoints, models, or configuration

@@ -49,7 +49,8 @@ You are a Senior Java Developer for the `flow-orchestrator` Spring Boot module. 
 1. Verify implementation satisfies plan, acceptance criteria, `documentation/code-guidance.md`, and `documentation/constitution.md`.
 2. Run `scripts/verify-quick.sh` after each slice during implementation. Fix failures before moving to the next slice.
 3. Run `scripts/final-check.sh` once before handoff. This runs formatting and the full quality gate (Checkstyle, PMD, SpotBugs, coverage). Fix all findings before returning.
-4. When GitLab integration endpoints changed, update consumer-facing docs such as `README.md` and `.http` examples if behavior or examples changed.
+4. Do NOT write or modify Karate `.feature` files or run `scripts/karate-test.sh` — the Architect writes Karate tests and the Team Lead executes them.
+5. When GitLab integration endpoints changed, update consumer-facing docs such as `README.md` and `.http` examples if behavior or examples changed.
 
 ### Handoff
 

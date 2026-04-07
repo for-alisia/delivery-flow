@@ -2,7 +2,7 @@ package com.gitlabflow.floworchestrator.integration.gitlab.issues;
 
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
-import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
+import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesPort;
@@ -12,7 +12,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import java.net.URI;
 import java.util.List;
-import java.util.Objects;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.util.UriBuilder;
 
 @Slf4j
 @Component
@@ -33,54 +34,44 @@ public class GitLabIssuesAdapter implements IssuesPort {
     private static final String EMPTY_BODY_CATEGORY = "EmptyBody";
 
     private final RestClient gitLabRestClient;
-    private final GitLabProjectLocator gitLabProjectLocator;
+    private final GitLabUriFactory gitLabUriFactory;
     private final GitLabIssuesMapper gitLabIssuesMapper;
     private final GitLabExceptionMapper gitLabExceptionMapper;
 
     @Override
     public IssuePage getIssues(final IssueQuery query) {
-        try {
+        return executeGitLabOperation(RESOURCE_ISSUES, () -> {
             final List<Issue> issues = fetchIssues(query);
             return toIssuePage(query, issues);
-        } catch (final RestClientResponseException exception) {
-            throw mapHttpFailure(exception, RESOURCE_ISSUES);
-        } catch (final RuntimeException exception) {
-            throw mapTransportFailure(exception.getClass().getSimpleName(), RESOURCE_ISSUES);
-        }
+        });
     }
 
     @Override
     public Issue createIssue(final CreateIssueInput input) {
         log.info("Creating GitLab issue");
 
-        try {
+        return executeGitLabOperation(RESOURCE_CREATE_ISSUE, () -> {
             final GitLabIssueResponse issueResponse = requestIssue(input);
             final Issue issue = gitLabIssuesMapper.toIssue(issueResponse);
             log.info("GitLab issue created id={}", issue.id());
             return issue;
-        } catch (final RestClientResponseException exception) {
-            throw mapHttpFailure(exception, RESOURCE_CREATE_ISSUE);
-        } catch (final RuntimeException exception) {
-            throw mapTransportFailure(exception.getClass().getSimpleName(), RESOURCE_CREATE_ISSUE);
-        }
+        });
     }
 
     @Override
     public void deleteIssue(final long issueId) {
-        try {
+        log.info("Deleting GitLab issue issueId={}", issueId);
+
+        executeGitLabOperation(RESOURCE_DELETE_ISSUE, () -> {
             gitLabRestClient
                     .delete()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/projects/{projectPath}/issues/{issueId}")
-                            .build(gitLabProjectLocator.projectReference().projectPath(), issueId))
+                            .path(gitLabUriFactory.projectResourcePath(RESOURCE_ISSUES) + "/{issueId}")
+                            .build(gitLabUriFactory.projectPath(), issueId))
                     .retrieve()
                     .toBodilessEntity();
             log.info("GitLab issue deleted issueId={}", issueId);
-        } catch (final RestClientResponseException exception) {
-            throw mapHttpFailure(exception, RESOURCE_DELETE_ISSUE);
-        } catch (final RuntimeException exception) {
-            throw mapTransportFailure(exception.getClass().getSimpleName(), RESOURCE_DELETE_ISSUE);
-        }
+        });
     }
 
     private List<Issue> fetchIssues(final IssueQuery query) {
@@ -99,33 +90,20 @@ public class GitLabIssuesAdapter implements IssuesPort {
                 : gitLabIssues.stream().map(gitLabIssuesMapper::toIssue).toList();
     }
 
-    private URI buildUri(final IssueQuery query, final org.springframework.web.util.UriBuilder uriBuilder) {
+    @SuppressWarnings("null")
+    private URI buildUri(final IssueQuery query, final UriBuilder uriBuilder) {
         final var builder = uriBuilder
-                .path("/projects/{projectPath}/issues")
+                .path(gitLabUriFactory.projectResourcePath(RESOURCE_ISSUES))
                 .queryParam("page", query.page())
                 .queryParam("per_page", query.perPage());
 
         final var state = query.state();
-        if (state != null) {
-            builder.queryParam("state", state.value());
-        }
+        addOptionalParam(builder, "state", state == null ? null : state.value());
+        addOptionalParam(builder, "labels", query.label());
+        addOptionalParam(builder, "assignee_username", query.assignee());
+        addOptionalParam(builder, "milestone", query.milestone());
 
-        final String label = query.label();
-        if (label != null) {
-            builder.queryParam("labels", label);
-        }
-
-        final String assignee = query.assignee();
-        if (assignee != null) {
-            builder.queryParam("assignee_username", assignee);
-        }
-
-        final String milestone = query.milestone();
-        if (milestone != null) {
-            builder.queryParam("milestone", milestone);
-        }
-
-        return builder.build(gitLabProjectLocator.projectReference().projectPath());
+        return builder.build(gitLabUriFactory.projectPath());
     }
 
     private IssuePage toIssuePage(final IssueQuery query, final List<Issue> issues) {
@@ -133,14 +111,15 @@ public class GitLabIssuesAdapter implements IssuesPort {
         return new IssuePage(issues, issues.size(), query.page());
     }
 
+    @SuppressWarnings("null")
     private GitLabIssueResponse requestIssue(final CreateIssueInput input) {
         final GitLabIssueResponse issueResponse = gitLabRestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/projects/{projectPath}/issues")
-                        .build(gitLabProjectLocator.projectReference().projectPath()))
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .body(Objects.requireNonNull(gitLabIssuesMapper.toCreateRequest(input)))
+                        .path(gitLabUriFactory.projectResourcePath(RESOURCE_ISSUES))
+                        .build(gitLabUriFactory.projectPath()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(gitLabIssuesMapper.toCreateRequest(input))
                 .retrieve()
                 .body(GitLabIssueResponse.class);
 
@@ -164,5 +143,29 @@ public class GitLabIssuesAdapter implements IssuesPort {
     private IntegrationException mapTransportFailure(final String category, final String resource) {
         log.error("GitLab transport failure resource={} category={}", resource, category);
         return gitLabExceptionMapper.fromTransportFailure(SOURCE_GITLAB, resource);
+    }
+
+    private <T> T executeGitLabOperation(final String resource, final Supplier<T> operation) {
+        try {
+            return operation.get();
+        } catch (final RestClientResponseException exception) {
+            throw mapHttpFailure(exception, resource);
+        } catch (final RuntimeException exception) {
+            throw mapTransportFailure(exception.getClass().getSimpleName(), resource);
+        }
+    }
+
+    private void executeGitLabOperation(final String resource, final Runnable operation) {
+        executeGitLabOperation(resource, () -> {
+            operation.run();
+            return null;
+        });
+    }
+
+    @SuppressWarnings("null")
+    private void addOptionalParam(final UriBuilder uriBuilder, final String name, final Object value) {
+        if (value != null) {
+            uriBuilder.queryParam(name, value);
+        }
     }
 }

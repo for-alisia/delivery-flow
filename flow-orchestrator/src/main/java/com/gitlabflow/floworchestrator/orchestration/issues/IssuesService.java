@@ -37,7 +37,11 @@ public class IssuesService {
     }
 
     public Issue createIssue(final CreateIssueInput input) {
-        log.info("Creating issue");
+        log.info(
+                "Creating issue titleLength={} labelCount={} descriptionPresent={}",
+                input.title().length(),
+                input.labels().size(),
+                input.description() != null);
 
         final Issue issue = issuesPort.createIssue(input);
         log.info("Issue created id={}", issue.id());

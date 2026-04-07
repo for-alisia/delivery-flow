@@ -13,6 +13,7 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.config.GitLabProperties;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
+import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
@@ -28,16 +29,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-@SuppressWarnings("null")
 class GitLabIssuesAdapterTest {
 
     private static final String PROJECT_URL = "https://gitlab.example.com/group/project";
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
     private static final String DELETE_API_URL = API_URL + "/12";
-    private static final MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
+    private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
     private static final CreateIssueInput CREATE_INPUT =
             new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
@@ -51,7 +52,7 @@ class GitLabIssuesAdapterTest {
                 builder.baseUrl(Objects.requireNonNull(
                                 locator.projectReference().apiBaseUrl()))
                         .build(),
-                locator,
+                new GitLabUriFactory(locator),
                 new GitLabIssuesMapper(),
                 new GitLabExceptionMapper());
     }

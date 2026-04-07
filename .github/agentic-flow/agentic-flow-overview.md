@@ -24,7 +24,7 @@
 - Workflow owner and final acceptance gate
 - Maintains requirement lock and shared checkpoint
 - Verifies artifacts before every stage transition
-- Runs `final-check.sh`, app startup, and smoke tests after coder batches
+- Runs `final-check.sh`, app startup, and Karate smoke tests (`karate-test.sh`) after coder batches
 - Owns verification log and implementation report evidence writing
 - Enforces coder batching, red cards, and architect escalation
 
@@ -38,6 +38,7 @@
 
 - Produces the implementation plan for `Java Coder`
 - Defines class structure, payload examples, validation boundaries, slices, tests, and documentation updates
+- Writes Karate `.feature` files directly when the plan adds or changes API endpoints
 - Uses repository rules and external docs when behavior is uncertain
 
 ### `Reviewer`
@@ -52,6 +53,7 @@
 
 - Implements the plan exactly, slice by slice
 - Adds required tests and runs verification (`verify-quick.sh` per slice, `final-check.sh` before handoff)
+- Does NOT write Karate `.feature` files or run Karate tests — that belongs to Architect and Team Lead respectively
 - Returns changed files, status, deviations, and blockers after every batch
 - Does not invent extra scope or self-certify weak evidence
 
@@ -77,7 +79,7 @@
 ## Verification Expectations
 
 - `Java Coder` runs `verify-quick.sh` per slice and `final-check.sh` before handoff
-- `Team Lead` runs `final-check.sh` as independent recheck, starts the app, runs `smoke-test.sh`, and owns verification log and implementation report evidence
+- `Team Lead` runs `final-check.sh` as independent recheck, starts the app, runs `karate-test.sh`, and owns verification log and implementation report evidence
 - `Reviewer` validates code quality, reviews evidence, and reruns checks only when TL evidence is suspect
 
 ## Source Files

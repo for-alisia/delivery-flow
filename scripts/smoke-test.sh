@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # smoke-test.sh — Quick HTTP smoke check for flow-orchestrator endpoints.
+# DEPRECATED: Prefer scripts/karate-test.sh for structured smoke verification.
+# This script remains as a fallback during transition.
 # Usage: scripts/smoke-test.sh [BASE_URL]
 # Default BASE_URL: http://localhost:8080
 set -euo pipefail

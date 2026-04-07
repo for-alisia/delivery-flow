@@ -27,7 +27,7 @@ Search, create, and delete GitLab issues through a provider-agnostic orchestrati
   - DTOs: `integration/gitlab/issues/dto/` — `GitLabIssueResponse`, `GitLabCreateIssueRequest`
   - Mapper: `integration/gitlab/issues/mapper/GitLabIssuesMapper`
 - **Config:** `config/IssuesApiProperties` (`app.issues-api.*` — default-page-size, max-page-size)
-- **Tests:** 12 unit, 1 integration (`IssuesControllerIT`), 1 component (`IssuesApiComponentTest`)
+- **Tests:** unit/integration/component tests plus opt-in Karate smoke tests under `src/test/karate/` (runner: `IssuesKarateTest`, features: `issues/*.feature`)
 - **Design notes:**
   - `Issue` is the unified output model for both search and create
   - `IssueDto` is the single API response shape for all issue endpoints; fields: `id` (GitLab global id), `issueId` (project-scoped number, maps from GitLab `iid`), `title`, `description`, `state`, `labels`, `assignee`, `milestone`, `parent`
@@ -62,7 +62,8 @@ Verification and quality tooling.
 - `scripts/final-check.sh` — formatting + full quality gate
 - `scripts/quality-check.sh` — Maven clean verify
 - `scripts/format-code.sh` — Spotless apply/check
-- `scripts/smoke-test.sh` — HTTP endpoint verification (requires running app)
+- `scripts/smoke-test.sh` — legacy curl-based HTTP endpoint verification (deprecated, kept as fallback)
+- `scripts/karate-test.sh` — Karate API smoke tests (requires running app, activates `-Pkarate` profile)
 
 ---
 
