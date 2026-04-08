@@ -9,6 +9,7 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
@@ -16,6 +17,8 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,8 +139,8 @@ class IssuesServiceTest {
     }
 
     @Test
-    @DisplayName("getIssueDetail delegates to port and returns enriched result")
-    void getIssueDetailDelegatesToPortAndReturnsResult() {
+    @DisplayName("getIssueDetail populates changeSets from port")
+    void getIssueDetailPopulatesChangeSetsFromPort() {
         final IssueDetail detail = new IssueDetail(
                 42L,
                 "Fix login bug",
@@ -149,13 +152,35 @@ class IssuesServiceTest {
                 OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
                 OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
                 null);
+        final LabelChangeSet firstChangeSet = LabelChangeSet.builder()
+                .changeType("add")
+                .changedBy(ChangedBy.builder()
+                        .id(1L)
+                        .username("root")
+                        .name("Administrator")
+                        .build())
+                .change(LabelChange.builder().id(73L).name("bug").build())
+                .changedAt(OffsetDateTime.parse("2026-01-15T09:30:00.000Z"))
+                .build();
+        final LabelChangeSet secondChangeSet = LabelChangeSet.builder()
+                .changeType("remove")
+                .changedBy(ChangedBy.builder()
+                        .id(2L)
+                        .username("jdoe")
+                        .name("Jane Doe")
+                        .build())
+                .change(LabelChange.builder().id(73L).name("bug").build())
+                .changedAt(OffsetDateTime.parse("2026-02-01T11:00:00.000Z"))
+                .build();
         when(issuesPort.getIssueDetail(42L)).thenReturn(detail);
+        when(issuesPort.getLabelEvents(42L)).thenReturn(List.of(firstChangeSet, secondChangeSet));
 
         final EnrichedIssueDetail result = issuesService.getIssueDetail(42L);
 
         assertThat(result.issueDetail()).isEqualTo(detail);
-        assertThat(result.changeSets()).isEmpty();
+        assertThat(result.changeSets()).containsExactly(firstChangeSet, secondChangeSet);
         verify(issuesPort).getIssueDetail(42L);
+        verify(issuesPort).getLabelEvents(42L);
     }
 
     @Test
@@ -166,5 +191,42 @@ class IssuesServiceTest {
         when(issuesPort.getIssueDetail(42L)).thenThrow(exception);
 
         assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+    }
+
+    @Test
+    @DisplayName("getIssueDetail requests label events in parallel even when detail call fails")
+    void getIssueDetailRequestsLabelEventsInParallelEvenWhenDetailCallFails() {
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_FAILURE, "GitLab get issue detail operation failed", "gitlab");
+        when(issuesPort.getIssueDetail(42L)).thenThrow(exception);
+        when(issuesPort.getLabelEvents(42L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+        verify(issuesPort).getIssueDetail(42L);
+        verify(issuesPort).getLabelEvents(42L);
+    }
+
+    @Test
+    @DisplayName("getIssueDetail propagates IntegrationException when label events call fails")
+    void getIssueDetailPropagatesIntegrationExceptionWhenLabelEventsCallFails() {
+        final IssueDetail detail = new IssueDetail(
+                42L,
+                "Fix login bug",
+                null,
+                "opened",
+                List.of(),
+                List.of(),
+                null,
+                OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
+                OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
+                null);
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_FAILURE, "GitLab label events operation failed", "gitlab");
+        when(issuesPort.getIssueDetail(42L)).thenReturn(detail);
+        when(issuesPort.getLabelEvents(42L)).thenThrow(exception);
+
+        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+        verify(issuesPort).getIssueDetail(42L);
+        verify(issuesPort).getLabelEvents(42L);
     }
 }

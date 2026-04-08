@@ -103,6 +103,7 @@ Important:
 - Confirm exact GitLab endpoint path, parameters, pagination behavior, and response fields against official GitLab REST API docs before implementation.
 - `changeSets` is built only from label events in this story.
 - Future stories may add other event sources such as milestone, state, or weight changes, but this story should not implement those.
+- Change should implement an interface as in future we will have multiple different event sources and changeSet and change should work as far as they implement the correct interface.
 
 ## Field Mapping
 
@@ -124,7 +125,7 @@ Important:
 - Integration layer must expose a separate method for fetching issue label events.
 - Integration layer must not combine GitLab issue details and GitLab label events into the final API response.
 - Orchestration layer should call both methods and combine them into the final response contract.
-- Mapping from raw GitLab label-event DTOs into the client-facing `changeSets` contract should happen at orchestration layer or an orchestration-facing mapper, not inside the GitLab integration adapter.
+- Mapping into the client-facing `changeSets` contract should happen at orchestration layer or an orchestration-facing mapper, not inside the GitLab integration adapter.
 - Do not change the Story 1 issue details response contract except to populate `changeSets`.
 - Do not introduce a separate public endpoint for label events unless explicitly requested later.
 
@@ -139,7 +140,7 @@ Important:
 
 - `changeSets` currently represents label history only.
 - `changeType` should currently map only GitLab label event actions like `add` and `remove`.
-- `change.field` should currently always be `label`.
+- `change.field` should currently always be `label`. (but expandable in futur)
 - `changeSets` should not be sorted by our API. Return events in the order provided by GitLab unless existing project conventions require otherwise.
 - Empty label history should return `changeSets: []`.
 - Unknown or unsupported future event sources are out of scope.
@@ -148,4 +149,4 @@ Important:
 
 - Reuse the user/person representation from Story 1 assignees where it makes sense. We do not need separate user models for assignees and `changedBy` if a shared internal model keeps the design simpler.
 - Keep the contract backward compatible with Story 1: clients that already read issue details should continue to work.
-- Add or update tests at the right levels: mapper/unit tests for event mapping, adapter tests for the GitLab label-events endpoint, orchestration/service tests for combining details and label events, web/component tests for the final API response, and Karate coverage if the architect decides this public response change needs API-level smoke coverage.
+- Add or update tests at the right levels

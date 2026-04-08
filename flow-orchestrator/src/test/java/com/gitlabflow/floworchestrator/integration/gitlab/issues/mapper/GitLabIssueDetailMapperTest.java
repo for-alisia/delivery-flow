@@ -127,4 +127,55 @@ class GitLabIssueDetailMapperTest {
         final var milestoneResult = Objects.requireNonNull(result.milestone());
         assertThat(milestoneResult.dueDate()).isNull();
     }
+
+    @Test
+    @DisplayName("maps multiple assignees preserving order")
+    void mapsMultipleAssigneesPreservingOrder() {
+        final var firstAssignee = new GitLabAssigneeDetail(10L, "john.doe", "John Doe");
+        final var secondAssignee = new GitLabAssigneeDetail(11L, "jane.doe", "Jane Doe");
+        final var response = new GitLabSingleIssueResponse(
+                500L,
+                42L,
+                "Fix login bug",
+                null,
+                "opened",
+                List.of("bug"),
+                List.of(firstAssignee, secondAssignee),
+                null,
+                CREATED_AT,
+                UPDATED_AT,
+                null);
+
+        final IssueDetail result = mapper.toIssueDetail(response);
+
+        assertThat(result.assignees()).hasSize(2);
+        assertThat(result.assignees().getFirst().id()).isEqualTo(10L);
+        assertThat(result.assignees().getFirst().username()).isEqualTo("john.doe");
+        assertThat(result.assignees().get(1).id()).isEqualTo(11L);
+        assertThat(result.assignees().get(1).username()).isEqualTo("jane.doe");
+    }
+
+    @Test
+    @DisplayName("maps assignee nullable username and name unchanged")
+    void mapsAssigneeNullableUsernameAndNameUnchanged() {
+        final var response = new GitLabSingleIssueResponse(
+                500L,
+                42L,
+                "Fix login bug",
+                null,
+                "opened",
+                List.of("bug"),
+                List.of(new GitLabAssigneeDetail(10L, null, null)),
+                null,
+                CREATED_AT,
+                UPDATED_AT,
+                null);
+
+        final IssueDetail result = mapper.toIssueDetail(response);
+
+        assertThat(result.assignees()).hasSize(1);
+        assertThat(result.assignees().getFirst().id()).isEqualTo(10L);
+        assertThat(result.assignees().getFirst().username()).isNull();
+        assertThat(result.assignees().getFirst().name()).isNull();
+    }
 }

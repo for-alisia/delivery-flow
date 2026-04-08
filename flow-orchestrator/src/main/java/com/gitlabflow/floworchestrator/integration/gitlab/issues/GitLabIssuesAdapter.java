@@ -4,10 +4,13 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabLabelEventResponse;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabSingleIssueResponse;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabLabelEventMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesPort;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
@@ -35,12 +38,14 @@ public class GitLabIssuesAdapter implements IssuesPort {
     private static final String RESOURCE_CREATE_ISSUE = "create issue";
     private static final String RESOURCE_DELETE_ISSUE = "delete issue";
     private static final String RESOURCE_GET_ISSUE_DETAIL = "get issue detail";
+    private static final String RESOURCE_GET_LABEL_EVENTS = "get label events";
     private static final String EMPTY_BODY_CATEGORY = "EmptyBody";
 
     private final RestClient gitLabRestClient;
     private final GitLabUriFactory gitLabUriFactory;
     private final GitLabIssuesMapper gitLabIssuesMapper;
     private final GitLabIssueDetailMapper gitLabIssueDetailMapper;
+    private final GitLabLabelEventMapper gitLabLabelEventMapper;
     private final GitLabExceptionMapper gitLabExceptionMapper;
 
     @Override
@@ -99,6 +104,30 @@ public class GitLabIssuesAdapter implements IssuesPort {
             final IssueDetail issueDetail = gitLabIssueDetailMapper.toIssueDetail(response);
             log.info("GitLab issue detail fetched issueId={}", issueId);
             return issueDetail;
+        });
+    }
+
+    @Override
+    public List<ChangeSet> getLabelEvents(final long issueId) {
+        log.info("Fetching GitLab label events issueId={}", issueId);
+
+        return executeGitLabOperation(RESOURCE_GET_LABEL_EVENTS, () -> {
+            final List<GitLabLabelEventResponse> response = gitLabRestClient
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(gitLabUriFactory.projectResourcePath(RESOURCE_ISSUES)
+                                    + "/{issueId}/resource_label_events")
+                            .build(gitLabUriFactory.projectPath(), issueId))
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+
+            if (response == null) {
+                throw mapTransportFailure(EMPTY_BODY_CATEGORY, RESOURCE_GET_LABEL_EVENTS);
+            }
+
+            final List<ChangeSet> changeSets = gitLabLabelEventMapper.toLabelChangeSets(response);
+            log.info("GitLab label events fetched issueId={} count={}", issueId, changeSets.size());
+            return changeSets;
         });
     }
 

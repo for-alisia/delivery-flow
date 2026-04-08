@@ -4,7 +4,7 @@ import java.util.List;
 import lombok.Builder;
 
 @Builder
-public record EnrichedIssueDetail(IssueDetail issueDetail, List<Object> changeSets) {
+public record EnrichedIssueDetail(IssueDetail issueDetail, List<ChangeSet> changeSets) {
 
     public EnrichedIssueDetail {
         changeSets = changeSets == null ? List.of() : List.copyOf(changeSets);

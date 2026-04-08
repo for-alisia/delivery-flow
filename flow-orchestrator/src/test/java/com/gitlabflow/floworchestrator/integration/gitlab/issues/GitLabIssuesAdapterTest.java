@@ -16,12 +16,16 @@ import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabLabelEventMapper;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +45,7 @@ class GitLabIssuesAdapterTest {
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
     private static final String DELETE_API_URL = API_URL + "/12";
     private static final String GET_SINGLE_API_URL = API_URL + "/42";
+    private static final String GET_LABEL_EVENTS_API_URL = GET_SINGLE_API_URL + "/resource_label_events";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
     private static final CreateIssueInput CREATE_INPUT =
@@ -58,6 +63,7 @@ class GitLabIssuesAdapterTest {
                 new GitLabUriFactory(locator),
                 new GitLabIssuesMapper(),
                 new GitLabIssueDetailMapper(),
+                new GitLabLabelEventMapper(),
                 new GitLabExceptionMapper());
     }
 
@@ -358,5 +364,67 @@ class GitLabIssuesAdapterTest {
                 .isInstanceOfSatisfying(
                         IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+    }
+
+    @Test
+    @DisplayName("getLabelEvents calls correct URI and maps label events")
+    void getLabelEventsCallsCorrectUriAndMapsLabelEvents() {
+        server.expect(requestTo(GET_LABEL_EVENTS_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.GET)))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("""
+                        [
+                          {
+                            "id": 1001,
+                            "user": {"id": 1, "username": "root", "name": "Administrator"},
+                            "created_at": "2026-01-15T09:30:00Z",
+                            "label": {"id": 73, "name": "bug"},
+                            "action": "add"
+                          }
+                        ]
+                        """));
+
+        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+
+        assertThat(result).singleElement().isInstanceOfSatisfying(LabelChangeSet.class, changeSet -> {
+            assertThat(changeSet.changeType()).isEqualTo("add");
+            assertThat(changeSet.changedBy().id()).isEqualTo(1L);
+            assertThat(changeSet.changedBy().username()).isEqualTo("root");
+            assertThat(changeSet.changedBy().name()).isEqualTo("Administrator");
+            assertThat(changeSet.change().id()).isEqualTo(73L);
+            assertThat(changeSet.change().name()).isEqualTo("bug");
+            assertThat(changeSet.change().field()).isEqualTo(ChangeField.LABEL);
+            assertThat(changeSet.changedAt()).hasToString("2026-01-15T09:30Z");
+        });
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("getLabelEvents returns empty list when GitLab returns empty array")
+    void getLabelEventsReturnsEmptyListWhenGitLabReturnsEmptyArray() {
+        server.expect(requestTo(GET_LABEL_EVENTS_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.GET)))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("[]"));
+
+        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+
+        assertThat(result).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("getLabelEvents null body from GitLab throws IntegrationException")
+    void getLabelEventsNullBodyThrowsIntegrationException() {
+        server.expect(requestTo(GET_LABEL_EVENTS_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.GET)))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("null"));
+
+        assertThatThrownBy(() -> adapter.getLabelEvents(42L))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+        server.verify();
     }
 }

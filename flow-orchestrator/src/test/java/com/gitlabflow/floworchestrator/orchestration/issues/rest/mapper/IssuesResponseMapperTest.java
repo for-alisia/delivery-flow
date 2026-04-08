@@ -1,13 +1,20 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitlabflow.floworchestrator.orchestration.issues.model.Change;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.AssigneeDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.MilestoneDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
@@ -197,8 +204,44 @@ class IssuesResponseMapperTest {
     }
 
     @Test
-    @DisplayName("toIssueDetailDto changeSets is always empty list")
-    void toIssueDetailDtoChangeSetsIsAlwaysEmpty() {
+    @DisplayName("toIssueDetailDto maps label change set fields")
+    void toIssueDetailDtoMapsLabelChangeSetFields() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var changedAt = OffsetDateTime.parse("2026-01-15T09:30:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final LabelChangeSet changeSet = LabelChangeSet.builder()
+                .changeType("add")
+                .changedBy(ChangedBy.builder()
+                        .id(1L)
+                        .username("root")
+                        .name("Administrator")
+                        .build())
+                .change(LabelChange.builder().id(73L).name("bug").build())
+                .changedAt(changedAt)
+                .build();
+        final var enriched = new EnrichedIssueDetail(detail, List.of(changeSet));
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.changeSets()).hasSize(1);
+        assertThat(dto.changeSets().getFirst()).isInstanceOf(IssueDetailDto.LabelChangeSetDto.class);
+        final IssueDetailDto.LabelChangeSetDto labelChangeSetDto =
+                (IssueDetailDto.LabelChangeSetDto) dto.changeSets().getFirst();
+        assertThat(labelChangeSetDto.changeType()).isEqualTo("add");
+        assertThat(labelChangeSetDto.changedBy().id()).isEqualTo(1L);
+        assertThat(labelChangeSetDto.changedBy().username()).isEqualTo("root");
+        assertThat(labelChangeSetDto.changedBy().name()).isEqualTo("Administrator");
+        assertThat(labelChangeSetDto.change().field()).isEqualTo(ChangeField.LABEL);
+        assertThat(labelChangeSetDto.change().id()).isEqualTo(73L);
+        assertThat(labelChangeSetDto.change().name()).isEqualTo("bug");
+        assertThat(labelChangeSetDto.changedAt()).isEqualTo(changedAt);
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto returns empty changeSets when enriched payload has none")
+    void toIssueDetailDtoReturnsEmptyChangeSetsWhenEnrichedPayloadHasNone() {
         final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
         final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
         final var detail =
@@ -209,4 +252,38 @@ class IssuesResponseMapperTest {
 
         assertThat(dto.changeSets()).isEmpty();
     }
+
+    @Test
+    @DisplayName("toIssueDetailDto throws when changeSet type is unsupported")
+    void toIssueDetailDtoThrowsWhenChangeSetTypeIsUnsupported() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final ChangeSet unsupportedChangeSet =
+                new UnsupportedChangeSet(OffsetDateTime.parse("2026-01-15T09:30:00.000Z"));
+        final var enriched = new EnrichedIssueDetail(detail, List.of(unsupportedChangeSet));
+
+        assertThatThrownBy(() -> mapper.toIssueDetailDto(enriched)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private record UnsupportedChangeSet(OffsetDateTime changedAt) implements ChangeSet {
+
+        @Override
+        public String changeType() {
+            return "noop";
+        }
+
+        @Override
+        public ChangedBy changedBy() {
+            return ChangedBy.builder().id(0L).username("n/a").name("n/a").build();
+        }
+
+        @Override
+        public Change change() {
+            return new UnsupportedChange(ChangeField.LABEL, 0L, "unsupported");
+        }
+    }
+
+    private record UnsupportedChange(ChangeField field, long id, String name) implements Change {}
 }

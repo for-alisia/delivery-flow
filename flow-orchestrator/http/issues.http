@@ -60,7 +60,7 @@ Content-Type: application/json
 ### Delete issue request (existing issue)
 DELETE {{baseUrl}}/api/issues/26
 
-### Get single issue detail
+### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field=LABEL], changedAt)
 GET {{baseUrl}}/api/issues/{{issueId}}
 
 

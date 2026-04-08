@@ -9,6 +9,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.gitlabflow.floworchestrator.issues.support.GitLabCreateIssueStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabDeleteIssueStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabIssuesStubSupport;
+import com.gitlabflow.floworchestrator.issues.support.GitLabLabelEventsStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabSingleIssueStubSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,6 +30,9 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class IssuesApiComponentTest {
+
+    private static final long ISSUE_ID = 42L;
+    private static final String ISSUE_DETAIL_PATH = "/api/issues/" + ISSUE_ID;
 
     private static WireMockServer wireMockServer;
 
@@ -173,39 +177,96 @@ class IssuesApiComponentTest {
     }
 
     @Test
-    @DisplayName("returns 200 with mapped IssueDetailDto for valid issueId")
-    void returnsIssueDetailDtoForValidIssueId() throws Exception {
+    @DisplayName("returns 200 with populated changeSets when GitLab label events exist")
+    void returnsIssueDetailDtoWithPopulatedChangeSets() throws Exception {
         wireMockServer.resetAll();
-        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, 42L);
+        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.stubGetLabelEvents(wireMockServer, ISSUE_ID);
 
-        final ResponseEntity<String> response = restTemplate.getForEntity("/api/issues/42", String.class);
+        final ResponseEntity<String> response = restTemplate.getForEntity(ISSUE_DETAIL_PATH, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         final JsonNode json = objectMapper.readTree(response.getBody());
-        assertThat(json.path("issueId").asLong()).isEqualTo(42L);
+        assertThat(json.path("issueId").asLong()).isEqualTo(ISSUE_ID);
         assertThat(json.path("title").asText()).isEqualTo("Fix login bug");
         assertThat(json.path("state").asText()).isEqualTo("opened");
         assertThat(json.path("assignees").get(0).path("username").asText()).isEqualTo("john.doe");
         assertThat(json.path("milestone").path("title").asText()).isEqualTo("Sprint 12");
         assertThat(json.path("milestone").path("milestoneId").asLong()).isEqualTo(3L);
         assertThat(json.path("changeSets").isArray()).isTrue();
-        assertThat(json.path("changeSets").isEmpty()).isTrue();
+        assertThat(json.path("changeSets").get(0).path("changeType").asText()).isEqualTo("add");
+        assertThat(json.path("changeSets").get(0).path("changedBy").path("id").asLong())
+                .isEqualTo(1L);
+        assertThat(json.path("changeSets")
+                        .get(0)
+                        .path("changedBy")
+                        .path("username")
+                        .asText())
+                .isEqualTo("root");
+        assertThat(json.path("changeSets").get(0).path("change").path("field").asText())
+                .isEqualTo("LABEL");
+        assertThat(json.path("changeSets").get(0).path("change").path("id").asLong())
+                .isEqualTo(73L);
+        assertThat(json.path("changeSets").get(0).path("change").path("name").asText())
+                .isEqualTo("bug");
 
-        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, 42L);
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);
     }
 
     @Test
-    @DisplayName("returns 404 when GitLab returns 404 for issue")
-    void returns404WhenGitLabReturns404() throws Exception {
+    @DisplayName("returns 200 with empty changeSets when GitLab label events are empty")
+    void returnsIssueDetailDtoWithEmptyChangeSets() throws Exception {
         wireMockServer.resetAll();
-        GitLabSingleIssueStubSupport.stubGetIssueDetailNotFound(wireMockServer, 42L);
+        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.stubGetLabelEventsEmpty(wireMockServer, ISSUE_ID);
+
+        final ResponseEntity<String> response = restTemplate.getForEntity(ISSUE_DETAIL_PATH, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("changeSets").isArray()).isTrue();
+        assertThat(json.path("changeSets").isEmpty()).isTrue();
+
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);
+    }
+
+    @Test
+    @DisplayName("returns integration failure when GitLab label events call fails")
+    void returnsIntegrationFailureWhenGitLabLabelEventsCallFails() throws Exception {
+        wireMockServer.resetAll();
+        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.stubGetLabelEventsServerError(wireMockServer, ISSUE_ID);
         useJdkRequestFactory();
 
-        final ResponseEntity<String> response = restTemplate.getForEntity("/api/issues/42", String.class);
+        final ResponseEntity<String> response = restTemplate.getForEntity(ISSUE_DETAIL_PATH, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_FAILURE");
+        assertThat(json.has("issueId")).isFalse();
+
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);
+    }
+
+    @Test
+    @DisplayName("returns 404 when GitLab returns 404 for issue during parallel detail fetch")
+    void returns404WhenGitLabReturns404DuringParallelDetailFetch() throws Exception {
+        wireMockServer.resetAll();
+        GitLabSingleIssueStubSupport.stubGetIssueDetailNotFound(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.stubGetLabelEventsNotFound(wireMockServer, ISSUE_ID);
+        useJdkRequestFactory();
+
+        final ResponseEntity<String> response = restTemplate.getForEntity(ISSUE_DETAIL_PATH, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         final JsonNode json = objectMapper.readTree(response.getBody());
         assertThat(json.path("code").asText()).isEqualTo("RESOURCE_NOT_FOUND");
+
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);
     }
 
     @Test

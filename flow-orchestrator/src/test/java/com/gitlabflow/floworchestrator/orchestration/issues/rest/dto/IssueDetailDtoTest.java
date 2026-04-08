@@ -3,6 +3,7 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,14 +33,28 @@ class IssueDetailDtoTest {
                 .build();
         final List<String> dtoLabels = dto.labels();
         final List<IssueDetailDto.AssigneeDto> dtoAssignees = dto.assignees();
-        final List<Object> dtoChangeSets = dto.changeSets();
+        final List<IssueDetailDto.ChangeSetDto> dtoChangeSets = dto.changeSets();
 
         assertThat(dtoLabels).isEmpty();
         assertThat(dtoAssignees).isEmpty();
         assertThat(dtoChangeSets).isEmpty();
+        final IssueDetailDto.LabelChangeSetDto addedChangeSet = IssueDetailDto.LabelChangeSetDto.builder()
+                .changeType("add")
+                .changedBy(IssueDetailDto.ChangedByDto.builder()
+                        .id(1L)
+                        .username("root")
+                        .name("Administrator")
+                        .build())
+                .change(IssueDetailDto.LabelChangeDto.builder()
+                        .field(ChangeField.LABEL)
+                        .id(73L)
+                        .name("bug")
+                        .build())
+                .changedAt(CREATED_AT)
+                .build();
         assertThatThrownBy(() -> dtoLabels.add("bug")).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> dtoAssignees.add(null)).isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> dtoChangeSets.add("x")).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> dtoChangeSets.add(addedChangeSet)).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
@@ -52,7 +67,21 @@ class IssueDetailDtoTest {
                 .username("john.doe")
                 .name("John Doe")
                 .build());
-        final List<Object> changeSets = new ArrayList<>(List.of("change-1"));
+        final List<IssueDetailDto.ChangeSetDto> changeSets =
+                new ArrayList<>(List.of(IssueDetailDto.LabelChangeSetDto.builder()
+                        .changeType("add")
+                        .changedBy(IssueDetailDto.ChangedByDto.builder()
+                                .id(1L)
+                                .username("root")
+                                .name("Administrator")
+                                .build())
+                        .change(IssueDetailDto.LabelChangeDto.builder()
+                                .field(ChangeField.LABEL)
+                                .id(73L)
+                                .name("bug")
+                                .build())
+                        .changedAt(CREATED_AT)
+                        .build()));
 
         final IssueDetailDto dto = IssueDetailDto.builder()
                 .issueId(42L)
@@ -73,14 +102,29 @@ class IssueDetailDtoTest {
         changeSets.clear();
         final List<String> dtoLabels = dto.labels();
         final List<IssueDetailDto.AssigneeDto> dtoAssignees = dto.assignees();
-        final List<Object> dtoChangeSets = dto.changeSets();
+        final List<IssueDetailDto.ChangeSetDto> dtoChangeSets = dto.changeSets();
 
         assertThat(dtoLabels).containsExactly("bug");
         assertThat(dtoAssignees).hasSize(1);
         assertThat(dtoAssignees.getFirst().username()).isEqualTo("john.doe");
-        assertThat(dtoChangeSets).containsExactly("change-1");
+        assertThat(dtoChangeSets).hasSize(1);
+        assertThat(dtoChangeSets.getFirst()).isInstanceOf(IssueDetailDto.LabelChangeSetDto.class);
+        final IssueDetailDto.LabelChangeSetDto newChangeSet = IssueDetailDto.LabelChangeSetDto.builder()
+                .changeType("remove")
+                .changedBy(IssueDetailDto.ChangedByDto.builder()
+                        .id(2L)
+                        .username("jdoe")
+                        .name("Jane Doe")
+                        .build())
+                .change(IssueDetailDto.LabelChangeDto.builder()
+                        .field(ChangeField.LABEL)
+                        .id(73L)
+                        .name("bug")
+                        .build())
+                .changedAt(UPDATED_AT)
+                .build();
         assertThatThrownBy(() -> dtoLabels.add("new")).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> dtoAssignees.add(null)).isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> dtoChangeSets.add("new-change")).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> dtoChangeSets.add(newChangeSet)).isInstanceOf(UnsupportedOperationException.class);
     }
 }

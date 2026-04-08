@@ -45,7 +45,13 @@ Search, create, delete, and get-single GitLab issues through a provider-agnostic
 | `IssueState.java` | Enum: `opened`, `closed`, `all` |
 | `CreateIssueInput.java` | Input for issue creation |
 | `IssueDetail.java` | Single-issue detail — pure integration-mapped model (10 fields), maps 1:1 from GitLab |
-| `EnrichedIssueDetail.java` | Orchestration composition model — combines `IssueDetail` + `changeSets` (from future label-events adapter) |
+| `ChangeSet.java` | Change-set contract for issue history entries |
+| `Change.java` | Change payload contract for issue history entries |
+| `ChangeField.java` | Enum discriminator for change payloads (currently `LABEL`) |
+| `ChangedBy.java` | Actor metadata for issue history changes |
+| `LabelChange.java` | Label-specific change payload implementing `Change` (`field` is `ChangeField.LABEL`) |
+| `LabelChangeSet.java` | Label-event change set implementing `ChangeSet` |
+| `EnrichedIssueDetail.java` | Orchestration composition model — combines `IssueDetail` + `changeSets` (mapped from GitLab label events) |
 
 Inner records: `IssueDetail.AssigneeDetail`, `IssueDetail.MilestoneDetail`
 
@@ -65,22 +71,24 @@ Inner records: `IssueDetail.AssigneeDetail`, `IssueDetail.MilestoneDetail`
 | `SearchIssuesResponse.java` | Paginated search response |
 | `CreateIssueRequest.java` | Request body for create |
 | `IssueDto.java` | Response for search, create, delete |
-| `IssueDetailDto.java` | Response for get-single (`changeSets` always `[]` in Story 1) |
+| `IssueDetailDto.java` | Response for get-single including `changeSets` mapped from GitLab label-event history |
 | `IssueFiltersRequest.java` | Filter fields inside search request |
 | `PaginationRequest.java` | Pagination fields inside search request |
 
-Inner records: `IssueDetailDto.AssigneeDto`, `IssueDetailDto.MilestoneDto`
+Inner records: `IssueDetailDto.AssigneeDto`, `IssueDetailDto.MilestoneDto`, `IssueDetailDto.ChangeSetDto`, `IssueDetailDto.ChangeDto`, `IssueDetailDto.LabelChangeSetDto`, `IssueDetailDto.ChangedByDto`, `IssueDetailDto.LabelChangeDto`
 
 #### Integration — GitLab
 
 | File | Role |
 |------|------|
-| `integration/gitlab/issues/GitLabIssuesAdapter.java` | Adapter implementing `IssuesPort` via `RestClient` |
+| `integration/gitlab/issues/GitLabIssuesAdapter.java` | Adapter implementing `IssuesPort` via `RestClient` (search/create/delete/get-single + label events) |
 | `integration/gitlab/issues/dto/GitLabIssueResponse.java` | GitLab search/create response DTO |
 | `integration/gitlab/issues/dto/GitLabCreateIssueRequest.java` | GitLab create request DTO |
 | `integration/gitlab/issues/dto/GitLabSingleIssueResponse.java` | GitLab get-single response DTO |
+| `integration/gitlab/issues/dto/GitLabLabelEventResponse.java` | GitLab `resource_label_events` response DTO |
 | `integration/gitlab/issues/mapper/GitLabIssuesMapper.java` | Maps GitLab search/create responses → `Issue` |
 | `integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java` | Maps `GitLabSingleIssueResponse` → `IssueDetail` |
+| `integration/gitlab/issues/mapper/GitLabLabelEventMapper.java` | Maps GitLab label events → `List<ChangeSet>` |
 
 #### Config
 
@@ -101,14 +109,17 @@ Paths relative to `flow-orchestrator/src/test/`.
 | `java/.../orchestration/issues/rest/dto/SearchIssuesResponseTest.java` | Unit |
 | `java/.../orchestration/issues/rest/mapper/IssuesRequestMapperTest.java` | Unit |
 | `java/.../orchestration/issues/rest/mapper/IssuesResponseMapperTest.java` | Unit |
+| `java/.../orchestration/issues/model/LabelChangeSetTest.java` | Unit |
 | `java/.../integration/gitlab/issues/GitLabIssuesAdapterTest.java` | Unit |
 | `java/.../integration/gitlab/issues/mapper/GitLabIssuesMapperTest.java` | Unit |
 | `java/.../integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java` | Unit |
+| `java/.../integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java` | Unit |
 | `integration/java/.../orchestration/issues/rest/IssuesControllerIT.java` | Integration |
 | `component/java/.../issues/IssuesApiComponentTest.java` | Component |
 | `component/java/.../issues/support/GitLabIssuesStubSupport.java` | Component support |
 | `component/java/.../issues/support/GitLabCreateIssueStubSupport.java` | Component support |
 | `component/java/.../issues/support/GitLabSingleIssueStubSupport.java` | Component support |
+| `component/java/.../issues/support/GitLabLabelEventsStubSupport.java` | Component support |
 
 #### Karate Smoke Tests (`src/test/karate/`)
 
@@ -127,7 +138,7 @@ Paths relative to `flow-orchestrator/src/test/`.
 
 - `Issue` is the unified output model for both search and create
 - `IssueDto` fields: `id` (GitLab global id), `issueId` (project-scoped `iid`), `title`, `description`, `state`, `labels`, `assignee`, `milestone`, `parent`
-- `IssueDetailDto` fields: `issueId`, `title`, `description`, `state`, `labels` (`[]`), `assignees` (`[]`), `milestone` (nullable), `createdAt`, `updatedAt`, `closedAt` (nullable), `changeSets` (`[]` in Story 1)
+- `IssueDetailDto` fields: `issueId`, `title`, `description`, `state`, `labels` (`[]`), `assignees` (`[]`), `milestone` (nullable), `createdAt`, `updatedAt`, `closedAt` (nullable), `changeSets` (typed label-event change sets when present)
 - `EnrichedIssueDetail` composes `IssueDetail` + `changeSets`. `IssuesService.getIssueDetail()` returns `EnrichedIssueDetail`; `IssuesResponseMapper` maps it to `IssueDetailDto`
 - `IssueDetail` maps 1:1 from `GitLabSingleIssueResponse` — no cross-source composition
 - Pagination is GitLab header-based, mapped in adapter

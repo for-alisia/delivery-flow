@@ -1,5 +1,6 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.Builder;
@@ -17,7 +18,7 @@ public record IssueDetailDto(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         @Nullable OffsetDateTime closedAt,
-        List<Object> changeSets) {
+        List<ChangeSetDto> changeSets) {
 
     public IssueDetailDto {
         labels = labels == null ? List.of() : List.copyOf(labels);
@@ -35,4 +36,35 @@ public record IssueDetailDto(
             String title,
             String state,
             @Nullable String dueDate) {}
+
+    public sealed interface ChangeSetDto permits LabelChangeSetDto {
+
+        String changeType();
+
+        ChangedByDto changedBy();
+
+        ChangeDto change();
+
+        OffsetDateTime changedAt();
+    }
+
+    @Builder
+    public record LabelChangeSetDto(
+            String changeType, ChangedByDto changedBy, LabelChangeDto change, OffsetDateTime changedAt)
+            implements ChangeSetDto {}
+
+    public sealed interface ChangeDto permits LabelChangeDto {
+
+        ChangeField field();
+
+        long id();
+
+        String name();
+    }
+
+    @Builder
+    public record ChangedByDto(long id, String username, String name) {}
+
+    @Builder
+    public record LabelChangeDto(ChangeField field, long id, String name) implements ChangeDto {}
 }
