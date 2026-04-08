@@ -64,9 +64,11 @@ If a framework or external API behavior is uncertain, verify it with official do
 3. Keep mapping logic, validation, orchestration, and provider-specific code in their proper layers.
 4. If the refactor changes an API contract or endpoint behavior:
    - update the relevant `.http` file under `flow-orchestrator/http/`
-   - update `scripts/smoke-test.sh` to cover the changed endpoint behavior
+   - update Karate `.feature` files under `src/test/karate/resources/` to cover the changed endpoint behavior
 
 ### 3. Verification
+
+Follow `.github/instructions/local-quality-rules.instructions.md` for command choice and evidence recording.
 
 Run and record these checks:
 
@@ -74,8 +76,7 @@ Run and record these checks:
 2. `scripts/final-check.sh`
 3. Start the application from `flow-orchestrator/` with:
    - `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
-4. Run `scripts/smoke-test.sh`
-5. If the refactor affects controller behavior or the smoke script does not cover the highest-risk path, run targeted `curl` checks for the affected main endpoints as well.
+4. Run `scripts/karate-test.sh`
 
 Minimum API runtime verification expectation:
 
@@ -91,7 +92,7 @@ Record concise evidence only:
 - exit code
 - test count when available
 - failure summary or HTTP outcome
-- generated report paths under `flow-orchestrator/target/` for the full quality gate
+- generated report paths under `flow-orchestrator/target/`
 
 If a required check cannot run in the environment, mark it `BLOCKED`, not `PASS`.
 

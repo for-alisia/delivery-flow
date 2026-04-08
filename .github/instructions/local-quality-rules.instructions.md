@@ -1,65 +1,32 @@
 ---
 applyTo: "**/flow-orchestrator/**"
+description: "Local verification commands, execution order, expected reports, and artifact evidence rules for the flow-orchestrator module."
 ---
 
-# Local Quality Tooling For `flow-orchestrator`
+# Local Quality Rules For `flow-orchestrator`
 
-This file is the single source of truth for how agents and humans run local verification for `flow-orchestrator`.
-Use it for command choice, execution order, expected reports, and artifact evidence.
+## Commands
 
-## Preferred Commands
+| Command | Purpose | When to use |
+|---------|---------|-------------|
+| `scripts/verify-quick.sh` | Compile + tests | After each code/test change |
+| `scripts/final-check.sh` | Format + full quality verification | Before considering work complete |
+| `scripts/karate-test.sh` | Karate API smoke tests (`mvn failsafe -Pkarate`) | After starting the application; isolated from `mvn test` and `mvn verify` |
+| `scripts/format-code.sh` | Formatting only | Supporting; called by `final-check.sh` |
+| `scripts/quality-check.sh` | Static analysis only (`mvn clean verify`) | Supporting; called by `final-check.sh` |
 
-- Default fast verification command: `scripts/verify-quick.sh`
-- Default final verification command: `scripts/final-check.sh`
-- Supporting formatting command: `scripts/format-code.sh`
-- Supporting static-analysis command: `scripts/quality-check.sh`
-- Default smoke-test command: `scripts/karate-test.sh` (requires a running application; executes Karate API scenarios via `mvn failsafe -Pkarate`)
-- Legacy smoke-test command: `scripts/smoke-test.sh` (deprecated — kept as fallback; uses `curl`)
-- Prefer these scripts over raw Maven commands when recording implementation, review, or sign-off evidence.
-- Use raw `mvn` commands only for focused debugging when the scripts are not enough.
+Prefer these scripts over raw Maven commands. Use raw `mvn` only for focused debugging.
 
-## Toolchain
+## Evidence Recording
 
-- `scripts/verify-quick.sh` runs the fast developer gate: compile + tests.
-- `scripts/final-check.sh` is the user-facing final gate: it applies formatting and then runs the full quality verification.
-- `scripts/format-code.sh` is the supporting formatter script used by `scripts/final-check.sh`.
-- `scripts/quality-check.sh` is the supporting verification script that runs Maven `clean verify`.
-- Maven `verify` executes:
-  - Spotless via `spotless-maven-plugin` `3.0.0`
-  - Checkstyle via `maven-checkstyle-plugin` `3.6.0`
-  - PMD + CPD via `maven-pmd-plugin` `3.28.0`
-  - SpotBugs via `spotbugs-maven-plugin` `4.9.8.2`
-  - JaCoCo report + coverage check via `jacoco-maven-plugin` `0.8.14`
+- Record the exact command, observed result, and generated report paths.
+- `PASS` or `FAIL` + last 10 terminal lines. Do not build custom parsing pipelines.
+- If a script cannot run in the environment, mark `BLOCKED`, not `PASS`.
+- Tool findings and test failures are `FAIL`, not `BLOCKED`.
 
-## Repository-Owned Quality Config
+## Report Outputs
 
-- Checkstyle config: `flow-orchestrator/config/quality/checkstyle.xml`
-- PMD ruleset: `flow-orchestrator/config/quality/pmd-ruleset.xml`
-- SpotBugs exclude filter: `flow-orchestrator/config/quality/spotbugs-exclude.xml`
-
-The quality config is intentionally repo-owned so the same rules run in local terminals, agent workflows, and future CI.
-
-## Coverage Gate
-
-- JaCoCo enforces bundle-level line coverage of at least `85%`.
-- The build fails during `verify` when coverage is below the threshold.
-
-## Expected Agent Workflow
-
-- During slice-by-slice implementation, run `scripts/verify-quick.sh`.
-- Before coder handoff, run `scripts/final-check.sh`.
-- After the coder handoff, Team Lead runs `scripts/final-check.sh` as independent recheck, starts the application, and runs `scripts/karate-test.sh` for API smoke verification. Team Lead owns the verification log and implementation report evidence.
-- Karate tests are isolated from unit and quality-gate test runs: `mvn test` and `mvn verify` (without `-Pkarate`) never execute Karate. Only `scripts/karate-test.sh` or explicit `-Pkarate` activation runs Karate scenarios.
-- During Reviewer Phase 2, validate Team Lead evidence and rerun `scripts/final-check.sh` only when evidence is missing or suspect. Do not re-run application startup or smoke tests. Focus review effort on code quality checks that automated tooling cannot catch.
-- Reviewer Phase 2 can pass only when the shared local-quality workflow succeeds and report paths are captured.
-- Record the exact command, the observed result, and the generated report paths in the implementation, review, or sign-off artifact.
-- If Maven or plugin execution is unavailable, mark the check `BLOCKED`, not `PASS`.
-- If the scripts run and report findings, test failures, or coverage failures, mark the check `FAIL`.
-- Evidence should include the executed command and the generated report paths under `flow-orchestrator/target/`.
-
-## Expected Report Outputs
-
-After `scripts/final-check.sh`, `scripts/quality-check.sh`, or `mvn clean verify`, the module writes:
+After `scripts/final-check.sh` or `mvn clean verify`:
 
 - `flow-orchestrator/target/checkstyle-result.xml`
 - `flow-orchestrator/target/pmd.xml`
@@ -67,31 +34,12 @@ After `scripts/final-check.sh`, `scripts/quality-check.sh`, or `mvn clean verify
 - `flow-orchestrator/target/spotbugsXml.xml`
 - `flow-orchestrator/target/site/jacoco/jacoco.xml`
 
-These report paths should be referenced in implementation, review, and sign-off artifacts when static-analysis evidence is required.
+Reference these paths in implementation, review, and sign-off artifacts.
 
-## Formatting Expectations
+## Quality Config
 
-- The Java formatter source of truth is Spotless with `palantir-java-format`.
-- The TypeScript formatter source of truth is Prettier via `mcp-server/package.json`.
-- `scripts/final-check.sh` is the default agent-facing command before final handoff.
-- `scripts/format-code.sh apply` is the underlying formatting action used by `scripts/final-check.sh`.
-- `scripts/format-code.sh check` is the read-only formatting validation command when only verification is needed.
-
-## PMD Ruleset Guidance
-
-- The PMD ruleset is intentionally conservative and focuses on high-signal bug-prone patterns.
-- Prefer adding rules in small batches and rerunning `scripts/quality-check.sh` after each change.
-- Avoid duplicating checks already enforced clearly by Checkstyle unless PMD adds materially different value.
-
-## SpotBugs Exclusion Guidance
-
-- Keep `spotbugs-exclude.xml` empty by default.
-- Add an exclusion only for a specific, understood false positive.
-- Each exclusion should be narrow by class or bug pattern and should be documented in the related implementation/review artifacts.
-
-## Review Guidance
-
-- Use `scripts/verify-quick.sh` during slice-by-slice implementation.
-- Use `scripts/final-check.sh` before implementation handoff and during Reviewer Phase 2.
-- Treat a local-tool execution failure as `BLOCKED` only when the command truly cannot run in the environment. Tool findings themselves are `FAIL`, not `BLOCKED`.
-- The local toolchain does not replace Reviewer judgment on project-specific rules it cannot encode.
+- Checkstyle: `flow-orchestrator/config/quality/checkstyle.xml`
+- PMD: `flow-orchestrator/config/quality/pmd-ruleset.xml`
+- SpotBugs: `flow-orchestrator/config/quality/spotbugs-exclude.xml` (keep empty; add exclusions only for understood false positives)
+- Java formatter: Spotless with `palantir-java-format`
+- TypeScript formatter: Prettier via `mcp-server/package.json`

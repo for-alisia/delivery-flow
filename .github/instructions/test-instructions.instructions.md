@@ -1,6 +1,6 @@
 ---
 applyTo: "**/flow-orchestrator/**"
-description: "Use this instructions when writing/updating tests for the flow-orchestrator module."
+description: "Test placement, naming, levels, coverage, and quality rules for writing and updating tests in the flow-orchestrator module."
 ---
 
 ## Test Instructions

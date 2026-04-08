@@ -85,7 +85,7 @@
 ## Source Files
 
 - [Team Lead Agent](../agents/team-lead.agent.md)
-- [Product Manager Agent](../agents/product-manager.md)
+- [Product Manager Agent](../agents/product-manager.agent.md)
 - [Java Architect Agent](../agents/java-architect.agent.md)
 - [Reviewer Agent](../agents/reviewer.agent.md)
 - [Java Coder Agent](../agents/java-coder.agent.md)
