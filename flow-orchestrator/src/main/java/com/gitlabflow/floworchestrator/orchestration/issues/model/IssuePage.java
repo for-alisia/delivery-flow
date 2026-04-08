@@ -1,7 +1,9 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.model;
 
 import java.util.List;
+import lombok.Builder;
 
+@Builder
 public record IssuePage(List<Issue> items, int count, int page) {
 
     public IssuePage {

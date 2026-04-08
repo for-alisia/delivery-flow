@@ -10,10 +10,13 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -130,5 +133,38 @@ class IssuesServiceTest {
         issuesService.deleteIssue(42L);
 
         verify(issuesPort).deleteIssue(42L);
+    }
+
+    @Test
+    @DisplayName("getIssueDetail delegates to port and returns enriched result")
+    void getIssueDetailDelegatesToPortAndReturnsResult() {
+        final IssueDetail detail = new IssueDetail(
+                42L,
+                "Fix login bug",
+                null,
+                "opened",
+                List.of(),
+                List.of(),
+                null,
+                OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
+                OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
+                null);
+        when(issuesPort.getIssueDetail(42L)).thenReturn(detail);
+
+        final EnrichedIssueDetail result = issuesService.getIssueDetail(42L);
+
+        assertThat(result.issueDetail()).isEqualTo(detail);
+        assertThat(result.changeSets()).isEmpty();
+        verify(issuesPort).getIssueDetail(42L);
+    }
+
+    @Test
+    @DisplayName("getIssueDetail propagates IntegrationException from port unchanged")
+    void getIssueDetailPropagatesIntegrationExceptionUnchanged() {
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_FAILURE, "GitLab get issue detail operation failed", "gitlab");
+        when(issuesPort.getIssueDetail(42L)).thenThrow(exception);
+
+        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
     }
 }

@@ -3,7 +3,7 @@ name: "Reviewer"
 description: "Independent validation gate before coding and before final acceptance. Reviews request, story, plan, implementation, tests, and verification evidence. Writes only the review report."
 target: vscode
 tools: [read, search, edit, execute, todo, web, vscode/memory]
-model: GPT-5.3-Codex (copilot)
+model: Claude Sonnet 4.6 (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide feature name, review phase, requirement source, and artifact paths to validate."
@@ -77,9 +77,12 @@ Review:
 Check:
 
 - story preserves the original request
+- **story constraints do not conflict with `documentation/constitution.md`** — cross-reference every locked constraint and mapping/boundary requirement against constitution principles. If a story constraint contradicts a constitution rule, **REPORT A BLOCKER** per delivery flow rules instead of passing it through to the plan
 - plan preserves request and story without silent reinterpretation
 - plan respects `documentation/constitution.md`
+- plan class structure is consistent with plan prose — if the text says mapping happens in one layer but the class table places the mapper in another, mark `FAIL`
 - plan defines required structure, payload examples when contract-relevant, validation placement, slice logging, testing expectations, documentation updates, and verification scope
+- **test validity:** if the plan includes Karate `.feature` files or other test artifacts written by the Architect, verify their structural validity — correct Karate syntax (`Given`, `When`, `Then`, `And`, `match`), valid assertion forms, consistent endpoint paths, and proper use of tags. Do not execute tests; validate syntax and structure only
 
 If Phase 1 fails, update the report and raise a blocker.
 
@@ -124,6 +127,7 @@ Check:
 - missing or misleading log context
 - test quality and placement
 - edge-case coverage required by the plan
+- `documentation/context-map.md` is up to date with any new or changed packages, classes, endpoints, models, or config entries
 
 Every material finding must reference file and line.
 Mark `FAIL` when a finding materially affects maintainability or correctness.

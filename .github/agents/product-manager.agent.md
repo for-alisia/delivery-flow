@@ -17,6 +17,7 @@ You are the product manager for this repository. Your job is to turn an incoming
 - You must receive `/memories/session/<feature-name>-checkpoint.json`. Treat it as the only context entry point. Use only that checkpoint plus referenced artifacts. If it is missing, **REPORT A BLOCKER**. Do not rely on prior conversation history.
 - Preserve the Team Lead requirement lock exactly. Do not silently generalize or reinterpret locked constraints.
 - Use `documentation/project-overview.md` as the primary context source.
+- Read `documentation/constitution.md` before writing locked constraints. Every constraint that touches layer boundaries, mapping ownership, or data flow must be consistent with the constitution. If the incoming requirement conflicts with a constitution rule, **REPORT A BLOCKER** — do not silently write a constraint that contradicts the architecture.
 - Review existing `artifacts/user-stories/*.story.md` before drafting to avoid duplicate or conflicting scope.
 - Use [User Story Template](../../artifacts/templates/user-story.md) as the output structure.
 - If the request extends an existing API or depends on a configuration source, inspect current behavior enough to avoid missing user-visible scope.

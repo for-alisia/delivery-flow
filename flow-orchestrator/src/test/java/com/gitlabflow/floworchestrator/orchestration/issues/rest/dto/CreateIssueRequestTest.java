@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -25,9 +26,10 @@ class CreateIssueRequestTest {
         labels.add(null);
 
         final CreateIssueRequest request = new CreateIssueRequest("Deploy failure", "Step 3 failed", labels);
+        final List<String> sanitizedLabels = Objects.requireNonNull(request.labels());
         labels.clear();
 
-        assertThat(request.labels()).containsExactly("bug", "deploy");
-        assertThatThrownBy(() -> request.labels().add("infra")).isInstanceOf(UnsupportedOperationException.class);
+        assertThat(sanitizedLabels).containsExactly("bug", "deploy");
+        assertThatThrownBy(() -> sanitizedLabels.add("infra")).isInstanceOf(UnsupportedOperationException.class);
     }
 }

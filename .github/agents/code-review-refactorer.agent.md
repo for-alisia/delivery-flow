@@ -74,9 +74,8 @@ Run and record these checks:
 
 1. `scripts/verify-quick.sh`
 2. `scripts/final-check.sh`
-3. Start the application from `flow-orchestrator/` with:
-   - `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
-4. Run `scripts/karate-test.sh`
+3. Run `scripts/karate-test.sh`
+   - Prefer the script over manual startup. It reuses a healthy local app when available or starts one automatically for local `BASE_URL`s.
 
 Minimum API runtime verification expectation:
 
@@ -124,7 +123,6 @@ Do not finish until all of the following are true, or explicitly marked `BLOCKED
 - tests were updated where needed
 - `scripts/verify-quick.sh` passed
 - `scripts/final-check.sh` passed
-- the application started successfully
 - main affected API endpoints were smoke-tested and returned expected responses
 
 ## Final Response Format

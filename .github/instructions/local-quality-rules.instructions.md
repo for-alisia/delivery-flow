@@ -11,7 +11,7 @@ description: "Local verification commands, execution order, expected reports, an
 |---------|---------|-------------|
 | `scripts/verify-quick.sh` | Compile + tests | After each code/test change |
 | `scripts/final-check.sh` | Format + full quality verification | Before considering work complete |
-| `scripts/karate-test.sh` | Karate API smoke tests (`mvn failsafe -Pkarate`) | After starting the application; isolated from `mvn test` and `mvn verify` |
+| `scripts/karate-test.sh` | Karate API smoke tests (`mvn failsafe -Pkarate`) | Use for runtime smoke verification; reuses a healthy local app when already running or starts it automatically for local `BASE_URL`s; isolated from `mvn test` and `mvn verify` |
 | `scripts/format-code.sh` | Formatting only | Supporting; called by `final-check.sh` |
 | `scripts/quality-check.sh` | Static analysis only (`mvn clean verify`) | Supporting; called by `final-check.sh` |
 

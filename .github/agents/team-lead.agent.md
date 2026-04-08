@@ -90,8 +90,8 @@ Invoke: `"Phase 2 review for <feature-name>. Load your context exclusively from 
 - Second red card: set `circuitBreakerState.architectPlanRevisionRequired` to `true`, stop coder retries, invoke `Java Architect` with failure evidence. After accepted revision, reset both circuit-breaker fields.
 
 After the final batch passes `scripts/final-check.sh`:
-- start the application and run `scripts/karate-test.sh`
-- update verification log and implementation report with final-check, startup, karate results, and report paths under `flow-orchestrator/target/`
+- run `scripts/karate-test.sh`; it reuses a healthy local app when already running or starts one automatically for local `BASE_URL`s
+- update verification log and implementation report with final-check, karate results, startup/reuse outcome, and report paths under `flow-orchestrator/target/`
 - if the plan includes Karate updates under `src/test/karate/`, verify they were implemented before running Karate
 ## Reviewer Audit
 
@@ -120,7 +120,7 @@ If a spot check fails:
 Accept only when:
 - requirement lock, story, plan, and implementation align, or deviations are reconciled
 - Reviewer Phase 1 and Phase 2 both passed
-- verification evidence exists for `scripts/verify-quick.sh`, `scripts/final-check.sh`, startup, and `scripts/karate-test.sh`
+- verification evidence exists for `scripts/verify-quick.sh`, `scripts/final-check.sh`, and `scripts/karate-test.sh`, including whether the script reused an existing app or started one
 - Team Lead recheck with `scripts/final-check.sh` is recorded after each coder batch
 - required docs are updated
 - `documentation/context-map.md` is updated when capabilities, endpoints, models, or config changed

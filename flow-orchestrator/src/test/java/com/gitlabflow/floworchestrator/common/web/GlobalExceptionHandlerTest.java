@@ -5,10 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,6 +23,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    private record PositiveIssueIdTarget(
+            @Positive(message = "issueId must be a positive number")
+            long issueId) {}
+
+    private void issueIdEndpointSignature(final long issueId) {}
 
     @Test
     @DisplayName("returns validation error for business validation exception")
@@ -50,6 +61,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("returns validation error for constraint violations")
+    void returnsValidationErrorForConstraintViolations() {
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            final var validator = factory.getValidator();
+            final var violations = validator.validate(new PositiveIssueIdTarget(0L));
+            final ConstraintViolationException exception = new ConstraintViolationException(violations);
+
+            final ResponseEntity<ErrorResponse> response = handler.handleConstraintViolationException(exception);
+            final ErrorResponse body = Objects.requireNonNull(response.getBody());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(body.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(body.message()).isEqualTo("Request validation failed");
+            assertThat(body.details()).containsExactly("issueId must be a positive number");
+        }
+    }
+
+    @Test
     @DisplayName("returns bad gateway for generic integration failure")
     void returnsBadGatewayForGenericIntegrationFailure() {
         final IntegrationException exception = new IntegrationException(
@@ -68,7 +97,7 @@ class GlobalExceptionHandlerTest {
     @DisplayName("returns not found for integration not found")
     void returnsNotFoundForIntegrationNotFound() {
         final IntegrationException exception =
-                new IntegrationException(ErrorCode.INTEGRATION_NOT_FOUND, "GitLab issues operation failed", "gitlab");
+                new IntegrationException(ErrorCode.RESOURCE_NOT_FOUND, "GitLab issues operation failed", "gitlab");
 
         final ResponseEntity<ErrorResponse> response = handler.handleIntegrationException(exception);
 
@@ -111,8 +140,15 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("returns validation error for path variable type mismatch")
     void returnsValidationErrorForPathVariableTypeMismatch() {
+        final MethodParameter methodParameter;
+        try {
+            methodParameter = new MethodParameter(
+                    GlobalExceptionHandlerTest.class.getDeclaredMethod("issueIdEndpointSignature", long.class), 0);
+        } catch (NoSuchMethodException exception) {
+            throw new AssertionError(exception);
+        }
         final MethodArgumentTypeMismatchException exception =
-                new MethodArgumentTypeMismatchException("abc", Long.class, "issueId", null, null);
+                new MethodArgumentTypeMismatchException("abc", Long.class, "issueId", methodParameter, null);
 
         final ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentTypeMismatch(exception);
         final ErrorResponse body = Objects.requireNonNull(response.getBody());

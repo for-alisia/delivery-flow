@@ -2,9 +2,11 @@ package com.gitlabflow.floworchestrator.config;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.Builder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+@Builder
 @Validated
 @ConfigurationProperties(prefix = "app.issues-api")
 public record IssuesApiProperties(

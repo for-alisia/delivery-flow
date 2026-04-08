@@ -12,9 +12,12 @@ Run from `flow-orchestrator/`:
 - Test: `mvn test`
 - Quick verify: `scripts/verify-quick.sh`
 - Final verify: `scripts/final-check.sh`
+- Karate smoke: `scripts/karate-test.sh`
 - Start: `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
 
 When recording verification evidence, prefer shared scripts over raw Maven commands.
+
+For local Karate smoke verification, prefer `scripts/karate-test.sh` over a separate manual startup flow. The script reuses a healthy local app when available or starts it automatically.
 
 After modifying code or tests in `flow-orchestrator/`: follow [local-quality-rules.instructions.md](instructions/local-quality-rules.instructions.md) for verification commands, execution order, and evidence recording.
 

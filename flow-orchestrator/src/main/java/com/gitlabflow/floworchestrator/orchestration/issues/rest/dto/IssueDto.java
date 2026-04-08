@@ -1,8 +1,10 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
 import java.util.List;
+import lombok.Builder;
 import org.springframework.lang.Nullable;
 
+@Builder
 public record IssueDto(
         long id,
         long issueId,

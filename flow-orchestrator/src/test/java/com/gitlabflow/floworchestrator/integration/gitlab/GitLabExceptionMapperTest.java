@@ -37,7 +37,7 @@ class GitLabExceptionMapperTest {
     void mapsNotFoundToNotFound() {
         final IntegrationException exception = mapper.fromHttpFailure(httpFailure(404), SOURCE, RESOURCE_ISSUES);
 
-        assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_NOT_FOUND);
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test

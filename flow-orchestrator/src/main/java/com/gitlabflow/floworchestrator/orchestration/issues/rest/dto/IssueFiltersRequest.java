@@ -4,7 +4,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Objects;
+import lombok.Builder;
 
+@Builder
 public record IssueFiltersRequest(
         @Pattern(regexp = "opened|closed|all", message = "must be one of [opened, closed, all]")
         String state,

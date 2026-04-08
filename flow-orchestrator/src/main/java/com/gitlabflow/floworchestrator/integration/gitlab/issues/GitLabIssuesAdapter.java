@@ -4,10 +4,13 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabSingleIssueResponse;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesPort;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import java.net.URI;
@@ -31,11 +34,13 @@ public class GitLabIssuesAdapter implements IssuesPort {
     private static final String RESOURCE_ISSUES = "issues";
     private static final String RESOURCE_CREATE_ISSUE = "create issue";
     private static final String RESOURCE_DELETE_ISSUE = "delete issue";
+    private static final String RESOURCE_GET_ISSUE_DETAIL = "get issue detail";
     private static final String EMPTY_BODY_CATEGORY = "EmptyBody";
 
     private final RestClient gitLabRestClient;
     private final GitLabUriFactory gitLabUriFactory;
     private final GitLabIssuesMapper gitLabIssuesMapper;
+    private final GitLabIssueDetailMapper gitLabIssueDetailMapper;
     private final GitLabExceptionMapper gitLabExceptionMapper;
 
     @Override
@@ -74,6 +79,29 @@ public class GitLabIssuesAdapter implements IssuesPort {
         });
     }
 
+    @Override
+    public IssueDetail getIssueDetail(final long issueId) {
+        log.info("Fetching GitLab issue detail issueId={}", issueId);
+
+        return executeGitLabOperation(RESOURCE_GET_ISSUE_DETAIL, () -> {
+            final GitLabSingleIssueResponse response = gitLabRestClient
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(gitLabUriFactory.projectResourcePath(RESOURCE_ISSUES) + "/{issueId}")
+                            .build(gitLabUriFactory.projectPath(), issueId))
+                    .retrieve()
+                    .body(GitLabSingleIssueResponse.class);
+
+            if (response == null) {
+                throw mapTransportFailure(EMPTY_BODY_CATEGORY, RESOURCE_GET_ISSUE_DETAIL);
+            }
+
+            final IssueDetail issueDetail = gitLabIssueDetailMapper.toIssueDetail(response);
+            log.info("GitLab issue detail fetched issueId={}", issueId);
+            return issueDetail;
+        });
+    }
+
     private List<Issue> fetchIssues(final IssueQuery query) {
         final List<GitLabIssueResponse> gitLabIssues = gitLabRestClient
                 .get()
@@ -108,7 +136,11 @@ public class GitLabIssuesAdapter implements IssuesPort {
 
     private IssuePage toIssuePage(final IssueQuery query, final List<Issue> issues) {
         log.info("GitLab resource={} returned count={}", RESOURCE_ISSUES, issues.size());
-        return new IssuePage(issues, issues.size(), query.page());
+        return IssuePage.builder()
+                .items(issues)
+                .count(issues.size())
+                .page(query.page())
+                .build();
     }
 
     @SuppressWarnings("null")

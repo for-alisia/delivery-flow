@@ -3,7 +3,9 @@ package com.gitlabflow.floworchestrator.orchestration.issues;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import java.util.List;
@@ -52,6 +54,16 @@ public class IssuesService {
         log.info("Deleting issue issueId={}", issueId);
         issuesPort.deleteIssue(issueId);
         log.info("Issue deleted issueId={}", issueId);
+    }
+
+    public EnrichedIssueDetail getIssueDetail(final long issueId) {
+        log.info("Fetching issue detail issueId={}", issueId);
+        final IssueDetail issueDetail = issuesPort.getIssueDetail(issueId);
+        log.info("Issue detail fetched issueId={}", issueId);
+        return EnrichedIssueDetail.builder()
+                .issueDetail(issueDetail)
+                .changeSets(List.of())
+                .build();
     }
 
     private void validatePerPage(final int perPage) {

@@ -20,7 +20,7 @@ public class GitLabExceptionMapper {
             return new IntegrationException(ErrorCode.INTEGRATION_FORBIDDEN, failureMessage, source);
         }
         if (statusCode.value() == 404) {
-            return new IntegrationException(ErrorCode.INTEGRATION_NOT_FOUND, failureMessage, source);
+            return new IntegrationException(ErrorCode.RESOURCE_NOT_FOUND, failureMessage, source);
         }
         if (statusCode.value() == 429) {
             return new IntegrationException(ErrorCode.INTEGRATION_RATE_LIMITED, failureMessage, source);

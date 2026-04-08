@@ -1,0 +1,25 @@
+{
+  "id": 500,
+  "iid": 42,
+  "title": "Fix login bug",
+  "description": "Users cannot log in with SSO",
+  "state": "opened",
+  "labels": ["bug", "high-priority"],
+  "assignees": [
+    {
+      "id": 10,
+      "username": "john.doe",
+      "name": "John Doe"
+    }
+  ],
+  "milestone": {
+    "id": 5,
+    "iid": 3,
+    "title": "Sprint 12",
+    "state": "active",
+    "due_date": "2026-04-30"
+  },
+  "created_at": "2026-01-04T15:31:51.081Z",
+  "updated_at": "2026-03-12T09:00:00.000Z",
+  "closed_at": null
+}

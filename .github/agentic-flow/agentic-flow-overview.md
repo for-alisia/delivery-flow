@@ -24,7 +24,7 @@
 - Workflow owner and final acceptance gate
 - Maintains requirement lock and shared checkpoint
 - Verifies artifacts before every stage transition
-- Runs `final-check.sh`, app startup, and Karate smoke tests (`karate-test.sh`) after coder batches
+- Runs `final-check.sh` and Karate smoke tests (`karate-test.sh`) after coder batches; the Karate script reuses a healthy local app when available or starts it automatically
 - Owns verification log and implementation report evidence writing
 - Enforces coder batching, red cards, and architect escalation
 
@@ -79,7 +79,7 @@
 ## Verification Expectations
 
 - `Java Coder` runs `verify-quick.sh` per slice and `final-check.sh` before handoff
-- `Team Lead` runs `final-check.sh` as independent recheck, starts the app, runs `karate-test.sh`, and owns verification log and implementation report evidence
+- `Team Lead` runs `final-check.sh` as independent recheck, runs `karate-test.sh`, and owns verification log and implementation report evidence
 - `Reviewer` validates code quality, reviews evidence, and reruns checks only when TL evidence is suspect
 
 ## Source Files

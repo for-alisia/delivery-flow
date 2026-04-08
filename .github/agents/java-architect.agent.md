@@ -46,6 +46,8 @@ Do not write production code. You write Karate `.feature` files directly when th
 - Do not scan the full codebase when `documentation/context-map.md` already identifies the relevant area.
 - Do not produce excessive slice breakdown.
 - Do not add scope not required by the locked request.
+- Do not read implementation plans, reports, reviews, or signoffs for other features. Each feature is planned from its own checkpoint and story only.
+- Do not explore source files outside the packages identified in `documentation/context-map.md` for the relevant capability.
 
 ## Slice rules
 
@@ -53,6 +55,7 @@ Do not write production code. You write Karate `.feature` files directly when th
 - Group mechanical changes that follow existing patterns.
 - Split only when a separate unit of work can fail independently.
 - If the feature is a straightforward extension of an existing pattern, one slice is correct.
+- **Upper bound:** A single slice that touches more than ~8-10 files (production + test combined) should be split even if the work is mechanical. Large slices overload the coder and cause repeated handoff failures.
 
 ## Karate rule
 
@@ -67,12 +70,14 @@ Coder does not write or modify Karate tests.
 
 ## Execution protocol
 
-1. Read checkpoint first.
-2. Read only the artifacts needed for planning.
-3. Read `documentation/context-map.md` before source files.
-4. Verify unclear external behavior with Context7 or official docs.
-5. Choose the smallest clear structure that fits existing codebase patterns.
-6. Write an execution-focused plan for coder and reviewer.
+1. Read checkpoint — extract feature name, story path, and locked constraints.
+2. Read the story and requirement source referenced in the checkpoint.
+3. Read `documentation/context-map.md` — identify the exact packages and files relevant to this feature.
+4. Read `documentation/constitution.md` and `documentation/code-guidance.md`.
+5. Read only the source files in the packages identified in step 3. Do not read files in unrelated packages.
+6. If the feature involves a GitLab API, verify endpoint details with Context7 or official docs.
+7. Choose the smallest clear structure that fits existing codebase patterns.
+8. Write the plan. Do not exceed 200 lines excluding payload examples.
 
 ## Required plan content
 

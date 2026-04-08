@@ -38,21 +38,26 @@ public class IssuesRequestMapper {
                 .map(IssueState::fromValue)
                 .orElse(null);
 
-        return new IssueQuery(
-                page,
-                perPage,
-                state,
-                extractSingleValue(
-                        ofNullable(filters).map(IssueFiltersRequest::labels).orElse(null)),
-                extractSingleValue(
-                        ofNullable(filters).map(IssueFiltersRequest::assignee).orElse(null)),
-                extractSingleValue(
-                        ofNullable(filters).map(IssueFiltersRequest::milestone).orElse(null)));
+        return IssueQuery.builder()
+                .page(page)
+                .perPage(perPage)
+                .state(state)
+                .label(extractSingleValue(
+                        ofNullable(filters).map(IssueFiltersRequest::labels).orElse(null)))
+                .assignee(extractSingleValue(
+                        ofNullable(filters).map(IssueFiltersRequest::assignee).orElse(null)))
+                .milestone(extractSingleValue(
+                        ofNullable(filters).map(IssueFiltersRequest::milestone).orElse(null)))
+                .build();
     }
 
     public CreateIssueInput toCreateIssueInput(final CreateIssueRequest request) {
         final List<String> labels = request.labels() == null ? List.of() : request.labels();
-        return new CreateIssueInput(request.title(), request.description(), labels);
+        return CreateIssueInput.builder()
+                .title(request.title())
+                .description(request.description())
+                .labels(labels)
+                .build();
     }
 
     private String extractSingleValue(final List<String> values) {

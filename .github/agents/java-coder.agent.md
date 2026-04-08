@@ -3,7 +3,7 @@ name: "Java Coder"
 description: "Implement approved Java plan slices in flow-orchestrator. Follow the plan exactly, add required tests, run local verification, and return a structured batch handoff."
 target: vscode
 tools: [read, search, edit, execute, todo, io.github.upstash/context7/*, web, vscode/memory]
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.3-Codex (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide feature name, approved slice scope, and target module/package"
@@ -65,6 +65,7 @@ Before handoff:
 2. verify acceptance criteria
 3. run `scripts/final-check.sh` and fix all findings
 4. update consumer-facing docs (`README.md`, `.http`) only if endpoint behavior or examples changed
+5. update `documentation/context-map.md` if the implementation added, renamed, or removed any packages, classes, endpoints, models, or configuration entries
 
 ## Evidence rule
 

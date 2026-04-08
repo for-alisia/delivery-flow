@@ -1,0 +1,270 @@
+{
+  "artifactType": "implementation-report",
+  "schemaVersion": "1.0",
+  "featureName": "get-single-issue-api",
+  "status": "complete",
+  "summary": "Implemented GET /api/issues/{issueId} (Story 1 only): new dedicated types IssueDetail, IssueDetailDto, GitLabSingleIssueResponse, GitLabIssueDetailMapper; extended IssuesPort, IssuesService, GitLabIssuesAdapter, IssuesController, and IssuesResponseMapper; full unit, integration, and component test coverage; fixed wrong error-code expectation in IssuesControllerIT and wrong HTTP-status expectation in IssuesApiComponentTest; scripts/final-check.sh PASS. Red card 1 fix: corrected invalid Karate assertion 'Then status != 200' to 'Then status 404 / And match response.code == INTEGRATION_NOT_FOUND' in issues-get-single.feature line 47; scripts/verify-quick.sh PASS after fix.",
+  "sourceArtifacts": {
+    "originalRequestSource": "artifacts/user-prompts/get-single-issue-api.md",
+    "storyPath": "artifacts/user-stories/get-single-issue-api.story.md",
+    "planPath": "artifacts/implementation-plans/get-single-issue-api.plan.md",
+    "phase1ReviewPath": "artifacts/review-reports/get-single-issue-api.review.json"
+  },
+  "revisionEvidence": {
+    "worktreeRef": "feature/4",
+    "headCommitSha": "606a737b5c12228630cba5af975d53603e9b24d0",
+    "changedFiles": [
+      "documentation/context-map.md",
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabSingleIssueResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabSingleIssueStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-single-issue-detail.json",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/karate/resources/issues/issues-get-single.feature"
+    ],
+    "verificationLogPath": "artifacts/implementation-reports/get-single-issue-api-verification.log"
+  },
+  "delivery": {
+    "documentationUpdates": [
+      "flow-orchestrator/http/issues.http",
+      "documentation/context-map.md"
+    ],
+    "approvedDeviations": [
+      "none"
+    ],
+    "assumptions": [
+      "none"
+    ]
+  },
+  "verification": {
+    "qualityGateStatus": "PASS",
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "PASS",
+      "result": "exit_code=0; tests=93; failures=0; errors=0; skipped=0"
+    },
+    "localQuality": {
+      "command": "scripts/final-check.sh",
+      "status": "PASS",
+      "result": "exit_code=0; tests=93; failures=0; checkstyle=PASS; spotless=PASS; pmd=PASS; cpd=PASS; spotbugs=PASS (BugInstance size is 0); jacoco=PASS",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/spotbugsXml.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "startup": {
+      "command": "SPRING_PROFILES_ACTIVE=local mvn spring-boot:run",
+      "status": "PASS",
+      "result": "Team Lead ran workspace task shell: spring-boot-run; Spring Boot started with local profile and Tomcat served on port 8080 at 2026-04-08T12:26:27+02:00."
+    },
+    "redCard1Fix": {
+      "file": "flow-orchestrator/src/test/karate/resources/issues/issues-get-single.feature",
+      "line": 47,
+      "buggyAssertion": "Then status != 200",
+      "correctedAssertions": [
+        "Then status 404",
+        "And match response.code == 'INTEGRATION_NOT_FOUND'"
+      ],
+      "rationale": "Karate does not support negated status assertions. GlobalExceptionHandler maps INTEGRATION_NOT_FOUND to HTTP 404; confirmed in GlobalExceptionHandlerTest and IssuesApiComponentTest.",
+      "verifyQuickAfterFix": {
+        "command": "scripts/verify-quick.sh",
+        "status": "PASS",
+        "result": "exit_code=0; tests=93; failures=0; errors=0; skipped=0"
+      }
+    },
+    "smokeChecks": [
+      {
+        "name": "karate-smoke",
+        "command": "scripts/karate-test.sh",
+        "status": "PASS",
+        "result": "Team Lead reran Karate against the running local application; 6 features passed, 17 scenarios passed, issues-get-single.feature 3/3 scenarios passed, BUILD SUCCESS."
+      }
+    ],
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/karate-test.sh",
+      "exitCode": 0,
+      "passCount": 17,
+      "failCount": 0,
+      "summary": "Team Lead reran Karate after red card 1 fix against the running local application; all 6 features and all 17 scenarios passed, including issues-get-single.feature 3/3 scenarios.",
+      "reportPath": "flow-orchestrator/target/karate-reports/karate-summary.html"
+    },
+    "blockedChecks": []
+  },
+  "codeGuidanceLedger": {
+    "Testing Matrix": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/verify-quick.sh passed: 93 tests, 0 failures, 0 errors.",
+        "scripts/final-check.sh passed: all quality gates PASS.",
+        "Unit: GitLabIssueDetailMapperTest (new), IssuesServiceTest additions, IssuesResponseMapperTest additions, GitLabIssuesAdapterTest additions.",
+        "Integration (WebMvcTest): IssuesControllerIT additions — 200, 400×2, 502 cases.",
+        "Component: IssuesApiComponentTest additions — success and GitLab-404 cases; GitLabSingleIssueStubSupport created."
+      ]
+    },
+    "Static Analysis And Coverage": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/final-check.sh completed with BUILD SUCCESS.",
+        "SpotBugs reported BugInstance size is 0, Error size is 0.",
+        "JaCoCo coverage check passed.",
+        "All quality report artifacts generated under flow-orchestrator/target."
+      ]
+    },
+    "Evidence Gate": {
+      "status": "PASS",
+      "evidence": [
+        "Verification log at artifacts/implementation-reports/get-single-issue-api-verification.log.",
+        "Exact commands and outputs recorded; no prose self-certification."
+      ]
+    },
+    "Architecture Boundaries": {
+      "status": "PASS",
+      "evidence": [
+        "Adapter (GitLabIssuesAdapter) fetches only; GitLabIssueDetailMapper maps raw DTO to IssueDetail; IssuesResponseMapper assembles client-facing IssueDetailDto.",
+        "No label-events call; changeSets is always [] in Story 1.",
+        "Dedicated types: IssueDetail, IssueDetailDto, GitLabSingleIssueResponse — do not overload existing Issue/IssueDto."
+      ]
+    },
+    "Null And Default Handling": {
+      "status": "PASS",
+      "evidence": [
+        "Compact constructors in IssueDetail, IssueDetailDto, GitLabSingleIssueResponse normalize null labels/assignees/changeSets to List.of().",
+        "Null description, closedAt, and milestone handled null-safely in mapper.",
+        "GitLabIssueDetailMapperTest covers all null/default cases."
+      ]
+    }
+  },
+  "acceptanceCriteriaVerification": {
+    "AC1": {
+      "criterion": "GET /api/issues/{issueId} returns 200 with IssueDetailDto body",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC2": {
+      "criterion": "All IssueDetail fields correctly mapped from GitLabSingleIssueResponse",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC3": {
+      "criterion": "changeSets is always present as [] in Story 1 response",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC4": {
+      "criterion": "Null/default handling: labels [], assignees [], milestone null, description null, closedAt null",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC5": {
+      "criterion": "Assignees array includes id, username, name",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC6": {
+      "criterion": "Milestone object includes id, milestoneId (iid), title, state, dueDate",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC7": {
+      "criterion": "No label events call; only GET /projects/:id/issues/:iid fetched",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabSingleIssueStubSupport.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC8": {
+      "criterion": "Integration failure returns standard sanitized error; no partial response",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC9": {
+      "criterion": "Dedicated types used; Issue/IssueDto/GitLabIssueResponse not overloaded",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabSingleIssueResponse.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueDetail.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java"
+      ],
+      "verificationEvidence": [
+        "Code review of class hierarchy; no supertype or interface shared with existing Issue types."
+      ],
+      "status": "VERIFIED"
+    },
+    "AC10": {
+      "criterion": "Integration boundary respected: adapter fetches only, mapper maps, IssuesResponseMapper assembles",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    }
+  }
+}

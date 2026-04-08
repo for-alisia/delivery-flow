@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.gitlabflow.floworchestrator.issues.support.GitLabCreateIssueStubSupport;
+import com.gitlabflow.floworchestrator.issues.support.GitLabDeleteIssueStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabIssuesStubSupport;
+import com.gitlabflow.floworchestrator.issues.support.GitLabSingleIssueStubSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -167,5 +170,54 @@ class IssuesApiComponentTest {
 
     private void useJdkRequestFactory() {
         restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
+    }
+
+    @Test
+    @DisplayName("returns 200 with mapped IssueDetailDto for valid issueId")
+    void returnsIssueDetailDtoForValidIssueId() throws Exception {
+        wireMockServer.resetAll();
+        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, 42L);
+
+        final ResponseEntity<String> response = restTemplate.getForEntity("/api/issues/42", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("issueId").asLong()).isEqualTo(42L);
+        assertThat(json.path("title").asText()).isEqualTo("Fix login bug");
+        assertThat(json.path("state").asText()).isEqualTo("opened");
+        assertThat(json.path("assignees").get(0).path("username").asText()).isEqualTo("john.doe");
+        assertThat(json.path("milestone").path("title").asText()).isEqualTo("Sprint 12");
+        assertThat(json.path("milestone").path("milestoneId").asLong()).isEqualTo(3L);
+        assertThat(json.path("changeSets").isArray()).isTrue();
+        assertThat(json.path("changeSets").isEmpty()).isTrue();
+
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, 42L);
+    }
+
+    @Test
+    @DisplayName("returns 404 when GitLab returns 404 for issue")
+    void returns404WhenGitLabReturns404() throws Exception {
+        wireMockServer.resetAll();
+        GitLabSingleIssueStubSupport.stubGetIssueDetailNotFound(wireMockServer, 42L);
+        useJdkRequestFactory();
+
+        final ResponseEntity<String> response = restTemplate.getForEntity("/api/issues/42", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("RESOURCE_NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("deletes issue and returns no content")
+    void deletesIssueAndReturnsNoContent() {
+        wireMockServer.resetAll();
+        GitLabDeleteIssueStubSupport.stubDeleteIssueSuccess(wireMockServer, 26L);
+
+        final ResponseEntity<Void> response =
+                restTemplate.exchange("/api/issues/26", HttpMethod.DELETE, null, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        GitLabDeleteIssueStubSupport.verifyDeleteIssueRequest(wireMockServer, 26L);
     }
 }

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,11 +18,14 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.web.GlobalExceptionHandler;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesService;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
@@ -48,6 +52,7 @@ class IssuesControllerIT {
     private static final String SEARCH_ENDPOINT = "/api/issues/search";
     private static final String CREATE_ENDPOINT = "/api/issues";
     private static final String DELETE_ENDPOINT = "/api/issues/{issueId}";
+    private static final String GET_SINGLE_ENDPOINT = "/api/issues/{issueId}";
     private static final String CODE_PATH = "$.code";
     private static final String VALIDATION_CODE = "VALIDATION_ERROR";
     private static final String ISSUE_ID_POSITIVE_MESSAGE = "issueId must be a positive number";
@@ -356,13 +361,13 @@ class IssuesControllerIT {
     @DisplayName("maps delete integration not found to 404")
     void mapsDeleteIntegrationNotFoundTo404() throws Exception {
         doThrow(new IntegrationException(
-                        ErrorCode.INTEGRATION_NOT_FOUND, "GitLab delete issue operation failed", "gitlab"))
+                        ErrorCode.RESOURCE_NOT_FOUND, "GitLab delete issue operation failed", "gitlab"))
                 .when(issuesService)
                 .deleteIssue(777L);
 
         mockMvc.perform(delete(DELETE_ENDPOINT, 777L))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_NOT_FOUND"))
+                .andExpect(jsonPath(CODE_PATH).value("RESOURCE_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("GitLab delete issue operation failed"));
     }
 
@@ -395,5 +400,77 @@ class IssuesControllerIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
                 .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("title"))));
+    }
+
+    @Test
+    @DisplayName("returns 200 with IssueDetailDto for valid issueId")
+    void returnsIssueDetailDtoForValidIssueId() throws Exception {
+        final IssueDetail detail = new IssueDetail(
+                42L,
+                "Fix login bug",
+                "SSO broken",
+                OPENED,
+                List.of("bug"),
+                List.of(new IssueDetail.AssigneeDetail(10L, JOHN_DOE, "John Doe")),
+                new IssueDetail.MilestoneDetail(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
+                java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
+                null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+        final IssueDetailDto dto = new IssueDetailDto(
+                42L,
+                "Fix login bug",
+                "SSO broken",
+                OPENED,
+                List.of("bug"),
+                List.of(new IssueDetailDto.AssigneeDto(10L, JOHN_DOE, "John Doe")),
+                new IssueDetailDto.MilestoneDto(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
+                java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
+                null,
+                List.of());
+        when(issuesService.getIssueDetail(42L)).thenReturn(enriched);
+        when(issuesResponseMapper.toIssueDetailDto(enriched)).thenReturn(dto);
+
+        mockMvc.perform(get(GET_SINGLE_ENDPOINT, 42L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.issueId").value(42))
+                .andExpect(jsonPath("$.title").value("Fix login bug"))
+                .andExpect(jsonPath("$.state").value(OPENED))
+                .andExpect(jsonPath("$.assignees[0].username").value(JOHN_DOE))
+                .andExpect(jsonPath("$.milestone.title").value("Sprint 12"))
+                .andExpect(jsonPath("$.changeSets").isArray());
+
+        verify(issuesService).getIssueDetail(42L);
+    }
+
+    @Test
+    @DisplayName("returns 400 validation error when issueId is zero")
+    void returns400WhenIssueIdIsZero() throws Exception {
+        mockMvc.perform(get(GET_SINGLE_ENDPOINT, 0L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("returns 400 validation error when issueId is negative")
+    void returns400WhenIssueIdIsNegative() throws Exception {
+        mockMvc.perform(get(GET_SINGLE_ENDPOINT, -1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("returns 502 when service throws IntegrationException")
+    void returns502WhenServiceThrowsIntegrationException() throws Exception {
+        when(issuesService.getIssueDetail(42L))
+                .thenThrow(new IntegrationException(
+                        ErrorCode.INTEGRATION_FAILURE, "Integration error calling gitlab", "gitlab"));
+
+        mockMvc.perform(get(GET_SINGLE_ENDPOINT, 42L))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath(CODE_PATH).value("INTEGRATION_FAILURE"));
     }
 }

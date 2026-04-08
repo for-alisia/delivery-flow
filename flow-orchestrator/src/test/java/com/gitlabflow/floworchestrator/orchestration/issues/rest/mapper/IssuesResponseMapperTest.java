@@ -2,11 +2,18 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.AssigneeDetail;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.MilestoneDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -120,5 +127,86 @@ class IssuesResponseMapperTest {
         final IssueDto dto = mapper.toIssueDto(issue);
 
         assertThat(dto.issueId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps all fields")
+    void toIssueDetailDtoMapsAllFields() {
+        final var assignee = new AssigneeDetail(10L, "john.doe", "John Doe");
+        final var milestone = new MilestoneDetail(5L, 3L, "Sprint 12", "active", "2026-04-30");
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                42L,
+                "Fix login bug",
+                "SSO broken",
+                "opened",
+                List.of("bug"),
+                List.of(assignee),
+                milestone,
+                createdAt,
+                updatedAt,
+                null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.issueId()).isEqualTo(42L);
+        assertThat(dto.title()).isEqualTo("Fix login bug");
+        assertThat(dto.description()).isEqualTo("SSO broken");
+        assertThat(dto.state()).isEqualTo("opened");
+        assertThat(dto.labels()).containsExactly("bug");
+        assertThat(dto.assignees()).hasSize(1);
+        assertThat(dto.assignees().getFirst().id()).isEqualTo(10L);
+        assertThat(dto.assignees().getFirst().username()).isEqualTo("john.doe");
+        assertThat(dto.assignees().getFirst().name()).isEqualTo("John Doe");
+        final var milestoneDto = Objects.requireNonNull(dto.milestone());
+        assertThat(milestoneDto.milestoneId()).isEqualTo(3L);
+        assertThat(dto.createdAt()).isEqualTo(createdAt);
+        assertThat(dto.updatedAt()).isEqualTo(updatedAt);
+        assertThat(dto.closedAt()).isNull();
+        assertThat(dto.changeSets()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps null milestone to null")
+    void toIssueDetailDtoMapsNullMilestoneToNull() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                7L, "No milestone", null, "closed", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.milestone()).isNull();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps empty assignees list to empty")
+    void toIssueDetailDtoMapsEmptyAssigneesToEmpty() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                7L, "No assignees", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.assignees()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto changeSets is always empty list")
+    void toIssueDetailDtoChangeSetsIsAlwaysEmpty() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.changeSets()).isEmpty();
     }
 }

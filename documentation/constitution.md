@@ -28,6 +28,7 @@ All provider-specific transport mechanics, protocol details, and external API sh
 - **[MUST]** Provider-specific client configuration, authentication details, transport headers, URL construction, and pagination mechanics must never appear outside the integration layer.
 - **[MUST]** Orchestration defines provider-agnostic ports (interfaces) and request/response contracts. Integration implements those ports.
 - **[MUST]** Integration adapters must map provider-specific responses to orchestration contracts before returning data. Raw provider data shapes must not cross the integration boundary.
+- **[MUST]** When an orchestration use case requires data from multiple integration calls, the orchestration service coordinates those calls. An integration adapter must never internally call multiple external endpoints to compose a single return value — each adapter method maps one external call to one orchestration contract.
 - **[SHOULD]** When adding a new integration endpoint, define the provider-agnostic request/response model in `orchestration` first, then implement the adapter in the integration layer.
 
 ---

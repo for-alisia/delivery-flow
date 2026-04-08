@@ -14,9 +14,11 @@ import com.gitlabflow.floworchestrator.config.GitLabProperties;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
@@ -38,6 +40,7 @@ class GitLabIssuesAdapterTest {
     private static final String PROJECT_URL = "https://gitlab.example.com/group/project";
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
     private static final String DELETE_API_URL = API_URL + "/12";
+    private static final String GET_SINGLE_API_URL = API_URL + "/42";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
     private static final CreateIssueInput CREATE_INPUT =
@@ -54,6 +57,7 @@ class GitLabIssuesAdapterTest {
                         .build(),
                 new GitLabUriFactory(locator),
                 new GitLabIssuesMapper(),
+                new GitLabIssueDetailMapper(),
                 new GitLabExceptionMapper());
     }
 
@@ -93,7 +97,7 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("maps 404 to not found integration error")
     void maps404ToNotFoundIntegrationError() {
-        assertStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.INTEGRATION_NOT_FOUND);
+        assertStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -217,7 +221,7 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("maps create issue 404 to not found integration error")
     void mapsCreateIssue404ToNotFoundIntegrationError() {
-        assertCreateStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.INTEGRATION_NOT_FOUND);
+        assertCreateStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -260,7 +264,7 @@ class GitLabIssuesAdapterTest {
     @Test
     @DisplayName("maps delete issue 404 to not found integration error")
     void mapsDeleteIssue404ToNotFoundIntegrationError() {
-        assertDeleteStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.INTEGRATION_NOT_FOUND);
+        assertDeleteStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -308,5 +312,51 @@ class GitLabIssuesAdapterTest {
                 .isInstanceOfSatisfying(
                         IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
+    }
+
+    @Test
+    @DisplayName("getIssueDetail calls correct GitLab URI and returns mapped IssueDetail")
+    void getIssueDetailCallsCorrectUriAndReturnsMappedIssueDetail() {
+        server.expect(requestTo(GET_SINGLE_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.GET)))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("""
+                                {
+                                  "id": 500,
+                                  "iid": 42,
+                                  "title": "Fix login bug",
+                                  "description": "SSO broken",
+                                  "state": "opened",
+                                  "labels": ["bug"],
+                                  "assignees": [{"id": 10, "username": "john.doe", "name": "John Doe"}],
+                                  "milestone": {"id": 5, "iid": 3, "title": "Sprint 12", "state": "active", "due_date": "2026-04-30"},
+                                  "created_at": "2026-01-04T15:31:51.081Z",
+                                  "updated_at": "2026-03-12T09:00:00.000Z",
+                                  "closed_at": null
+                                }
+                                """));
+
+        final IssueDetail result = adapter.getIssueDetail(42L);
+
+        assertThat(result.issueId()).isEqualTo(42L);
+        assertThat(result.title()).isEqualTo("Fix login bug");
+        assertThat(result.state()).isEqualTo("opened");
+        assertThat(result.assignees()).hasSize(1);
+        assertThat(result.assignees().getFirst().username()).isEqualTo("john.doe");
+        assertThat(result.milestone()).isNotNull();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("getIssueDetail null body from GitLab throws IntegrationException")
+    void getIssueDetailNullBodyThrowsIntegrationException() {
+        server.expect(requestTo(GET_SINGLE_API_URL))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("null"));
+
+        assertThatThrownBy(() -> adapter.getIssueDetail(42L))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
     }
 }

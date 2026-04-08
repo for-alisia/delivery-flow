@@ -20,12 +20,14 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - Methods are small and single-purpose.
 - Names express business intent.
 - Validation happens early at the correct boundary.
+- REST controller parameter validation uses annotations (`@Valid`, `@NotBlank`, `@Positive`, and similar) whenever the rule can be expressed declaratively.
+- Manual validation at the controller level is allowed only for project-specific rules that cannot be expressed cleanly with standard validation annotations.
 - Logging is structured with SLF4J and includes relevant context for efficient debugging without exposing sensitive information.
 - Lombok is used only when it reduces boilerplate without hiding important behavior.
 - `@RequiredArgsConstructor` is required for constructor injection when Lombok is on the classpath. Do not write explicit constructors for injection-only classes.
 - `@Slf4j` is used for structured logging when Lombok is used.
-- `@Builder` is used only when it improves readability for object construction.
-- Prefer builder-style object construction over direct `new Class(...)` when it materially improves readability or reduces argument-order risk.
+- Records and classes should use `@Builder` unless there are clear limitations to use it.
+- Prefer builder-style object construction over direct `new Class(...)`.
 
 ## Naming And Suffix Conventions Gate
 

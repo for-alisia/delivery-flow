@@ -33,16 +33,17 @@ public class GitLabIssuesMapper {
                 milestone != null,
                 parent != null);
 
-        return new Issue(
-                issueResponse.id(),
-                issueResponse.iid(),
-                issueResponse.title(),
-                issueResponse.description(),
-                issueResponse.state(),
-                issueResponse.labels(),
-                assignee,
-                milestone,
-                parent);
+        return Issue.builder()
+                .id(issueResponse.id())
+                .issueId(issueResponse.iid())
+                .title(issueResponse.title())
+                .description(issueResponse.description())
+                .state(issueResponse.state())
+                .labels(issueResponse.labels())
+                .assignee(assignee)
+                .milestone(milestone)
+                .parent(parent)
+                .build();
     }
 
     public GitLabCreateIssueRequest toCreateRequest(final CreateIssueInput input) {
@@ -53,7 +54,11 @@ public class GitLabIssuesMapper {
                 input.description() != null,
                 input.labels().size());
 
-        return new GitLabCreateIssueRequest(input.title(), input.description(), labels);
+        return GitLabCreateIssueRequest.builder()
+                .title(input.title())
+                .description(input.description())
+                .labels(labels)
+                .build();
     }
 
     private String mapAssignee(final GitLabIssueResponse issueResponse) {

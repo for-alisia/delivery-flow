@@ -13,6 +13,7 @@ description: "Delivery flow rules for Team Lead, Product Manager, Java Architect
 - Use `<<ESCALATE_TO_ARCHITECT>>` when a fundamental plan flaw blocks progress.
 - After 2 Java Coder false-positive red cards on the same feature, route back to Java Architect for plan revision.
 - Use `/memories/session/<feature-name>-checkpoint.json` as the shared context source.
+- **[CRITICAL]** No flow agent may run git commands (`git commit`, `git push`, `git add`, `git branch`, `git checkout`, `git reset`, or any other `git` subcommand). Version control is managed by the user outside this workflow.
 
 ### Blocker Escalation
 
