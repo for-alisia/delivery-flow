@@ -53,7 +53,7 @@ node flow-log/flow-log.mjs summary --feature <feature-name>
 
 Then read only what is needed for the current batch:
 
-- approved implementation plan (path from flow-log summary)
+- approved implementation plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` (full plan JSON). Use `--section slices` or `--section models` for focused reads.
 - `documentation/context-map.md`
 - `documentation/capabilities/<capability>.md` for the capability being implemented
 - `documentation/code-guidance.md`

@@ -6,12 +6,13 @@ export const REVIEW_NAMES = ["architectureReview", "codeReview"];
 export const REVIEW_STATUSES = ["PENDING", "PASS", "FAIL", "BLOCKED"];
 export const CHECK_NAMES = ["verifyQuick", "finalCheck", "karate"];
 export const CHECK_STATUSES = ["NOT_RUN", "PASS", "FAIL", "BLOCKED"];
-export const EVENT_TYPES = ["redCard", "rejection", "reroute", "note", "batchStart", "batchEnd"];
+export const EVENT_TYPES = ["redCard", "rejection", "reroute", "note", "batchStart", "batchEnd", "archEscalationDecision"];
+export const ARCH_ESCALATION_DECISIONS = ["PROCEED_TO_CODING", "FINAL_ADJUSTMENT", "ESCALATE_TO_USER"];
 export const RISK_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 export const RISK_STATUSES = ["OPEN", "ADDRESSED", "INVALIDATED", "RESOLVED", "REOPENED"];
 export const FINDING_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 export const FINDING_STATUSES = ["OPEN", "FIXED", "DISPUTED", "RESOLVED", "REOPENED"];
-export const MAX_ARCHITECTURE_REVIEW_ROUNDS = 3;
+export const MAX_ARCHITECTURE_REVIEW_ROUNDS = 5;
 export const MAX_CODE_REVIEW_ROUNDS = 3;
 
 export function resolveStatePath(cwd, feature, explicitStatePath) {
@@ -167,7 +168,7 @@ export function appendChangedFiles(state, files) {
 }
 
 export function appendEvent(state, event) {
-  state.events.push({
+  const entry = {
     id: nextEventId(state.events),
     type: event.type,
     by: event.by ?? null,
@@ -176,7 +177,11 @@ export function appendEvent(state, event) {
     relatedCheck: event.relatedCheck ?? null,
     relatedReview: event.relatedReview ?? null,
     createdAt: timestamp()
-  });
+  };
+  if (event.decision) {
+    entry.decision = event.decision;
+  }
+  state.events.push(entry);
 }
 
 export function buildSignoffReadiness(state, cwd) {
@@ -390,6 +395,7 @@ function summarizeRisks(state) {
       severity: r.severity,
       status: r.status,
       description: r.description,
+      suggestedFix: r.suggestedFix ?? null,
       responseNote: r.responseNote
     }))
   };
@@ -465,7 +471,7 @@ export function completeFlow(state) {
   state.timing.durationMinutes = Math.round((end - start) / 60000);
 }
 
-export function addRisk(state, severity, description, by) {
+export function addRisk(state, severity, description, by, suggestedFix) {
   validateValue(severity, RISK_SEVERITIES, "risk severity");
   ensureRisksSection(state);
 
@@ -475,6 +481,7 @@ export function addRisk(state, severity, description, by) {
     id,
     severity,
     description,
+    suggestedFix: suggestedFix ?? null,
     status: "OPEN",
     round: state.architecturalRisks.round,
     createdBy: by ?? null,
@@ -540,6 +547,13 @@ export function reopenRisk(state, riskId, reason, by) {
 
 export function incrementReviewRound(state) {
   ensureRisksSection(state);
+
+  if (state.architecturalRisks.round >= MAX_ARCHITECTURE_REVIEW_ROUNDS) {
+    throw new Error(
+      `Architecture review hard cap reached (${MAX_ARCHITECTURE_REVIEW_ROUNDS} rounds). Cannot increment further. Resolve manually or restart the plan.`
+    );
+  }
+
   state.architecturalRisks.round += 1;
   return state.architecturalRisks.round;
 }
@@ -574,8 +588,9 @@ export function buildArchitectureGate(state) {
       gate: "ESCALATE",
       round,
       unresolvedBlocking: unresolvedBlocking.length,
+      unresolvedRisks: unresolvedBlocking.map((r) => ({ id: r.id, severity: r.severity, description: r.description, status: r.status })),
       totalRisks: risks.length,
-      message: `${unresolvedBlocking.length} unresolved Critical/High risk(s) after ${round} round(s). Escalate to user.`
+      message: `${unresolvedBlocking.length} unresolved Critical/High risk(s) after ${round} round(s). TL must decide: PROCEED_TO_CODING, FINAL_ADJUSTMENT, or ESCALATE_TO_USER.`
     };
   }
 
@@ -782,4 +797,337 @@ function nextEventId(events) {
   }
 
   return events[events.length - 1].id + 1;
+}
+
+// --- Plan Structure (plan.json — single structured artifact) ---
+
+export const PLAN_CLASS_STATUSES = ["new", "modified", "existing"];
+export const PLAN_MODEL_TYPES = ["record", "enum", "interface", "sealed-interface"];
+export const PLAN_MODEL_STATUSES = ["new", "modified"];
+export const PLAN_EXAMPLE_TYPES = ["request", "success", "error", "validation-error"];
+export const PLAN_SLICE_TEST_LEVELS = ["unit", "integration", "component"];
+
+export function resolvePlanPath(cwd, feature) {
+  return path.resolve(cwd, "artifacts", "implementation-plans", `${feature}.plan.json`);
+}
+
+export function createInitialPlan(feature) {
+  return {
+    schemaVersion: "2.0",
+    feature,
+    createdAt: timestamp(),
+    updatedAt: timestamp(),
+    revision: 1,
+    status: "draft",
+    payloadExamples: [],
+    validationBoundary: [],
+    models: [],
+    classes: [],
+    compositionStrategy: null,
+    sharedInfra: { reused: [], new: [] },
+    slices: [],
+    testingMatrix: [],
+    karate: null,
+    archUnit: null
+  };
+}
+
+export function loadPlan(planPath) {
+  if (!fs.existsSync(planPath)) {
+    throw new Error(`Plan file does not exist: ${planPath}`);
+  }
+
+  const raw = fs.readFileSync(planPath, "utf8");
+  return JSON.parse(raw);
+}
+
+export function savePlan(planPath, plan) {
+  plan.updatedAt = timestamp();
+  fs.mkdirSync(path.dirname(planPath), { recursive: true });
+  fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+}
+
+// --- Payload Examples ---
+
+export function addPlanExample(plan, label, type, body) {
+  validateValue(type, PLAN_EXAMPLE_TYPES, "example type");
+  plan.payloadExamples.push({ label, type, body });
+  return plan.payloadExamples[plan.payloadExamples.length - 1];
+}
+
+// --- Validation Boundary ---
+
+export function addPlanValidation(plan, rule, boundary, reason) {
+  plan.validationBoundary.push({ rule, boundary, reason });
+  return plan.validationBoundary[plan.validationBoundary.length - 1];
+}
+
+// --- Models ---
+
+export function addPlanModel(plan, qualifiedName, type, status, justification, opts = {}) {
+  validateValue(type, PLAN_MODEL_TYPES, "model type");
+  validateValue(status, PLAN_MODEL_STATUSES, "model status");
+
+  const entry = {
+    qualifiedName,
+    type,
+    status,
+    justification,
+    fields: opts.fields ?? [],
+    annotations: opts.annotations ?? [],
+    notes: opts.notes ?? null,
+    values: opts.values ?? [],
+    methods: opts.methods ?? []
+  };
+
+  const idx = plan.models.findIndex((m) => m.qualifiedName === qualifiedName);
+  if (idx >= 0) {
+    plan.models[idx] = entry;
+  } else {
+    plan.models.push(entry);
+  }
+  return entry;
+}
+
+export function addPlanModelField(plan, qualifiedName, name, type, opts = {}) {
+  const model = plan.models.find((m) => m.qualifiedName === qualifiedName);
+  if (!model) {
+    throw new Error(`Model not found: ${qualifiedName}`);
+  }
+
+  const field = {
+    name,
+    type,
+    nullable: opts.nullable ?? false,
+    defensiveCopy: opts.defensiveCopy ?? false
+  };
+
+  const idx = model.fields.findIndex((f) => f.name === name);
+  if (idx >= 0) {
+    model.fields[idx] = field;
+  } else {
+    model.fields.push(field);
+  }
+  return field;
+}
+
+// --- Classes ---
+
+export function addPlanClass(plan, filePath, status, role) {
+  validateValue(status, PLAN_CLASS_STATUSES, "class status");
+
+  const existing = plan.classes.find((c) => c.path === filePath);
+  if (existing) {
+    existing.status = status;
+    existing.role = role ?? existing.role;
+    return existing;
+  }
+
+  const entry = { path: filePath, status, role: role ?? null };
+  plan.classes.push(entry);
+  return entry;
+}
+
+// --- Slices ---
+
+export function addPlanSlice(plan, sliceId, title, goal, opts = {}) {
+  const existing = plan.slices.find((s) => s.id === sliceId);
+  if (existing) {
+    existing.title = title ?? existing.title;
+    existing.goal = goal ?? existing.goal;
+    existing.files = opts.files ?? existing.files;
+    if (opts.tests) {
+      for (const level of PLAN_SLICE_TEST_LEVELS) {
+        if (opts.tests[level]) {
+          existing.tests[level] = opts.tests[level];
+        }
+      }
+    }
+    if (opts.logging) {
+      if (opts.logging.info !== undefined) existing.logging.info = opts.logging.info;
+      if (opts.logging.warn !== undefined) existing.logging.warn = opts.logging.warn;
+      if (opts.logging.error !== undefined) existing.logging.error = opts.logging.error;
+    }
+    return existing;
+  }
+
+  const entry = {
+    id: sliceId,
+    title,
+    goal,
+    files: opts.files ?? [],
+    tests: {
+      unit: opts.tests?.unit ?? [],
+      integration: opts.tests?.integration ?? [],
+      component: opts.tests?.component ?? []
+    },
+    logging: {
+      info: opts.logging?.info ?? "None",
+      warn: opts.logging?.warn ?? "None",
+      error: opts.logging?.error ?? "None"
+    }
+  };
+  plan.slices.push(entry);
+  return entry;
+}
+
+export function addPlanSliceTest(plan, sliceId, level, test) {
+  validateValue(level, PLAN_SLICE_TEST_LEVELS, "test level");
+  const slice = plan.slices.find((s) => s.id === sliceId);
+  if (!slice) {
+    throw new Error(`Slice not found: ${sliceId}`);
+  }
+  slice.tests[level].push(test);
+}
+
+export function setPlanSliceLogging(plan, sliceId, opts) {
+  const slice = plan.slices.find((s) => s.id === sliceId);
+  if (!slice) {
+    throw new Error(`Slice not found: ${sliceId}`);
+  }
+  if (opts.info !== undefined) slice.logging.info = opts.info;
+  if (opts.warn !== undefined) slice.logging.warn = opts.warn;
+  if (opts.error !== undefined) slice.logging.error = opts.error;
+}
+
+// --- Composition Strategy ---
+
+export function setPlanComposition(plan, approach, description) {
+  plan.compositionStrategy = { approach, description };
+}
+
+// --- Shared Infrastructure ---
+
+export function setPlanInfra(plan, reused, newInfra) {
+  plan.sharedInfra = {
+    reused: reused ?? [],
+    new: newInfra ?? []
+  };
+}
+
+// --- Testing Matrix ---
+
+export function addPlanTest(plan, level, required, coverage) {
+  const entry = { level, required, coverage };
+  const idx = plan.testingMatrix.findIndex((t) => t.level === level);
+  if (idx >= 0) {
+    plan.testingMatrix[idx] = entry;
+  } else {
+    plan.testingMatrix.push(entry);
+  }
+  return entry;
+}
+
+// --- Karate ---
+
+export function setPlanKarate(plan, opts) {
+  plan.karate = {
+    featureFile: opts.featureFile,
+    scenarios: opts.scenarios ?? [],
+    smokeTagged: opts.smokeTagged ?? false,
+    runnerUpdated: opts.runnerUpdated ?? false
+  };
+}
+
+// --- ArchUnit ---
+
+export function setPlanArchunit(plan, opts) {
+  plan.archUnit = {
+    newRules: opts.newRules ?? [],
+    existingRulesReviewed: opts.existingReviewed ?? false
+  };
+}
+
+// --- Revision ---
+
+export function bumpPlanRevision(plan) {
+  plan.revision += 1;
+  plan.status = "draft";
+  plan.payloadExamples = [];
+  plan.validationBoundary = [];
+  plan.models = [];
+  plan.classes = [];
+  plan.compositionStrategy = null;
+  plan.sharedInfra = { reused: [], new: [] };
+  plan.slices = [];
+  plan.testingMatrix = [];
+  plan.karate = null;
+  plan.archUnit = null;
+}
+
+// --- Validation ---
+
+export function validatePlan(plan) {
+  const issues = [];
+
+  if (plan.models.length === 0) {
+    issues.push("No models registered.");
+  }
+  if (plan.classes.length === 0) {
+    issues.push("No classes registered.");
+  }
+  if (plan.slices.length === 0) {
+    issues.push("No slices registered.");
+  }
+  for (const model of plan.models) {
+    if (typeof model.justification !== "string" || !model.justification.trim()) {
+      issues.push(`Model ${model.qualifiedName} missing justification.`);
+    }
+    if (model.type === "record" && model.fields.length === 0) {
+      issues.push(`Record model ${model.qualifiedName} has no fields.`);
+    }
+  }
+  for (const slice of plan.slices) {
+    const totalTests = slice.tests.unit.length + slice.tests.integration.length + slice.tests.component.length;
+    if (totalTests === 0 && slice.files.some((f) => f.endsWith(".java"))) {
+      issues.push(`Slice ${slice.id} "${slice.title}" has Java files but no tests.`);
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
+  };
+}
+
+// --- Read Operations ---
+
+export function buildPlanSummary(plan) {
+  return {
+    feature: plan.feature,
+    revision: plan.revision,
+    status: plan.status,
+    updatedAt: plan.updatedAt,
+    modelCount: plan.models.length,
+    classCount: plan.classes.length,
+    sliceCount: plan.slices.length,
+    exampleCount: plan.payloadExamples.length,
+    validationRuleCount: plan.validationBoundary.length,
+    testLevels: plan.testingMatrix.length,
+    hasComposition: plan.compositionStrategy !== null,
+    hasKarate: plan.karate !== null,
+    hasArchUnit: plan.archUnit !== null,
+    models: plan.models.map((m) => ({ qualifiedName: m.qualifiedName, type: m.type, status: m.status })),
+    classes: plan.classes.map((c) => ({ path: c.path, status: c.status })),
+    slices: plan.slices.map((s) => ({ id: s.id, title: s.title }))
+  };
+}
+
+export function getPlanSection(plan, section) {
+  const sections = {
+    payloadExamples: plan.payloadExamples,
+    validationBoundary: plan.validationBoundary,
+    models: plan.models,
+    classes: plan.classes,
+    compositionStrategy: plan.compositionStrategy,
+    sharedInfra: plan.sharedInfra,
+    slices: plan.slices,
+    testingMatrix: plan.testingMatrix,
+    karate: plan.karate,
+    archUnit: plan.archUnit
+  };
+  if (!(section in sections)) {
+    throw new Error(`Unknown plan section: ${section}. Available: ${Object.keys(sections).join(", ")}`);
+  }
+  return sections[section];
 }

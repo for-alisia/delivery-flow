@@ -73,11 +73,15 @@ Do not default to HIGH. For every HIGH or CRITICAL finding, include a one-senten
 ## Execution
 
 1. Run `node flow-log/flow-log.mjs summary --feature <feature-name>` — check `architecturalRisks` section for existing risks and current round.
-2. Read request, story, plan from paths in summary.
-3. Read `documentation/constitution.md`, `documentation/code-guidance.md`, `documentation/architecture-guidance.md`.
-4. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md`.
-5. Challenge the plan against all of the above.
-6. Record each finding: `node flow-log/flow-log.mjs add-risk --feature <feature-name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description "<text>" --by ArchitectureReviewer`
+2. Run `node flow-log/flow-log.mjs plan-summary --feature <feature-name>` — verify plan structure is registered. If `classCount` or `sliceCount` is 0, raise a CRITICAL risk: plan structure was not registered.
+3. Read the plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` for full plan, or `plan-get --section models`, `--section slices`, etc. for focused review. Check that every model has a `justification` that defends its placement against constitution rules.
+4. Read request and story from paths in summary.
+5. Read `documentation/constitution.md`, `documentation/code-guidance.md`, `documentation/architecture-guidance.md`.
+6. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md`.
+7. Challenge the plan against all of the above.
+8. Record each finding: `node flow-log/flow-log.mjs add-risk --feature <feature-name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description "<text>" --suggested-fix "<concrete fix>" --by ArchitectureReviewer`
+
+Every HIGH or CRITICAL risk **must** include a `--suggested-fix` that describes the concrete change the Architect should make — not just what is wrong. The Architect reads `suggestedFix` alongside `description` to converge on a solution instead of guessing.
 
 ### First-round completeness rule
 
@@ -86,6 +90,8 @@ On the **first review round** (round 1), perform an exhaustive scan of the entir
 On **subsequent rounds** (round 2+), new findings should only be raised on:
 - Sections that changed since the previous round
 - Cascading impacts of those changes on unchanged sections
+
+**Hard cap: raise at most 1 new risk per re-review round.** All other energy goes to resolving or reopening existing risks. If you see multiple new issues in changed sections, raise the most impactful one and note the others as advisory in its description.
 
 Do not re-scan unchanged, previously-reviewed sections for new issues that were present but not raised in round 1.
 

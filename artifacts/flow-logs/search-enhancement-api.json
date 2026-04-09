@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "search-enhancement-api",
+  "createdAt": "2026-04-09T19:32:16.266Z",
+  "updatedAt": "2026-04-09T20:08:53.369Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-09T19:32:16.769Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/search-enhancement-api.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/search-enhancement-api.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-09T19:34:32.091Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-09T19:34:32.092Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/search-enhancement-api.plan.md",
+      "approved": true,
+      "approvedAt": "2026-04-09T19:39:41.508Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-09T19:39:41.509Z"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PENDING",
+      "reason": null,
+      "updatedAt": null,
+      "updatedBy": null
+    },
+    "codeReview": {
+      "status": "PENDING",
+      "reason": null,
+      "updatedAt": null,
+      "updatedBy": null
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "NOT_RUN",
+      "updatedAt": null,
+      "updatedBy": null,
+      "command": null,
+      "details": null,
+      "reportPaths": []
+    },
+    "finalCheck": {
+      "status": "NOT_RUN",
+      "updatedAt": null,
+      "updatedBy": null,
+      "command": null,
+      "details": null,
+      "reportPaths": []
+    },
+    "karate": {
+      "status": "NOT_RUN",
+      "updatedAt": null,
+      "updatedBy": null,
+      "command": null,
+      "details": null,
+      "reportPaths": []
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-09T19:32:16.266Z",
+    "completedAt": null,
+    "durationMinutes": null
+  },
+  "batches": {
+    "current": null,
+    "total": 0,
+    "history": []
+  },
+  "changes": {
+    "files": []
+  },
+  "architecturalRisks": {
+    "round": 3,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "HIGH",
+        "description": "Plan extends shared IssueDto with nullable changeSets but does not define a null-omission transport strategy or a search-only response wrapper, so changeSets will surface as null on create/delete and on search responses without audit under the current Jackson defaults. Production impact: existing clients can see unexpected response-shape changes on endpoints that were explicitly out of scope, causing contract regressions before audit is even requested.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T19:42:00.151Z",
+        "responseNote": "Moved audit search transport to a search-only DTO with explicit null omission for changeSets, so create and non-audit search payloads keep their current wire shape.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T19:48:07.011Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T19:50:49.936Z"
+      },
+      {
+        "id": 2,
+        "severity": "HIGH",
+        "description": "Plan adds auditTypes to IssueQuery even though IssueQuery is the adapter-facing contract for the GitLab issues search call, and audit is not a GitLab search parameter but an orchestration-only enrichment instruction. Production impact: the provider port becomes coupled to internal composition rules, so future audit expansion forces unnecessary adapter and test churn on an unchanged downstream API and increases the chance of incorrect provider mapping.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T19:42:00.248Z",
+        "responseNote": "Removed audit intent from IssueQuery and introduced SearchIssuesInput so the provider-facing query remains GitLab-search-only while orchestration retains audit composition instructions.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T19:48:07.114Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T19:50:50.034Z"
+      },
+      {
+        "id": 3,
+        "severity": "HIGH",
+        "description": "Plan reuses the existing change DTO shape without resolving the field discriminator mismatch: the current shared detail mapping exposes ChangeField.LABEL, while the locked search contract requires change.field=label. Production impact: the coder is left to guess between breaking cross-endpoint consistency or shipping a search payload that violates the accepted client contract.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T19:42:00.490Z",
+        "responseNote": "Kept shared orchestration change models unchanged and mapped search transport change.field through a search-specific DTO enum that serializes as lowercase label.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T19:48:07.220Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T19:50:50.139Z"
+      },
+      {
+        "id": 4,
+        "severity": "HIGH",
+        "description": "Plan replaces the shared IssueDto search item with a new SearchIssueDto and duplicated nested change DTO hierarchy to work around null omission and lowercase field serialization, even though code guidance requires one primary DTO per Issue entity and the locked request still expects model reuse across endpoints. Production impact: future Issue field additions or transport fixes can diverge between create/delete and search payloads, causing inconsistent contracts for the same entity and avoidable client regressions.",
+        "status": "ADDRESSED",
+        "round": 2,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T19:50:50.237Z",
+        "responseNote": "Rewrote the plan to a single IssueDto-based response-model strategy, removed the contradictory duplicate section, and kept search-only nested audit transport types only for IssueDto.changeSets.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T20:08:53.367Z",
+        "resolvedBy": null,
+        "resolvedAt": null
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 0,
+    "findings": []
+  },
+  "events": []
+}

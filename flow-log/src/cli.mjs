@@ -1,28 +1,44 @@
+import fs from "node:fs";
 import {
+  ARCH_ESCALATION_DECISIONS,
   ARTIFACT_TYPES,
   CHECK_NAMES,
   CHECK_STATUSES,
   EVENT_TYPES,
   FINDING_SEVERITIES,
+  PLAN_SLICE_TEST_LEVELS,
   REVIEW_NAMES,
   REVIEW_STATUSES,
   RISK_SEVERITIES,
   addFinding,
+  addPlanClass,
+  addPlanExample,
+  addPlanModel,
+  addPlanModelField,
+  addPlanSlice,
+  addPlanSliceTest,
+  addPlanTest,
+  addPlanValidation,
   addRisk,
   appendChangedFiles,
   appendEvent,
   assertFileExists,
   buildArchitectureGate,
   buildCodeReviewGate,
+  buildPlanSummary,
   buildSignoffReadiness,
   buildStatus,
   buildSummary,
+  bumpPlanRevision,
   completeBatch,
   completeFlow,
+  createInitialPlan,
   createInitialState,
   ensureFeatureMatches,
+  getPlanSection,
   incrementCodeReviewRound,
   incrementReviewRound,
+  loadPlan,
   loadState,
   recordArtifactVerification,
   reopenFinding,
@@ -30,11 +46,19 @@ import {
   resetChecksForRedCard,
   resolveFinding,
   resolveRisk,
+  resolvePlanPath,
   resolveStatePath,
   respondToFinding,
   respondToRisk,
+  savePlan,
   saveState,
+  setPlanArchunit,
+  setPlanComposition,
+  setPlanInfra,
+  setPlanKarate,
+  setPlanSliceLogging,
   startBatch,
+  validatePlan,
   validateValue
 } from "./state.mjs";
 
@@ -123,6 +147,42 @@ function dispatch(parsed, cwd) {
       return handleIncrementCodeReviewRound(parsed, cwd);
     case "code-review-gate":
       return handleCodeReviewGate(parsed, cwd);
+    case "init-plan":
+      return handleInitPlan(parsed, cwd);
+    case "add-plan-example":
+      return handleAddPlanExample(parsed, cwd);
+    case "add-plan-validation":
+      return handleAddPlanValidation(parsed, cwd);
+    case "add-plan-model":
+      return handleAddPlanModel(parsed, cwd);
+    case "add-plan-model-field":
+      return handleAddPlanModelField(parsed, cwd);
+    case "add-plan-class":
+      return handleAddPlanClass(parsed, cwd);
+    case "add-plan-slice":
+      return handleAddPlanSlice(parsed, cwd);
+    case "add-plan-slice-test":
+      return handleAddPlanSliceTest(parsed, cwd);
+    case "set-plan-slice-logging":
+      return handleSetPlanSliceLogging(parsed, cwd);
+    case "set-plan-composition":
+      return handleSetPlanComposition(parsed, cwd);
+    case "set-plan-infra":
+      return handleSetPlanInfra(parsed, cwd);
+    case "add-plan-test":
+      return handleAddPlanTest(parsed, cwd);
+    case "set-plan-karate":
+      return handleSetPlanKarate(parsed, cwd);
+    case "set-plan-archunit":
+      return handleSetPlanArchunit(parsed, cwd);
+    case "revise-plan":
+      return handleRevisePlan(parsed, cwd);
+    case "validate-plan":
+      return handleValidatePlan(parsed, cwd);
+    case "plan-summary":
+      return handlePlanSummary(parsed, cwd);
+    case "plan-get":
+      return handlePlanGet(parsed, cwd);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -291,11 +351,18 @@ function handleAddEvent(parsed, cwd) {
   const reason = requiredFlag(parsed, "reason");
   validateValue(type, EVENT_TYPES, "event type");
 
+  let decision;
+  if (type === "archEscalationDecision") {
+    decision = requiredFlag(parsed, "decision");
+    validateValue(decision, ARCH_ESCALATION_DECISIONS, "escalation decision");
+  }
+
   const { feature, state, statePath } = openState(parsed, cwd);
   appendEvent(state, {
     type,
     by: optionalFlag(parsed, "by"),
     reason,
+    decision: decision || undefined,
     target: optionalFlag(parsed, "target"),
     relatedCheck: optionalFlag(parsed, "related-check"),
     relatedReview: optionalFlag(parsed, "related-review")
@@ -441,9 +508,10 @@ function handleReadiness(parsed, cwd, target) {
 function handleAddRisk(parsed, cwd) {
   const severity = requiredFlag(parsed, "severity");
   const description = requiredFlag(parsed, "description");
+  const suggestedFix = optionalFlag(parsed, "suggested-fix");
   const by = optionalFlag(parsed, "by");
   const { feature, state, statePath } = openState(parsed, cwd);
-  const risk = addRisk(state, severity, description, by);
+  const risk = addRisk(state, severity, description, by, suggestedFix);
   saveState(statePath, state);
 
   return {
@@ -629,6 +697,291 @@ function handleCodeReviewGate(parsed, cwd) {
   };
 }
 
+// --- Plan Structure Handlers ---
+
+function openPlan(parsed, cwd) {
+  const feature = requiredFlag(parsed, "feature");
+  const planPath = resolvePlanPath(cwd, feature);
+  const plan = loadPlan(planPath);
+  return { feature, plan, planPath };
+}
+
+function handleInitPlan(parsed, cwd) {
+  const feature = requiredFlag(parsed, "feature");
+  const planPath = resolvePlanPath(cwd, feature);
+
+  if (optionalFlag(parsed, "force") !== true) {
+    assertPlanDoesNotExist(planPath);
+  }
+
+  const plan = createInitialPlan(feature);
+  savePlan(planPath, plan);
+
+  return { ok: true, command: "init-plan", feature, planPath, revision: plan.revision };
+}
+
+function handleAddPlanExample(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const label = requiredFlag(parsed, "label");
+  const type = requiredFlag(parsed, "type");
+  const bodyRaw = requiredFlag(parsed, "body");
+
+  let body;
+  try {
+    body = JSON.parse(bodyRaw);
+  } catch {
+    throw new Error("--body must be valid JSON");
+  }
+
+  const entry = addPlanExample(plan, label, type, body);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-example", feature, entry, total: plan.payloadExamples.length };
+}
+
+function handleAddPlanValidation(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const rule = requiredFlag(parsed, "rule");
+  const boundary = requiredFlag(parsed, "boundary");
+  const reason = requiredFlag(parsed, "reason");
+
+  const entry = addPlanValidation(plan, rule, boundary, reason);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-validation", feature, entry, total: plan.validationBoundary.length };
+}
+
+function handleAddPlanModel(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const qualifiedName = requiredFlag(parsed, "qualified-name");
+  const type = requiredFlag(parsed, "type");
+  const status = requiredFlag(parsed, "status");
+  const justification = requiredFlag(parsed, "justification");
+
+  const opts = {};
+
+  const fieldsRaw = optionalFlag(parsed, "fields");
+  if (fieldsRaw) {
+    try {
+      opts.fields = JSON.parse(fieldsRaw);
+    } catch {
+      throw new Error("--fields must be a valid JSON array");
+    }
+  }
+
+  const annotationsRaw = optionalFlag(parsed, "annotations");
+  if (annotationsRaw) {
+    opts.annotations = annotationsRaw.split(",").map((a) => a.trim());
+  }
+
+  opts.notes = optionalFlag(parsed, "notes") ?? null;
+
+  const valuesRaw = optionalFlag(parsed, "values");
+  if (valuesRaw) {
+    opts.values = valuesRaw.split(",").map((v) => v.trim());
+  }
+
+  const methodsRaw = optionalFlag(parsed, "methods");
+  if (methodsRaw) {
+    opts.methods = methodsRaw.split(",").map((m) => m.trim());
+  }
+
+  const entry = addPlanModel(plan, qualifiedName, type, status, justification, opts);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-model", feature, entry, totalModels: plan.models.length };
+}
+
+function handleAddPlanModelField(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const modelName = requiredFlag(parsed, "model");
+  const name = requiredFlag(parsed, "name");
+  const type = requiredFlag(parsed, "type");
+
+  const opts = {
+    nullable: optionalFlag(parsed, "nullable") === true,
+    defensiveCopy: optionalFlag(parsed, "defensive-copy") === true
+  };
+
+  const field = addPlanModelField(plan, modelName, name, type, opts);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-model-field", feature, model: modelName, field };
+}
+
+function handleAddPlanClass(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const filePath = requiredFlag(parsed, "path");
+  const status = requiredFlag(parsed, "status");
+  const role = optionalFlag(parsed, "role");
+
+  const entry = addPlanClass(plan, filePath, status, role);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-class", feature, entry, totalClasses: plan.classes.length };
+}
+
+function handleAddPlanSlice(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const sliceId = parsePositiveInteger(requiredFlag(parsed, "id"), "slice id");
+  const title = requiredFlag(parsed, "title");
+  const goal = requiredFlag(parsed, "goal");
+
+  const opts = {};
+
+  const filesRaw = optionalFlag(parsed, "files");
+  if (filesRaw) {
+    opts.files = filesRaw.split(",").map((f) => f.trim());
+  }
+
+  const unitTests = normalizeArray(optionalFlag(parsed, "unit-test"));
+  const integrationTests = normalizeArray(optionalFlag(parsed, "integration-test"));
+  const componentTests = normalizeArray(optionalFlag(parsed, "component-test"));
+  if (unitTests.length > 0 || integrationTests.length > 0 || componentTests.length > 0) {
+    opts.tests = { unit: unitTests, integration: integrationTests, component: componentTests };
+  }
+
+  const infoLog = optionalFlag(parsed, "info-log");
+  const warnLog = optionalFlag(parsed, "warn-log");
+  const errorLog = optionalFlag(parsed, "error-log");
+  if (infoLog !== undefined || warnLog !== undefined || errorLog !== undefined) {
+    opts.logging = {};
+    if (infoLog !== undefined) opts.logging.info = infoLog;
+    if (warnLog !== undefined) opts.logging.warn = warnLog;
+    if (errorLog !== undefined) opts.logging.error = errorLog;
+  }
+
+  const entry = addPlanSlice(plan, sliceId, title, goal, opts);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-slice", feature, entry, totalSlices: plan.slices.length };
+}
+
+function handleAddPlanSliceTest(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const sliceId = parsePositiveInteger(requiredFlag(parsed, "slice"), "slice id");
+  const level = requiredFlag(parsed, "level");
+  const test = requiredFlag(parsed, "test");
+
+  addPlanSliceTest(plan, sliceId, level, test);
+  savePlan(planPath, plan);
+  const slice = plan.slices.find((s) => s.id === sliceId);
+  return { ok: true, command: "add-plan-slice-test", feature, sliceId, level, test, totalTests: slice.tests[level].length };
+}
+
+function handleSetPlanSliceLogging(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const sliceId = parsePositiveInteger(requiredFlag(parsed, "slice"), "slice id");
+
+  const opts = {};
+  const infoLog = optionalFlag(parsed, "info");
+  const warnLog = optionalFlag(parsed, "warn");
+  const errorLog = optionalFlag(parsed, "error");
+  if (infoLog !== undefined) opts.info = infoLog;
+  if (warnLog !== undefined) opts.warn = warnLog;
+  if (errorLog !== undefined) opts.error = errorLog;
+
+  setPlanSliceLogging(plan, sliceId, opts);
+  savePlan(planPath, plan);
+  const slice = plan.slices.find((s) => s.id === sliceId);
+  return { ok: true, command: "set-plan-slice-logging", feature, sliceId, logging: slice.logging };
+}
+
+function handleSetPlanComposition(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const approach = requiredFlag(parsed, "approach");
+  const description = requiredFlag(parsed, "description");
+
+  setPlanComposition(plan, approach, description);
+  savePlan(planPath, plan);
+  return { ok: true, command: "set-plan-composition", feature, compositionStrategy: plan.compositionStrategy };
+}
+
+function handleSetPlanInfra(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const reusedRaw = optionalFlag(parsed, "reused");
+  const newRaw = optionalFlag(parsed, "new");
+
+  const reused = reusedRaw ? reusedRaw.split(",").map((r) => r.trim()) : [];
+  const newInfra = newRaw ? newRaw.split(",").map((n) => n.trim()) : [];
+
+  setPlanInfra(plan, reused, newInfra);
+  savePlan(planPath, plan);
+  return { ok: true, command: "set-plan-infra", feature, sharedInfra: plan.sharedInfra };
+}
+
+function handleAddPlanTest(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const level = requiredFlag(parsed, "level");
+  const required = optionalFlag(parsed, "required") === true;
+  const coverage = requiredFlag(parsed, "coverage");
+
+  const entry = addPlanTest(plan, level, required, coverage);
+  savePlan(planPath, plan);
+  return { ok: true, command: "add-plan-test", feature, entry, totalLevels: plan.testingMatrix.length };
+}
+
+function handleSetPlanKarate(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const featureFile = requiredFlag(parsed, "feature-file");
+  const scenarios = normalizeArray(optionalFlag(parsed, "scenario"));
+  const smokeTagged = optionalFlag(parsed, "smoke-tagged") === true;
+  const runnerUpdated = optionalFlag(parsed, "runner-updated") === true;
+
+  setPlanKarate(plan, { featureFile, scenarios, smokeTagged, runnerUpdated });
+  savePlan(planPath, plan);
+  return { ok: true, command: "set-plan-karate", feature, karate: plan.karate };
+}
+
+function handleSetPlanArchunit(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const newRules = normalizeArray(optionalFlag(parsed, "new-rule"));
+  const existingReviewed = optionalFlag(parsed, "existing-reviewed") === true;
+
+  setPlanArchunit(plan, { newRules, existingReviewed });
+  savePlan(planPath, plan);
+  return { ok: true, command: "set-plan-archunit", feature, archUnit: plan.archUnit };
+}
+
+function handleRevisePlan(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const previousRevision = plan.revision;
+  bumpPlanRevision(plan);
+  savePlan(planPath, plan);
+
+  return {
+    ok: true,
+    command: "revise-plan",
+    feature,
+    previousRevision,
+    newRevision: plan.revision,
+    note: "All sections cleared. Re-register the revised plan from scratch."
+  };
+}
+
+function handleValidatePlan(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const result = validatePlan(plan);
+  return { ok: true, command: "validate-plan", feature, planPath, ...result };
+}
+
+function handlePlanSummary(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  return { ok: true, command: "plan-summary", feature, planPath, ...buildPlanSummary(plan) };
+}
+
+function handlePlanGet(parsed, cwd) {
+  const { feature, plan, planPath } = openPlan(parsed, cwd);
+  const section = optionalFlag(parsed, "section");
+
+  if (section) {
+    const data = getPlanSection(plan, section);
+    return { ok: true, command: "plan-get", feature, planPath, section, data };
+  }
+
+  return { ok: true, command: "plan-get", feature, planPath, plan };
+}
+
+function assertPlanDoesNotExist(planPath) {
+  if (fs.existsSync(planPath)) {
+    throw new Error(`Plan already exists: ${planPath}. Use --force to overwrite.`);
+  }
+}
+
 function openState(parsed, cwd) {
   const feature = requiredFlag(parsed, "feature");
   const statePath = resolveStatePath(cwd, feature, optionalFlag(parsed, "state-path"));
@@ -714,7 +1067,7 @@ function assertStateDoesNotExist(statePath) {
 function helpResult() {
   return {
     tool: "flow-log",
-    version: "0.4.0",
+    version: "0.7.0",
     commands: [
       "create --feature <name> [--state-path <path>] [--force]",
       "lock-requirements --feature <name> [--by <actor>] [--request-source <path>] [--state-path <path>]",
@@ -723,11 +1076,11 @@ function helpResult() {
       "set-review --feature <name> --name <architectureReview|codeReview> --status <PENDING|PASS|FAIL|BLOCKED> [--by <actor>] [--reason <text>] [--state-path <path>]",
       "set-check --feature <name> --name <verifyQuick|finalCheck|karate> --status <NOT_RUN|PASS|FAIL|BLOCKED> [--by <actor>] [--command <cmd>] [--details <text>] [--report-path <path>]... [--state-path <path>]",
       "add-change --feature <name> --file <path> [--file <path>]... [--state-path <path>]",
-      "add-event --feature <name> --type <redCard|rejection|reroute|note|batchStart|batchEnd> --reason <text> [--by <actor>] [--target <agent>] [--related-check <name>] [--related-review <name>] [--state-path <path>]",
+      "add-event --feature <name> --type <redCard|rejection|reroute|note|batchStart|batchEnd|archEscalationDecision> --reason <text> [--decision <PROCEED_TO_CODING|FINAL_ADJUSTMENT|ESCALATE_TO_USER>] [--by <actor>] [--target <agent>] [--related-check <name>] [--related-review <name>] [--state-path <path>]",
       "start-batch --feature <name> [--slice <name>]... [--by <actor>] [--state-path <path>]",
       "complete-batch --feature <name> [--status <complete|failed|blocked>] [--state-path <path>]",
       "reset-checks --feature <name> [--reason <text>] [--by <actor>] [--target <agent>] [--state-path <path>]",
-      "add-risk --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--by <actor>] [--state-path <path>]",
+      "add-risk --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--suggested-fix <text>] [--by <actor>] [--state-path <path>]",
       "respond-risk --feature <name> --id <number> --status <ADDRESSED|INVALIDATED> --note <text> [--by <actor>] [--state-path <path>]",
       "resolve-risk --feature <name> --id <number> [--by <actor>] [--state-path <path>]",
       "reopen-risk --feature <name> --id <number> [--reason <text>] [--by <actor>] [--state-path <path>]",
@@ -744,7 +1097,27 @@ function helpResult() {
       "history --feature <name> [--limit <n>] [--state-path <path>]",
       "status --feature <name> [--state-path <path>]",
       "summary --feature <name> [--state-path <path>]",
-      "readiness signoff --feature <name> [--state-path <path>]"
+      "readiness signoff --feature <name> [--state-path <path>]",
+      "",
+      "# Plan Structure (Architect writes, all agents read)",
+      "init-plan --feature <name> [--force]",
+      "add-plan-example --feature <name> --label <text> --type <request|success|error|validation-error> --body <json>",
+      "add-plan-validation --feature <name> --rule <text> --boundary <text> --reason <text>",
+      "add-plan-model --feature <name> --qualified-name <fqcn> --type <record|enum|interface|sealed-interface> --status <new|modified> --justification <text> [--fields <json-array>] [--annotations <csv>] [--notes <text>] [--values <csv>] [--methods <csv>]",
+      "add-plan-model-field --feature <name> --model <qualified-name> --name <field> --type <java-type> [--nullable] [--defensive-copy]",
+      "add-plan-class --feature <name> --path <class-path> --status <new|modified|existing> [--role <text>]",
+      "add-plan-slice --feature <name> --id <N> --title <text> --goal <text> [--files <csv>] [--unit-test <text>]... [--integration-test <text>]... [--component-test <text>]... [--info-log <text>] [--warn-log <text>] [--error-log <text>]",
+      "add-plan-slice-test --feature <name> --slice <N> --level <unit|integration|component> --test <text>",
+      "set-plan-slice-logging --feature <name> --slice <N> [--info <text>] [--warn <text>] [--error <text>]",
+      "set-plan-composition --feature <name> --approach <text> --description <text>",
+      "set-plan-infra --feature <name> [--reused <csv>] [--new <csv>]",
+      "add-plan-test --feature <name> --level <text> --coverage <text> [--required]",
+      "set-plan-karate --feature <name> --feature-file <path> [--scenario <text>]... [--smoke-tagged] [--runner-updated]",
+      "set-plan-archunit --feature <name> [--new-rule <text>]... [--existing-reviewed]",
+      "revise-plan --feature <name>",
+      "validate-plan --feature <name>",
+      "plan-summary --feature <name>",
+      "plan-get --feature <name> [--section <name>]"
     ]
   };
 }

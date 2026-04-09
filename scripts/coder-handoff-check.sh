@@ -27,22 +27,28 @@ else
   echo "  PASS: State file exists"
 fi
 
-# 2. Flow-log status — checks recorded
-STATUS_OUTPUT=$(node flow-log/flow-log.mjs status --feature "${FEATURE}" 2>&1) || true
+# 2. Flow-log status — parse JSON checks via node one-liner for reliability
+STATUS_JSON=$(node flow-log/flow-log.mjs status --feature "${FEATURE}" 2>/dev/null) || {
+  echo "  FAIL: Could not read flow-log status for ${FEATURE}"
+  exit 1
+}
 
-# Check finalCheck is PASS
-if echo "${STATUS_OUTPUT}" | grep -q '"finalCheck": "PASS"'; then
+FINAL_CHECK=$(echo "${STATUS_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).status; console.log(s.finalCheck ?? 'MISSING')})" 2>/dev/null) || FINAL_CHECK="MISSING"
+
+# finalCheck
+if [[ "${FINAL_CHECK}" == "PASS" ]]; then
   echo "  PASS: finalCheck recorded as PASS"
 else
-  echo "  FAIL: finalCheck not recorded as PASS in flow-log"
+  echo "  FAIL: finalCheck is '${FINAL_CHECK}' — must be PASS"
   ERRORS=$((ERRORS + 1))
 fi
 
-# 3. Changed files tracked
-if node flow-log/flow-log.mjs get --feature "${FEATURE}" 2>&1 | grep -q '"files"'; then
-  echo "  PASS: Changed files tracked in flow-log"
+# 3. Changed files tracked (non-empty array)
+FILE_COUNT=$(node -e "const s=JSON.parse(require('fs').readFileSync('${STATE_FILE}','utf8')); console.log(s.changes.files.length)" 2>/dev/null) || FILE_COUNT="0"
+if [[ "${FILE_COUNT}" -gt 0 ]]; then
+  echo "  PASS: ${FILE_COUNT} changed file(s) tracked in flow-log"
 else
-  echo "  WARN: No changed files recorded — verify via flow-log add-change"
+  echo "  WARN: No changed files recorded — run flow-log add-change before handoff"
   ERRORS=$((ERRORS + 1))
 fi
 

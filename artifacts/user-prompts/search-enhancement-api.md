@@ -17,13 +17,14 @@ How it should work:
 Important notes you MUST follow:
 - Orchestration decides on calls and mapping logic. REST DTOs should not introduce business modelling unless they are only transport carriers. Main modelling should stay in orchestration models.
 - Everything that can be reused from the model perspective MUST be reused. You do not need separate `change` or `changeSet` models if existing ones already carry the same data.
-- This functionality is performance-risky. I want a solid and reusable solution for handling multiple parallel calls, because we expect more fan-out patterns in future features as well.
-- Limit the maximum requested page size to `60`. Clients agreed to that limit, so it is safe to enforce it.
+- You should extend current `Issue` model with optional `changeSets` field, but it should be null when audit is not requested. This way we can reuse the same model for all search responses, and it will be up to the client to check if changeSets are present or not.
+- This functionality is performance-risky. You already existing AsyncComposer for handling multiple parallel calls.
+- Limit the maximum requested page size to `40`. Clients agreed to that limit, so it is safe to enforce it. At the same time update default per page to 20 (as agreed with clients)
 - Client may provide `audit` as missing, `null`, or empty array. All of these are valid and should behave the same.
 - If any GitLab call needed for this enrichment fails, treat it as full failure for now and return an error to the client. This is not the final long-term strategy, but it is the expected behavior for this step.
 - We update only `POST /api/issues/search`.
 - You are allowed to introduce a dedicated REST DTO for the enriched search response if needed, but the orchestration `Issue` model should remain reusable for all endpoints (you are allowed to enhance it), including delete and search without `audit`.
-- If client sends unsupported values in `audit` return explicit validation error.
+- If client sends unsupported values in `audit` return explicit validation error. null values inside can be just omitted from the list of audit values unless other values are correct
 
 Payload examples:
 

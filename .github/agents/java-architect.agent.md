@@ -82,20 +82,63 @@ Coder does not write or modify Karate tests.
 6. If the feature involves a GitLab API, verify endpoint details with Context7 or official docs.
 7. Choose the smallest clear structure that fits existing codebase patterns.
 8. Write the plan. Do not exceed 200 lines excluding payload examples.
+9. Register the plan structure using `flow-log` commands (see **Plan Structure Registration** below).
+
+## Plan Structure Registration
+
+The plan is a single JSON file at `artifacts/implementation-plans/<feature>.plan.json`. There is no separate Markdown plan.
+You populate the plan entirely via `flow-log` CLI commands. See `flow-log/README.md` → "Plan Structure (v2.0)" for the full command reference.
+
+**On first plan creation:**
+
+```bash
+node flow-log/flow-log.mjs init-plan --feature <feature-name>
+```
+
+**Populate all plan sections using CLI commands:**
+
+1. `add-plan-example` — payload examples (request, success, error, validation-error)
+2. `add-plan-validation` — validation boundary rules
+3. `add-plan-model` — each model with `--justification` defending package placement per constitution. Use `--fields` for records, `--values`/`--methods` for enums.
+4. `add-plan-model-field` — add fields incrementally to existing models
+5. `add-plan-class` — every class in the Class Structure
+6. `add-plan-slice` — each implementation slice with `--goal`, `--files`, inline `--unit-test`/`--integration-test`/`--component-test`, and `--info-log`/`--warn-log`/`--error-log`
+7. `set-plan-composition` — composition strategy (parallel, sequential, etc.)
+8. `set-plan-infra` — shared infrastructure (reused and new)
+9. `add-plan-test` — testing matrix entries
+10. `set-plan-karate` — Karate feature file, scenarios, smoke tags
+11. `set-plan-archunit` — ArchUnit rules
+
+**Validate before handoff:**
+
+```bash
+node flow-log/flow-log.mjs validate-plan --feature <feature-name>
+```
+
+The `validate-plan` output must show `valid: true` before handing off to Architecture Review.
+
+**On plan revision** (after architecture review returns risks):
+
+```bash
+node flow-log/flow-log.mjs revise-plan --feature <feature-name>
+```
+
+This bumps the revision and clears ALL sections. Re-populate the revised plan from scratch.
 
 ## Plan revision after architecture review
 
 When `flow-log summary` shows `architecturalRisks` with OPEN or REOPENED risks:
 
 1. Read the existing plan.
-2. Read each risk's `description` and (if reopened) prior `responseNote` from the summary's `architecturalRisks.risks` array.
+2. Read each risk's `description`, `suggestedFix`, and (if reopened) prior `responseNote` from the summary's `architecturalRisks.risks` array. The `suggestedFix` is the Reviewer's proposed solution — use it as a convergence target. You may adopt it directly, adapt it, or argue against it, but you must engage with it specifically.
 3. **Self-review before responding:** Re-read the full plan end-to-end and cross-check against `documentation/constitution.md`, `documentation/architecture-guidance.md`, and `documentation/code-guidance.md`. Look for internal inconsistencies, cascading impacts of the changes you are about to make, and any issues the Reviewer has not yet raised. Fix proactively — do not wait for the Reviewer to find them.
 4. For each OPEN or REOPENED Critical/High risk, either:
    - Fix the plan and mark addressed: `node flow-log/flow-log.mjs respond-risk --feature <feature-name> --id <N> --status ADDRESSED --note "<what was changed>" --by JavaArchitect`
    - Argue it is not a valid concern: `node flow-log/flow-log.mjs respond-risk --feature <feature-name> --id <N> --status INVALIDATED --note "<why this is not an issue>" --by JavaArchitect`
 5. Medium/Low risks: address if convenient, otherwise leave OPEN (non-blocking).
-6. Revise the plan in place — same file path. Do not create a new file.
-7. Do not change parts of the plan unrelated to the findings unless a finding cascades.
+6. **Rewrite affected sections from scratch** — do not patch. After addressing risks, rewrite every plan section that was touched from a clean slate. Remove any orphaned mechanism, stale reference, contradictory paragraph, or dual-path ambiguity left over from previous iterations. The plan after revision must read as if it were written fresh with the current design — no archaeological layers.
+7. Revise the plan in place — same file path. Do not create a new file.
+8. Before handoff, perform a full-plan consistency sweep: verify that only one final implementation strategy remains, all class references are consistent, no removed mechanism is still referenced, and the slice breakdown matches the current design.
 
 ## Required plan content
 
@@ -121,8 +164,9 @@ If the plan introduces a new layer interaction, capability boundary, or package 
 
 ## Output
 
-Save the plan to:
+The plan is stored as JSON at:
 
-`artifacts/implementation-plans/<feature-name>.plan.md`
+`artifacts/implementation-plans/<feature-name>.plan.json`
 
+Populated entirely via `flow-log` CLI commands. No Markdown plan is produced.
 The plan must be precise enough that the coder can implement it slice by slice without redesigning it.

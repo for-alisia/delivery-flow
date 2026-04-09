@@ -3,7 +3,7 @@ name: "Code Reviewer"
 description: "Post-implementation validation gate. Reviews code quality, test coverage, verification evidence, and plan compliance. Returns structured findings to Team Lead."
 target: vscode
 tools: [read, search, edit, execute, todo, web, vscode/memory]
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.4-mini (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide feature name. Run flow-log summary to load context."
@@ -55,7 +55,7 @@ node flow-log/flow-log.mjs summary --feature <feature-name>
 
 Review:
 - original request (path from flow-log `requestSource`)
-- approved plan (path from flow-log `artifacts.plan`)
+- approved plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` (full plan JSON). Use `--section models`, `--section slices`, etc. for focused comparison.
 - flow-log checks and events (from `summary`)
 - architecture review outcome (flow-log `reviews.architectureReview`)
 - changed source files (from flow-log `changes.files` or `get`)
