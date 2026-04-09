@@ -1,12 +1,12 @@
 package com.gitlabflow.floworchestrator.integration.gitlab;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClientResponseException;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class GitLabExceptionMapperTest {
 
@@ -25,11 +25,19 @@ class GitLabExceptionMapperTest {
     }
 
     @Test
+    @DisplayName("maps 403 to forbidden")
+    void mapsForbiddenToForbidden() {
+        final IntegrationException exception = mapper.fromHttpFailure(httpFailure(403), SOURCE, RESOURCE_ISSUES);
+
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FORBIDDEN);
+    }
+
+    @Test
     @DisplayName("maps 404 to not found")
     void mapsNotFoundToNotFound() {
         final IntegrationException exception = mapper.fromHttpFailure(httpFailure(404), SOURCE, RESOURCE_ISSUES);
 
-        assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_NOT_FOUND);
+        assertThat(exception.errorCode()).isEqualTo(ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test

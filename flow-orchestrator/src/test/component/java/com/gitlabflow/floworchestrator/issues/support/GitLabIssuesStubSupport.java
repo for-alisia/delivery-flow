@@ -1,23 +1,21 @@
 package com.gitlabflow.floworchestrator.issues.support;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import org.springframework.core.io.ClassPathResource;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
+
 public final class GitLabIssuesStubSupport {
 
     private static final String ISSUES_PATH = "/api/v4/projects/group%2Fproject/issues";
 
-    private GitLabIssuesStubSupport() {
-    }
+    private GitLabIssuesStubSupport() {}
 
     public static void stubDefaultIssues(final WireMockServer wireMockServer) {
         wireMockServer.stubFor(get(urlPathEqualTo(ISSUES_PATH))

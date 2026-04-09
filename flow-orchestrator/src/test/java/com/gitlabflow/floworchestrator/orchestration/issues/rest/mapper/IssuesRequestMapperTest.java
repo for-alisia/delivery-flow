@@ -1,5 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
@@ -8,13 +10,10 @@ import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssue
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class IssuesRequestMapperTest {
 
@@ -38,8 +37,7 @@ class IssuesRequestMapperTest {
     void mapsNestedValuesIntoQuery() {
         final SearchIssuesRequest request = new SearchIssuesRequest(
                 new PaginationRequest(2, 20),
-                new IssueFiltersRequest("opened", List.of("bug"), List.of("john.doe"), List.of("M1"))
-        );
+                new IssueFiltersRequest("opened", List.of("bug"), List.of("john.doe"), List.of("M1")));
 
         final IssueQuery query = mapper.toIssueQuery(request);
 
@@ -64,9 +62,7 @@ class IssuesRequestMapperTest {
     @DisplayName("extracts only first non-null filter value")
     void extractsSingleFilterValue() {
         final SearchIssuesRequest request = new SearchIssuesRequest(
-                null,
-                new IssueFiltersRequest("all", Arrays.asList(null, "bug"), List.of("alice"), List.of("v1"))
-        );
+                null, new IssueFiltersRequest("all", Arrays.asList(null, "bug"), List.of("alice"), List.of("v1")));
 
         final IssueQuery query = mapper.toIssueQuery(request);
 
@@ -91,11 +87,7 @@ class IssuesRequestMapperTest {
     @Test
     @DisplayName("maps create issue request with labels unchanged")
     void mapsCreateIssueRequestWithLabelsUnchanged() {
-        final CreateIssueRequest request = new CreateIssueRequest(
-                "Reporting bug",
-                null,
-                List.of("bug", "backend")
-        );
+        final CreateIssueRequest request = new CreateIssueRequest("Reporting bug", null, List.of("bug", "backend"));
 
         final CreateIssueInput input = mapper.toCreateIssueInput(request);
 

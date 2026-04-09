@@ -24,7 +24,8 @@
 - Workflow owner and final acceptance gate
 - Maintains requirement lock and shared checkpoint
 - Verifies artifacts before every stage transition
-- Re-runs key coder verification before Phase 2
+- Runs `final-check.sh` and Karate smoke tests (`karate-test.sh`) after coder batches; the Karate script reuses a healthy local app when available or starts it automatically
+- Owns verification log and implementation report evidence writing
 - Enforces coder batching, red cards, and architect escalation
 
 ### `Product Manager`
@@ -37,20 +38,23 @@
 
 - Produces the implementation plan for `Java Coder`
 - Defines class structure, payload examples, validation boundaries, slices, tests, and documentation updates
+- Writes Karate `.feature` files directly when the plan adds or changes API endpoints
 - Uses repository rules and external docs when behavior is uncertain
 
 ### `Reviewer`
 
 - Independent validation gate
 - Phase 1: validates prompt, story, plan, and rule compliance before coding
-- Phase 2: validates implementation, tests, verification logs, local quality flow, startup, and smoke checks
+- Phase 2: validates TL evidence, reviews code quality (naming, model justification, duplication, over-engineering, log context, test quality), and compares implementation to plan
+- Reruns scripts only when TL evidence is missing or suspect
 - Writes the review report and fails unverifiable claims
 
 ### `Java Coder`
 
 - Implements the plan exactly, slice by slice
-- Adds required tests and runs verification
-- Updates implementation report and verification log after every batch
+- Adds required tests and runs verification (`verify-quick.sh` per slice, `final-check.sh` before handoff)
+- Does NOT write Karate `.feature` files or run Karate tests — that belongs to Architect and Team Lead respectively
+- Returns changed files, status, deviations, and blockers after every batch
 - Does not invent extra scope or self-certify weak evidence
 
 ## Shared Control Rules
@@ -74,14 +78,14 @@
 
 ## Verification Expectations
 
-- `Java Coder` runs implementation and local-quality verification
-- `Team Lead` independently re-runs key checks, including `mvn test` when coder claims tests passed
-- `Reviewer` re-validates code, logs, local quality flow, application startup, and smoke tests before acceptance
+- `Java Coder` runs `verify-quick.sh` per slice and `final-check.sh` before handoff
+- `Team Lead` runs `final-check.sh` as independent recheck, runs `karate-test.sh`, and owns verification log and implementation report evidence
+- `Reviewer` validates code quality, reviews evidence, and reruns checks only when TL evidence is suspect
 
 ## Source Files
 
 - [Team Lead Agent](../agents/team-lead.agent.md)
-- [Product Manager Agent](../agents/product-manager.md)
+- [Product Manager Agent](../agents/product-manager.agent.md)
 - [Java Architect Agent](../agents/java-architect.agent.md)
 - [Reviewer Agent](../agents/reviewer.agent.md)
 - [Java Coder Agent](../agents/java-coder.agent.md)

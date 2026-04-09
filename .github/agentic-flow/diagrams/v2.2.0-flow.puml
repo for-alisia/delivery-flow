@@ -1,0 +1,55 @@
+@startuml
+title Agentic Flow v2.2.0 - Actual Run Flow
+
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequenceMessageAlign center
+
+actor "Team Lead" as TL
+participant "Product Manager" as PM
+participant "Java Architect" as ARCH
+participant "Reviewer" as REV
+participant "Java Coder" as CODER
+
+note over TL,CODER #E2E8F0
+Green = passed gate
+Yellow = rejected / returned
+Red = red card
+end note
+
+group Planning Phase
+TL -> PM : Story attempt 1
+PM --> TL : Story draft
+TL -[#F59E0B]> TL : Reject story\nrequirement inconsistency
+
+TL -> PM : Story attempt 2
+PM --> TL : Updated story
+TL -> ARCH : Create plan
+ARCH --> TL : Plan ready
+TL -> REV : Phase 1 review
+REV -[#22C55E]> TL : PASS
+end
+
+group Implementation Phase
+TL -> CODER : Batch 1
+CODER --> TL : Handoff attempt
+TL -[#F59E0B]> TL : Reject\nmissing summary despite green checks
+TL -> CODER : Batch 1 retry
+CODER -[#22C55E]> TL : Accepted batch 1
+
+TL -> CODER : Batch 2
+loop Coder reruns
+CODER --> TL : Handoff attempt
+TL -[#F59E0B]> TL : Reject\ncheckstyle/report/smoke/health gaps
+TL -> CODER : Retry
+end
+
+TL -> REV : Phase 2 first pass
+REV -[#F59E0B]> TL : PASS in chat
+TL -[#DC2626]> TL : Red card\nartifact not updated on disk
+TL -> REV : Reviewer rerun
+REV -[#22C55E]> TL : PASS on disk
+TL -[#22C55E]> TL : Final sign-off
+end
+
+@enduml

@@ -1,0 +1,151 @@
+{
+  "artifactType": "implementation-signoff",
+  "schemaVersion": "1.0",
+  "featureName": "issue-id-field",
+  "status": "accepted",
+  "revisionEvidence": {
+    "changedFilesInAcceptedScope": [
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabIssueResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Issue.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-issues-single.json",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssuePageTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssuesResponseTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "scripts/smoke-test.sh",
+      "documentation/context-map.md",
+      "flow-orchestrator/http/issues.http"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/spotbugsXml.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/feature-3-refactori-issue-api.md",
+    "storyPath": "artifacts/user-stories/issue-id-field.story.md",
+    "planPath": "artifacts/implementation-plans/issue-id-field.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/issue-id-field.report.json",
+    "verificationLogPath": "artifacts/implementation-reports/issue-id-field-verification.log",
+    "reviewReportPath": "artifacts/review-reports/issue-id-field.review.json",
+    "relatedDocumentation": [
+      "documentation/context-map.md",
+      "documentation/constitution.md",
+      "documentation/code-guidance.md"
+    ]
+  },
+  "reviewerGateReview": {
+    "phase1Result": "PASS",
+    "phase2Result": "PASS",
+    "reviewReportCompleteness": "PASS",
+    "openFailedOrBlockedItems": []
+  },
+  "teamLeadAudit": {
+    "requirementsAlignedAcrossArtifacts": "PASS",
+    "artifactCompletenessAndConsistency": "PASS",
+    "spotChecks": [
+      {
+        "item": "iid never leaks to orchestration or REST layer",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/.../orchestration/ (grep for iid)"
+        ],
+        "outcome": "PASS",
+        "notes": "grep returned no matches — iid is confined to integration layer only"
+      },
+      {
+        "item": "IssuesControllerIT jsonPath assertions present for both endpoints",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/test/integration/java/.../IssuesControllerIT.java"
+        ],
+        "outcome": "PASS",
+        "notes": "$.items[0].issueId == 5 (search), $.issueId == 10 and 11 (create)"
+      },
+      {
+        "item": "IssueDto.issueId serializes as issueId with no @JsonProperty override",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/.../rest/dto/IssueDto.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Plain record component named issueId — Jackson serializes as-is"
+      }
+    ],
+    "redCardHistory": []
+  },
+  "verificationReview": {
+    "localStaticAnalysis": "PASS",
+    "postCoderMvnTest": "PASS",
+    "quickVerify": "PASS",
+    "startup": "NOT_RUN — requires live GitLab token; deferred to operator smoke test",
+    "smokeChecks": "NOT_RUN — script updated and verified present; runtime execution requires live environment",
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": null,
+      "passCount": null,
+      "failCount": null,
+      "summary": "check_field helper and two issueId field-presence assertions added and verified in script source"
+    },
+    "teamLeadRechecks": [
+      {
+        "batch": 1,
+        "command": "scripts/verify-quick.sh",
+        "result": "BUILD SUCCESS — 63 tests, 0 failures"
+      },
+      {
+        "batch": 2,
+        "command": "scripts/verify-quick.sh",
+        "result": "BUILD SUCCESS — 64 tests, 0 failures"
+      },
+      {
+        "batch": 3,
+        "command": "scripts/verify-quick.sh",
+        "result": "BUILD SUCCESS — 64 tests, 0 failures"
+      },
+      {
+        "batch": "final",
+        "command": "scripts/final-check.sh",
+        "result": "BUILD SUCCESS — Spotless/Checkstyle/PMD/CPD/SpotBugs(0 bugs)/JaCoCo all PASS; 64 unit+IT + 20 component tests"
+      }
+    ],
+    "commandRedactionVerified": "PASS",
+    "blockedItems": []
+  },
+  "deviationsAndApprovals": [],
+  "documentationReview": [
+    {
+      "document": "documentation/context-map.md",
+      "status": "UPDATED",
+      "notes": "IssueDto field list updated to include issueId (project-scoped number, maps from GitLab iid)"
+    },
+    {
+      "document": "flow-orchestrator/http/issues.http",
+      "status": "UPDATED",
+      "notes": "Inline comment added to create issue example noting issueId in response"
+    },
+    {
+      "document": "scripts/smoke-test.sh",
+      "status": "UPDATED",
+      "notes": "check_field helper added; two issueId field-presence assertions added for both endpoints"
+    }
+  ],
+  "risksAndFollowUp": [
+    {
+      "item": "Live smoke test not executed — requires running application with real GitLab token",
+      "severity": "LOW",
+      "action": "Operator should run scripts/smoke-test.sh after deploying to a live environment"
+    }
+  ],
+  "finalDecision": {
+    "decision": "ACCEPTED",
+    "reason": "All requirement lock constraints satisfied. Reviewer Phase 1 (15/15) and Phase 2 (11/11) passed. Three Team Lead batch rechecks and final-check.sh all green. Spot checks confirm iid boundary enforcement, correct jsonPath assertions, and proper serialization. No red cards issued. Documentation updated.",
+    "signedOffBy": "Team Lead"
+  }
+}

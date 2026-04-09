@@ -1,0 +1,141 @@
+{
+  "artifactType": "implementation-signoff",
+  "schemaVersion": "1.0",
+  "featureName": "delete-issue-api",
+  "status": "accepted",
+  "revisionEvidence": {
+    "changedFilesInAcceptedScope": [
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/error/ErrorCode.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandlerTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/http/issues.http",
+      "scripts/smoke-test.sh"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/spotbugsXml.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/feature-4-delete-issue-api.md",
+    "storyPath": "artifacts/user-stories/delete-issue-api.story.md",
+    "planPath": "artifacts/implementation-plans/delete-issue-api.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/delete-issue-api.report.json",
+    "reviewReportPath": "artifacts/review-reports/delete-issue-api.review.json",
+    "relatedDocumentation": [
+      "documentation/constitution.md",
+      "documentation/context-map.md"
+    ]
+  },
+  "reviewerGateReview": {
+    "phase1Result": "PASS",
+    "phase2Result": "PASS",
+    "reviewReportCompleteness": "PASS",
+    "openFailedOrBlockedItems": []
+  },
+  "teamLeadAudit": {
+    "requirementsAlignedAcrossArtifacts": "PASS",
+    "artifactCompletenessAndConsistency": "PASS",
+    "spotChecks": [
+      {
+        "item": "API contract — Controller returns 204, validates issueId > 0, maps to GitLab iid",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java"
+        ],
+        "outcome": "PASS",
+        "notes": "DeleteMapping returns noContent().build(), validates issueId > 0 with ValidationException"
+      },
+      {
+        "item": "GitLab adapter — uses URL-encoded project path, correct URI pattern, handles 403/404",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Uses projectPath() for URL-encoded project path, issueId as iid, correct error handling pattern"
+      },
+      {
+        "item": "Error mapping chain — GitLab 403 → INTEGRATION_FORBIDDEN → HTTP 403, GitLab 404 → INTEGRATION_NOT_FOUND → HTTP 404",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabExceptionMapper.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Full error chain verified. No GitLab internals exposed in error responses."
+      }
+    ],
+    "redCardHistory": []
+  },
+  "verificationReview": {
+    "localStaticAnalysis": "PASS",
+    "postCoderMvnTest": "PASS",
+    "quickVerify": "PASS",
+    "startup": "PASS",
+    "smokeChecks": "PASS",
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/smoke-test.sh",
+      "exitCode": 0,
+      "passCount": 11,
+      "failCount": 0,
+      "summary": "All 11 smoke checks passed including new delete flow (create→delete 204→re-delete 404→validation 400)"
+    },
+    "teamLeadRechecks": [
+      {
+        "command": "scripts/final-check.sh",
+        "result": "BUILD SUCCESS — 0 checkstyle violations, 0 PMD violations, 0 SpotBugs issues, all tests pass",
+        "status": "PASS"
+      },
+      {
+        "command": "spring-boot:run (SPRING_PROFILES_ACTIVE=local)",
+        "result": "Application started on port 8080 in 2.513 seconds",
+        "status": "PASS"
+      },
+      {
+        "command": "scripts/smoke-test.sh",
+        "result": "11 passed, 0 failed",
+        "status": "PASS"
+      }
+    ],
+    "commandRedactionVerified": "PASS",
+    "blockedItems": []
+  },
+  "deviationsAndApprovals": [],
+  "documentationReview": [
+    {
+      "document": "flow-orchestrator/http/issues.http",
+      "status": "Updated with delete happy-path and error requests"
+    },
+    {
+      "document": "scripts/smoke-test.sh",
+      "status": "Updated with delete flow smoke checks"
+    },
+    {
+      "document": "documentation/context-map.md",
+      "status": "Pending Team Lead update"
+    }
+  ],
+  "risksAndFollowUp": [
+    {
+      "item": "Error-code-aware HTTP status mapping is a system-wide change — existing IT tests updated to expect semantically correct statuses (401/429 instead of 502)",
+      "severity": "LOW",
+      "recommendation": "No action needed — behavior is now correct per constitution Principle 7"
+    }
+  ],
+  "finalDecision": {
+    "decision": "ACCEPTED",
+    "reason": "All acceptance criteria met, all verification gates passed, spot checks confirmed correct implementation, no deviations",
+    "signedOffBy": "Team Lead"
+  }
+}

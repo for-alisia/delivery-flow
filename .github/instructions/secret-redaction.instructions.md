@@ -1,5 +1,6 @@
 ---
 applyTo: "**"
+description: "Prevent secrets, tokens, and sensitive values from appearing in any artifact, report, log, or terminal output."
 ---
 
 ## Secret Redaction Rules

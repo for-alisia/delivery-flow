@@ -1,15 +1,28 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.gitlabflow.floworchestrator.orchestration.issues.model.Change;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.AssigneeDetail;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.MilestoneDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class IssuesResponseMapperTest {
 
@@ -19,10 +32,9 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue page to API response contract")
     void mapsIssuePageToApiResponse() {
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)),
+                List.of(new Issue(123L, 5L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)),
                 1,
-                2
-        );
+                2);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -30,6 +42,7 @@ class IssuesResponseMapperTest {
         assertThat(response.page()).isEqualTo(2);
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().getFirst().id()).isEqualTo(123L);
+        assertThat(response.items().getFirst().issueId()).isEqualTo(5L);
         assertThat(response.items().getFirst().assignee()).isEqualTo("john");
         assertThat(response.items().getFirst().milestone()).isEqualTo("M1");
         assertThat(response.items().getFirst().parent()).isEqualTo(42L);
@@ -38,11 +51,8 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("keeps nullable fields as null")
     void keepsNullableFieldsAsNull() {
-        final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(1L, "T", null, "closed", List.of(), null, null, null)),
-                1,
-                1
-        );
+        final IssuePage issuePage =
+                new IssuePage(List.of(new Issue(1L, 2L, "T", null, "closed", List.of(), null, null, null)), 1, 1);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
@@ -68,18 +78,18 @@ class IssuesResponseMapperTest {
     void mapsMultipleIssuesIntoMultipleResponseItems() {
         final IssuePage issuePage = new IssuePage(
                 List.of(
-                        new Issue(11L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
-                        new Issue(12L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)
-                ),
+                        new Issue(11L, 3L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
+                        new Issue(12L, 4L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)),
                 2,
-                4
-        );
+                4);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().getFirst().id()).isEqualTo(11L);
+        assertThat(response.items().getFirst().issueId()).isEqualTo(3L);
         assertThat(response.items().get(1).id()).isEqualTo(12L);
+        assertThat(response.items().get(1).issueId()).isEqualTo(4L);
         assertThat(response.items().get(1).assignee()).isEqualTo("bob");
         assertThat(response.count()).isEqualTo(2);
         assertThat(response.page()).isEqualTo(4);
@@ -89,19 +99,12 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue fields to issue dto")
     void mapsIssueFieldsToIssueDto() {
         final Issue issue = new Issue(
-                84L,
-                "Deploy failure",
-                "Step 3 failed",
-                "opened",
-                List.of("bug", "deploy"),
-                "john",
-                "M1",
-                42L
-        );
+                84L, 6L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), "john", "M1", 42L);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
         assertThat(response.id()).isEqualTo(84L);
+        assertThat(response.issueId()).isEqualTo(6L);
         assertThat(response.title()).isEqualTo("Deploy failure");
         assertThat(response.description()).isEqualTo("Step 3 failed");
         assertThat(response.state()).isEqualTo("opened");
@@ -114,7 +117,7 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("keeps nullable description as null for issue dto")
     void keepsNullableDescriptionAsNullForIssueDto() {
-        final Issue issue = new Issue(85L, "Reporting bug", null, "opened", List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 7L, "Reporting bug", null, "opened", List.of(), null, null, null);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
@@ -122,4 +125,165 @@ class IssuesResponseMapperTest {
         assertThat(response.description()).isNull();
         assertThat(response.labels()).isEmpty();
     }
+
+    @Test
+    @DisplayName("maps issueId from issue to dto")
+    void mapsIssueIdFromIssueToDto() {
+        final Issue issue = new Issue(1L, 99L, "Title", null, "opened", List.of(), null, null, null);
+
+        final IssueDto dto = mapper.toIssueDto(issue);
+
+        assertThat(dto.issueId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps all fields")
+    void toIssueDetailDtoMapsAllFields() {
+        final var assignee = new AssigneeDetail(10L, "john.doe", "John Doe");
+        final var milestone = new MilestoneDetail(5L, 3L, "Sprint 12", "active", "2026-04-30");
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                42L,
+                "Fix login bug",
+                "SSO broken",
+                "opened",
+                List.of("bug"),
+                List.of(assignee),
+                milestone,
+                createdAt,
+                updatedAt,
+                null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.issueId()).isEqualTo(42L);
+        assertThat(dto.title()).isEqualTo("Fix login bug");
+        assertThat(dto.description()).isEqualTo("SSO broken");
+        assertThat(dto.state()).isEqualTo("opened");
+        assertThat(dto.labels()).containsExactly("bug");
+        assertThat(dto.assignees()).hasSize(1);
+        assertThat(dto.assignees().getFirst().id()).isEqualTo(10L);
+        assertThat(dto.assignees().getFirst().username()).isEqualTo("john.doe");
+        assertThat(dto.assignees().getFirst().name()).isEqualTo("John Doe");
+        final var milestoneDto = Objects.requireNonNull(dto.milestone());
+        assertThat(milestoneDto.milestoneId()).isEqualTo(3L);
+        assertThat(dto.createdAt()).isEqualTo(createdAt);
+        assertThat(dto.updatedAt()).isEqualTo(updatedAt);
+        assertThat(dto.closedAt()).isNull();
+        assertThat(dto.changeSets()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps null milestone to null")
+    void toIssueDetailDtoMapsNullMilestoneToNull() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                7L, "No milestone", null, "closed", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.milestone()).isNull();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps empty assignees list to empty")
+    void toIssueDetailDtoMapsEmptyAssigneesToEmpty() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail = new IssueDetail(
+                7L, "No assignees", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.assignees()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto maps label change set fields")
+    void toIssueDetailDtoMapsLabelChangeSetFields() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var changedAt = OffsetDateTime.parse("2026-01-15T09:30:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final LabelChangeSet changeSet = LabelChangeSet.builder()
+                .changeType("add")
+                .changedBy(ChangedBy.builder()
+                        .id(1L)
+                        .username("root")
+                        .name("Administrator")
+                        .build())
+                .change(LabelChange.builder().id(73L).name("bug").build())
+                .changedAt(changedAt)
+                .build();
+        final var enriched = new EnrichedIssueDetail(detail, List.of(changeSet));
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.changeSets()).hasSize(1);
+        assertThat(dto.changeSets().getFirst()).isInstanceOf(IssueDetailDto.LabelChangeSetDto.class);
+        final IssueDetailDto.LabelChangeSetDto labelChangeSetDto =
+                (IssueDetailDto.LabelChangeSetDto) dto.changeSets().getFirst();
+        assertThat(labelChangeSetDto.changeType()).isEqualTo("add");
+        assertThat(labelChangeSetDto.changedBy().id()).isEqualTo(1L);
+        assertThat(labelChangeSetDto.changedBy().username()).isEqualTo("root");
+        assertThat(labelChangeSetDto.changedBy().name()).isEqualTo("Administrator");
+        assertThat(labelChangeSetDto.change().field()).isEqualTo(ChangeField.LABEL);
+        assertThat(labelChangeSetDto.change().id()).isEqualTo(73L);
+        assertThat(labelChangeSetDto.change().name()).isEqualTo("bug");
+        assertThat(labelChangeSetDto.changedAt()).isEqualTo(changedAt);
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto returns empty changeSets when enriched payload has none")
+    void toIssueDetailDtoReturnsEmptyChangeSetsWhenEnrichedPayloadHasNone() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final var enriched = new EnrichedIssueDetail(detail, List.of());
+
+        final IssueDetailDto dto = mapper.toIssueDetailDto(enriched);
+
+        assertThat(dto.changeSets()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("toIssueDetailDto throws when changeSet type is unsupported")
+    void toIssueDetailDtoThrowsWhenChangeSetTypeIsUnsupported() {
+        final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
+        final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
+        final var detail =
+                new IssueDetail(7L, "T", null, "opened", List.of(), List.of(), null, createdAt, updatedAt, null);
+        final ChangeSet unsupportedChangeSet =
+                new UnsupportedChangeSet(OffsetDateTime.parse("2026-01-15T09:30:00.000Z"));
+        final var enriched = new EnrichedIssueDetail(detail, List.of(unsupportedChangeSet));
+
+        assertThatThrownBy(() -> mapper.toIssueDetailDto(enriched)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private record UnsupportedChangeSet(OffsetDateTime changedAt) implements ChangeSet {
+
+        @Override
+        public String changeType() {
+            return "noop";
+        }
+
+        @Override
+        public ChangedBy changedBy() {
+            return ChangedBy.builder().id(0L).username("n/a").name("n/a").build();
+        }
+
+        @Override
+        public Change change() {
+            return new UnsupportedChange(ChangeField.LABEL, 0L, "unsupported");
+        }
+    }
+
+    private record UnsupportedChange(ChangeField field, long id, String name) implements Change {}
 }

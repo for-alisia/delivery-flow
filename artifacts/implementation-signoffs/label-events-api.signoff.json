@@ -1,0 +1,135 @@
+{
+  "artifactType": "implementation-signoff",
+  "schemaVersion": "1.0",
+  "featureName": "label-events-api",
+  "status": "accepted",
+  "revisionEvidence": {
+    "changedFilesInAcceptedScope": [
+      "artifacts/implementation-reports/label-events-api.report.json",
+      "artifacts/implementation-reports/label-events-api-verification.log",
+      "artifacts/review-reports/label-events-api.review.json",
+      "documentation/context-map.md",
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabLabelEventResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Change.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangedBy.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/EnrichedIssueDetail.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabLabelEventsStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-label-events-response.json",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSetTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDtoTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/karate/resources/issues/issues-get-single.feature"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/spotbugsXml.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml",
+      "flow-orchestrator/target/karate-reports/karate-summary.html"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/label-events-api.md",
+    "storyPath": "artifacts/user-stories/label-events-api.story.md",
+    "planPath": "artifacts/implementation-plans/label-events-api.plan.md",
+    "implementationReportPath": "artifacts/implementation-reports/label-events-api.report.json",
+    "reviewReportPath": "artifacts/review-reports/label-events-api.review.json",
+    "relatedDocumentation": [
+      "documentation/context-map.md",
+      "flow-orchestrator/http/issues.http"
+    ]
+  },
+  "reviewerGateReview": {
+    "phase1Result": "PASS",
+    "phase2Result": "PASS",
+    "reviewReportCompleteness": "PASS",
+    "openFailedOrBlockedItems": []
+  },
+  "teamLeadAudit": {
+    "requirementsAlignedAcrossArtifacts": "PASS",
+    "artifactCompletenessAndConsistency": "PASS",
+    "spotChecks": [
+      {
+        "item": "Label-events endpoint and mapping contract",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed GET /api/issues/{issueId} still uses the existing issue-detail call plus a separate GitLab /resource_label_events call on the configured project. The mapper preserves GitLab ordering, maps changeType from action, and forces change.field to label via LabelChange."
+      },
+      {
+        "item": "No-partial-failure and smoke evidence",
+        "sourceArtifacts": [
+          "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+          "flow-orchestrator/src/test/karate/resources/issues/issues-get-single.feature"
+        ],
+        "outcome": "PASS",
+        "notes": "Confirmed component coverage asserts 502 with no issue payload when label-events fails and confirms label-events is not called after issue-detail 404. Confirmed existing smoke scenario asserts changeSets == '#[]' on GET /api/issues/{issueId}."
+      }
+    ],
+    "redCardHistory": [
+      {
+        "agent": "Reviewer",
+        "reason": "Initial Phase 2 review failed on incomplete context-map coverage and an implementation-report deviation contradiction.",
+        "actionTaken": "Routed exact blocker evidence back to Java Coder for documentation/report remediation, reran scripts/final-check.sh, refreshed the Phase 2 brief, and obtained Reviewer approval on rerun."
+      }
+    ]
+  },
+  "verificationReview": {
+    "localStaticAnalysis": "PASS",
+    "postCoderMvnTest": "PASS",
+    "quickVerify": "PASS",
+    "startup": "PASS",
+    "smokeChecks": "PASS",
+    "smokeCheckEvidence": {
+      "scriptUsed": "scripts/karate-test.sh",
+      "exitCode": 0,
+      "passCount": 17,
+      "failCount": 0,
+      "summary": "Karate started flow-orchestrator with the local profile, ran against http://localhost:8080, and passed all 6 features and all 17 scenarios, including issues-get-single.feature 3/3 scenarios."
+    },
+    "teamLeadRechecks": [
+      "Worktree: /Users/alisia/Projects/aiProjects/GitlabFlow",
+      "Branch: feature/4",
+      "Head SHA: 9af8aebee131b7b6acc9c9bdbb4112c3b0ff3ddb",
+      "Batch 1 scripts/final-check.sh PASS: BUILD SUCCESS, tests=105, zero checkstyle/PMD/CPD/SpotBugs findings.",
+      "Final implementation batch scripts/final-check.sh PASS at 2026-04-08T17:18:48+02:00: surefire=110, failsafe=35, all quality gates PASS.",
+      "Remediation batch scripts/final-check.sh PASS at 2026-04-08T17:37:07+02:00: surefire=110, failsafe=35, all quality gates PASS.",
+      "scripts/karate-test.sh PASS at 2026-04-08T17:19:38+02:00: features=6, scenarios=17, application started and stopped by the script."
+    ],
+    "commandRedactionVerified": "PASS",
+    "blockedItems": []
+  },
+  "deviationsAndApprovals": [
+    "Approved minor deviation: issues-get-single.feature was not extended with a new non-smoke scenario because the existing @smoke scenario already validates changeSets == '#[]' on GET /api/issues/{issueId}; the deviation is documented consistently in the implementation report and Phase 2 brief."
+  ],
+  "documentationReview": [
+    "flow-orchestrator/http/issues.http documents the single-issue GET example and the changeSets shape note.",
+    "documentation/context-map.md now includes the 5 new orchestration model types, the 4 new IssueDetailDto inner types, and LabelChangeSetTest, aligning the capability map with the delivered code."
+  ],
+  "risksAndFollowUp": [
+    "The approved Karate deviation leaves populated changeSets validated at component level rather than with a dedicated new Karate scenario; this is acceptable for this story but is a natural future hardening target if smoke coverage is expanded."
+  ],
+  "finalDecision": {
+    "decision": "PASS",
+    "reason": "Requirement lock, story, plan, implementation, reviewer gates, Team Lead audit, documentation updates, quality reports, and Karate smoke evidence are aligned and complete for label-events-api, with one minor approved deviation recorded consistently.",
+    "signedOffBy": "GitHub Copilot"
+  }
+}

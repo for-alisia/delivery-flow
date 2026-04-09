@@ -1,6 +1,6 @@
 ---
 applyTo: "**/flow-orchestrator/**"
-description: "Use this instructions when writing/updating tests for the flow-orchestrator module."
+description: "Test placement, naming, levels, coverage, and quality rules for writing and updating tests in the flow-orchestrator module."
 ---
 
 ## Test Instructions
@@ -15,6 +15,11 @@ description: "Use this instructions when writing/updating tests for the flow-orc
 - Use `src/test/component/java` when the application must run on a real port or when outbound HTTP must be verified through stubs such as WireMock.
 - Keep component fixtures in `src/test/component/resources/stubs/...`.
 - Do not configure reusable stub servers or shared stub scenarios inline in test classes; keep them in dedicated support classes.
+- Keep Karate API smoke tests in `src/test/karate/resources/<capability>/` as `.feature` files and name runners `*KarateTest` in `src/test/karate/java/`.
+- Use Karate tests for end-to-end API verification against a running application. Tag all smoke scenarios with `@smoke`.
+- Karate tests are isolated from unit and quality-gate runs — they only execute via `scripts/karate-test.sh` or the `-Pkarate` Maven profile. Do not add Karate runner classes to surefire or default failsafe includes.
+- For local smoke verification, prefer `scripts/karate-test.sh` over manual startup plus raw Maven. The script reuses a healthy local app when available or starts it automatically.
+- The Architect writes Karate `.feature` files directly as part of the implementation plan. The Team Lead executes them. The Coder does NOT write or modify Karate tests.
 - Prefer the smallest test level that proves the change.
 - Do not duplicate the same scenario across unit, integration, and component tests unless each level proves something different.
 - Every non-trivial logic, validation, defaulting, mapping, or error translation change requires unit coverage.

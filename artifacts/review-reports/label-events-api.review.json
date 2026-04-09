@@ -1,0 +1,320 @@
+{
+  "artifactType": "review-report",
+  "schemaVersion": "1.0",
+  "featureName": "label-events-api",
+  "phase": "phase2",
+  "status": "APPROVED",
+  "revisionEvidence": {
+    "changedFilesReviewed": [
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabLabelEventResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Change.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/EnrichedIssueDetail.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSetTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "documentation/context-map.md",
+      "artifacts/implementation-reports/label-events-api.report.json",
+      "artifacts/implementation-reports/label-events-api-verification.log"
+    ],
+    "localQualityReportPaths": [
+      "flow-orchestrator/target/checkstyle-result.xml",
+      "flow-orchestrator/target/pmd.xml",
+      "flow-orchestrator/target/cpd.xml",
+      "flow-orchestrator/target/spotbugsXml.xml",
+      "flow-orchestrator/target/site/jacoco/jacoco.xml"
+    ]
+  },
+  "reviewedArtifacts": {
+    "originalRequest": "artifacts/user-prompts/label-events-api.md",
+    "requirementLockSource": "/memories/session/label-events-api-checkpoint.json",
+    "storyPath": "artifacts/user-stories/label-events-api.story.md",
+    "planPath": "artifacts/implementation-plans/label-events-api.plan.md",
+    "implementationReportPath": "N/A — Phase 1",
+    "relatedDocumentation": [
+      "documentation/constitution.md",
+      "documentation/code-guidance.md",
+      "documentation/context-map.md"
+    ]
+  },
+  "phase1Checks": {
+    "requestReviewed": {
+      "status": "PASS",
+      "evidence": [
+        "Request read in full: artifacts/user-prompts/label-events-api.md",
+        "Goal: populate changeSets in GET /api/issues/{issueId} from GitLab resource_label_events",
+        "Field mapping table, layering rules, error handling, and extensibility note all present and specific"
+      ]
+    },
+    "constraintsUsable": {
+      "status": "PASS",
+      "evidence": [
+        "All 13 requirement-lock constraints cross-checked between request notes, story locked constraints, and checkpoint requirementLock — fully consistent",
+        "Each constraint is unambiguous and implementable",
+        "No internal contradictions found among constraints"
+      ]
+    },
+    "storyAlignment": {
+      "status": "PASS",
+      "evidence": [
+        "Story locked constraints reproduce all 13 checkpoint constraints verbatim — no silent reinterpretation",
+        "AC 1-12 cover every request requirement: changeSets population, structure, changeType mapping, changedBy, empty array, Story 1 field preservation, mapping in orchestration, separate integration methods, no partial failure, backward compat, extensible design, GitLab alignment",
+        "Business goal and user story scope match original request goal exactly",
+        "No constraints were added, removed, or softened vs. the original request"
+      ]
+    },
+    "storyQuality": {
+      "status": "PASS",
+      "evidence": [
+        "Story contains: business goal, problem statement, user story format, locked constraints, in-scope/out-of-scope, 12 acceptance criteria, dependencies, assumptions",
+        "No open questions remain",
+        "Performance expectation (real-time, no deferred loading) and security expectation (no over-disclosure) are documented"
+      ]
+    },
+    "planMatchesStory": {
+      "status": "PASS",
+      "evidence": [
+        "All 12 ACs are explicitly traced in the plan's Acceptance Criteria table to slice coverage",
+        "Endpoint stays GET /api/issues/{issueId} — no new public endpoint introduced",
+        "Separate port method getLabelEvents added to IssuesPort; orchestration assembles both calls — matches AC 8 and story constraint",
+        "Partial failure: Slice 3 component test getIssueDetail_labelEventsFails_returnsErrorResponse covers AC 9",
+        "Client-facing changeSets mapping in IssuesResponseMapper (orchestration) — matches AC 7",
+        "ChangeSet and Change as interfaces — matches AC 11 and extensibility constraint",
+        "Plan prose and class table are internally consistent: mapper stays in orchestration/issues/rest/mapper/, integration adapter returns List<ChangeSet> via port"
+      ]
+    },
+    "constitutionCheck": {
+      "status": "PASS",
+      "evidence": [
+        "Principle 1 (layered boundaries): orchestration does not depend on integration internals; adapter implements port contract — PASS",
+        "Principle 2 (ports and adapters): IssuesPort.getLabelEvents defined in orchestration; GitLabIssuesAdapter implements it; each adapter method maps exactly one external call — PASS",
+        "Principle 2 MUST: 'adapter must never internally call multiple external endpoints to compose a single return value' — respected; getLabelEvents calls only resource_label_events, getIssueDetail calls only issues/:iid — PASS",
+        "Principle 3 (domain purity): no domain layer changes; all new types in orchestration or integration — PASS",
+        "Principle 6 (immutability): all new types are records with constructor injection; defensive copy required in LabelChangeSet compact constructor; plan confirms LabelChangeSetTest verifies this — PASS",
+        "Principle 7 (error handling): exceptions from both port calls propagate to centralized handler; no partial payload returned — PASS",
+        "Principle 8 (explicit mapping): GitLabLabelEventResponse mapped to LabelChangeSet in integration adapter via GitLabLabelEventMapper; List<ChangeSet> mapped to List<ChangeSetDto> in IssuesResponseMapper (orchestration) — PASS",
+        "Principle 10 (testing): three-level coverage: unit + integration (@WebMvcTest) + component (WireMock) + Karate — PASS",
+        "Principle 11 (docs in sync): context-map.md update included in Slice 3 scope — PASS"
+      ]
+    },
+    "planCompleteness": {
+      "status": "PASS",
+      "evidence": [
+        "Class structure table: 8 new/modified files, all paths explicit and consistent with package conventions",
+        "Payload examples: success with events, success empty, error on failure — all three cases documented",
+        "Validation boundary table: @Positive on issueId already present; no new validation needed — documented",
+        "Logging: INFO log entries specified per slice for adapter and service call sites",
+        "Documentation updates: context-map.md and issues.http both assigned to specific slices",
+        "Verification references: verify-quick.sh per slice, final-check.sh before handoff, karate-test.sh after Slice 3 — all cited",
+        "GitLab endpoint confirmed: resource_label_events shape documented in plan with field list"
+      ]
+    },
+    "testingAndSlices": {
+      "status": "PASS",
+      "evidence": [
+        "Slice 1: LabelChangeSetTest — defensive copy, field() constant, null-safe builder for all new records — CORRECT level for model-only slice",
+        "Slice 2: IssuesServiceTest (label-events assembly, exception propagation), IssuesResponseMapperTest (mapping, empty, unknown type), IssuesControllerIT (changeSets array present), GitLabIssuesAdapterTest (stub returns empty) — CORRECT levels",
+        "Slice 3: GitLabLabelEventMapperTest (field mapping), IssuesApiComponentTest (4 scenarios: populated, empty, label-events-fails, issue-detail-fails), Karate update — CORRECT levels",
+        "Karate scenario syntax validated: valid step keywords (Given/When/Then/And), valid path/request/method/status steps, '#array' match assertion is correct Karate fuzzy-match form, cleanup DELETE included — PASS",
+        "getIssueDetail_issueDetailFails_labelEventsNotCalled scenario validates no-partial-failure from issue-detail side — correctly placed in component tier",
+        "All 12 story ACs traceable to at least one test artifact in the testing matrix"
+      ]
+    },
+    "noScopeDrift": {
+      "status": "PASS",
+      "evidence": [
+        "No separate label-events endpoint introduced",
+        "No pagination or client-level filtering added",
+        "No non-label event sources included",
+        "Plan Out of Scope section matches story Out of Scope section exactly"
+      ]
+    }
+  },
+  "phase1Decision": {
+    "decision": "APPROVED",
+    "reason": "Story faithfully preserves the original request. Plan is internally consistent with story, matches constitution across all 12 principles, and is complete with payload examples, validation decisions, slice logging, test expectations, and verification scope. No constitution violations, no scope drift, no blocking issues found.",
+    "blockingIssues": [],
+    "advisoryNotesForCoder": [
+      "GitLabLabelEventResponse declares 'nested records for user and label': clarify whether user nested record reuses GitLabSingleIssueResponse.GitLabAssigneeDetail or creates a new inline record; both are acceptable but justify the choice if creating a new type to avoid silent duplication",
+      "Plan does not specify null-label handling in GitLabLabelEventMapper (GitLab can return null label if label was deleted post-event); Coder should add a null guard and either throw IntegrationException or skip the event — align with constitution Principle 7",
+      "Slice 2 says 'map LabelChangeSet list in service' — this should mean IssuesService sets the port-returned List<ChangeSet> directly into EnrichedIssueDetail builder without additional mapping; confirm no mapping logic leaks into the service layer"
+    ]
+  },
+  "phase2Checks": {
+    "implMatchesPlan": {
+      "status": "PASS",
+      "evidence": [
+        "Core implementation matches plan: IssuesPort.getLabelEvents added; IssuesService calls both port methods sequentially; GitLabIssuesAdapter.getLabelEvents calls one endpoint (resource_label_events); GitLabLabelEventMapper and GitLabLabelEventResponse added under integration/gitlab/issues/; IssuesResponseMapper maps via instanceof LabelChangeSet pattern in orchestration — all as specified",
+        "Karate non-smoke scenario absent: Approved deviation — documented in artifacts/implementation-reports/label-events-api.report.json approvedDeviations and consistent with /memories/session/label-events-api-phase2-brief.md; existing @smoke scenario issues-get-single.feature validates changeSets == '#[]' on GET /api/issues/{issueId} — deviation is justified and recorded",
+        "documentation/context-map.md fully updated: all 5 new orchestration model files, 4 new IssueDetailDto inner records, and LabelChangeSetTest.java confirmed present — see docUpdates finding"
+      ]
+    },
+    "constitutionBoundaries": {
+      "status": "PASS",
+      "evidence": [
+        "Principle 1 — dependency arrows inward: orchestration.issues.rest.mapper imports orchestration.issues.model (same layer); integration.gitlab.issues.mapper imports orchestration.issues.model (integration → orchestration contracts is correct) — PASS",
+        "Principle 2 — each adapter method maps one external call: getLabelEvents calls only /{issueId}/resource_label_events; getIssueDetail calls only /{issueId} — PASS",
+        "Principle 3 — no domain layer changes: all new types in orchestration or integration packages — PASS",
+        "Principle 6 — immutability: EnrichedIssueDetail uses List.copyOf(changeSets) in compact constructor (LabelChangeSetTest line 53-74 verified); IssueDetailDto also copies changeSets; all new model types are records — PASS",
+        "Principle 7 — no partial failure: IssuesService.getIssueDetail calls getIssueDetail then getLabelEvents with no try-catch; exceptions propagate to centralized handler; component test returns404WhenGitLabReturns404AndDoesNotCallLabelEvents confirms issue-detail failure prevents label-events call — PASS",
+        "Principle 8 — explicit mapping at boundaries: GitLabLabelEventMapper (integration/gitlab/issues/mapper/) maps integration DTOs to orchestration ChangeSet; IssuesResponseMapper (orchestration/issues/rest/mapper/) maps orchestration ChangeSet to ChangeSetDto — PASS"
+      ]
+    },
+    "codeGuidance": {
+      "status": "PASS",
+      "evidence": [
+        "GitLabIssuesAdapter: @RequiredArgsConstructor, @Slf4j, @Component; all dependencies final; INFO log before and after getLabelEvents call with issueId and count context — PASS",
+        "GitLabLabelEventMapper: @Slf4j, @Component; single toLabelChangeSets method; requiredField helper avoids NPE; @Builder on LabelChangeSet — PASS",
+        "New model types: ChangeSet/Change as interfaces; LabelChangeSet/LabelChange/ChangedBy as @Builder records; naming follows '*Set'/change domain vocabulary — PASS",
+        "IssueDetailDto: ChangeSetDto as interface; LabelChangeSetDto/ChangedByDto/LabelChangeDto as @Builder records; no numeric suffixes; compact constructor copies changeSets — PASS",
+        "IssuesService.getIssueDetail: two distinct port calls, no mapping logic in service (service passes port result directly to EnrichedIssueDetail.builder), INFO logs after both calls — PASS",
+        "Null handling: GitLabLabelEventMapper uses requiredField guard which throws IllegalStateException for null fields; centralized exception handler maps to 502 — consistent with existing pattern — PASS"
+      ]
+    },
+    "staticAnalysis": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/final-check.sh run 4 (Team Lead recheck, 2026-04-08T17:18:48+02:00): BUILD SUCCESS, surefire=110, failsafe=35",
+        "checkstyle=PASS, spotless=PASS, PMD=PASS, CPD=PASS, SpotBugs BugInstance=0 Error=0, JaCoCo gate=PASS",
+        "Reviewer compile check (mvn -q -DskipTests compile): clean, no output — PASS",
+        "Report paths confirmed present: flow-orchestrator/target/checkstyle-result.xml, target/pmd.xml, target/cpd.xml, target/spotbugsXml.xml, target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "testingMatrix": {
+      "status": "PASS",
+      "evidence": [
+        "Unit — model (Slice 1): LabelChangeSetTest — field() constant, defensive copy in EnrichedIssueDetail, null-safe builders — PRESENT and verified",
+        "Unit — service (Slice 2): IssuesServiceTest — getIssueDetailPopulatesChangeSetsFromPort, getIssueDetailPropagatesIntegrationExceptionUnchanged, getIssueDetailPropagatesIntegrationExceptionWhenLabelEventsCallFails — all 3 present",
+        "Unit — response mapper (Slice 2): IssuesResponseMapperTest — toIssueDetailDtoMapsLabelChangeSetFields, toIssueDetailDtoReturnsEmptyChangeSetsWhenEnrichedPayloadHasNone, toIssueDetailDtoThrowsWhenChangeSetTypeIsUnsupported — all 3 present",
+        "Unit — integration mapper (Slice 3): GitLabLabelEventMapperTest — positive mapping (action/changedBy/change/field/changedAt), empty list, null-label guard — 3 tests present; null user/action/created_at guards not individually tested (minor gap, non-blocking: positive case covers all 4 fields and null-label tests the guard mechanism)",
+        "Integration (@WebMvcTest): IssuesControllerIT includes changeSets array check — PRESENT",
+        "Component (WireMock, Slice 3): IssuesApiComponentTest — returnsIssueDetailDtoWithPopulatedChangeSets, returnsIssueDetailDtoWithEmptyChangeSets, returnsIntegrationFailureWhenGitLabLabelEventsCallFails (502+INTEGRATION_FAILURE+no issueId), returns404WhenGitLabReturns404AndDoesNotCallLabelEvents — all 4 scenarios present",
+        "Karate smoke: issues-get-single.feature existing @smoke scenario validates changeSets == '#[]' (array assertion); new non-smoke scenario absent (plan deviation)"
+      ]
+    },
+    "implReportComplete": {
+      "status": "PASS",
+      "evidence": [
+        "artifacts/implementation-reports/label-events-api.report.json approvedDeviations now contains: 'Karate .feature files were not modified because the existing issues-get-single smoke scenario already validates changeSets as an array on GET /api/issues/{issueId}; impact is limited to no new non-smoke Karate scenario being added in this story.' — matches session brief exactly",
+        "No contradiction between report and session brief — both record the same Karate deviation with the same justification",
+        "All other implementation report fields remain accurate: changedFiles list, qualityGateStatus=PASS, surefire=110, failsafe=35, AC evidence — all consistent with verification log"
+      ]
+    },
+    "quickVerify": {
+      "status": "PASS",
+      "evidence": [
+        "artifacts/implementation-reports/label-events-api-verification.log — final verify-quick.sh run (run 5, post-fix): BUILD SUCCESS, Tests run: 110, Failures: 0, Errors: 0, Skipped: 0",
+        "Team Lead recheck final-check.sh (run 4): surefire=110, failsafe=35, all quality gates PASS, finished 2026-04-08T17:18:48+02:00"
+      ]
+    },
+    "startup": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/karate-test.sh started flow-orchestrator with local profile as part of Karate verification; application reached healthy state (Karate scenarios against http://localhost:8080 passed) — startup evidence present via Karate log"
+      ]
+    },
+    "smokeChecks": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/karate-test.sh: features=6 passed, scenarios=17 passed",
+        "issues-get-single.feature: 3 @smoke scenarios passed — including changeSets == '#[]' assertion on GET /api/issues/{issueId}",
+        "HTML report: flow-orchestrator/target/karate-reports/karate-summary.html"
+      ]
+    },
+    "docUpdates": {
+      "status": "PASS",
+      "evidence": [
+        "Orchestration Models table: ChangeSet.java (line 48), Change.java (line 49), ChangedBy.java (line 50), LabelChange.java (line 51), LabelChangeSet.java (line 52) — all 5 new model files confirmed present",
+        "Tests table: LabelChangeSetTest.java confirmed at context-map.md line 111 — PASS",
+        "IssueDetailDto inner-records entry at line 77: ChangeSetDto, LabelChangeSetDto, ChangedByDto, LabelChangeDto — all 4 new nested types confirmed present alongside existing AssigneeDto and MilestoneDto",
+        "All other entries from previous partial-PASS confirmed still present: GitLabLabelEventResponse, GitLabLabelEventMapper, GitLabLabelEventsStubSupport, GitLabLabelEventMapperTest, EnrichedIssueDetail note, IssueDetailDto changeSets note, design-notes entry",
+        "Constitution Principle 11: context-map is now fully in sync with all new types — PASS"
+      ]
+    },
+    "noUnresolvedEvidence": {
+      "status": "PASS",
+      "evidence": [
+        "Verification log timestamps (2026-04-08) match current review date",
+        "Test counts consistent across verification log runs and implementation report",
+        "Reviewer compile check passed cleanly",
+        "No contradictions between verification log and quality report paths"
+      ]
+    }
+  },
+  "phase2ReviewedFiles": [
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabLabelEventResponse.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangeSet.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Change.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSet.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/EnrichedIssueDetail.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+    "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+    "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+    "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+    "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSetTest.java",
+    "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+    "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+    "flow-orchestrator/src/test/karate/resources/issues/issues-get-single.feature",
+    "documentation/context-map.md",
+    "artifacts/implementation-reports/label-events-api.report.json",
+    "artifacts/implementation-reports/label-events-api-verification.log"
+  ],
+  "verification": {
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "PASS",
+      "result": "Run 5 (post-fix): BUILD SUCCESS, Tests run: 110, Failures: 0, Errors: 0, Skipped: 0"
+    },
+    "localQuality": {
+      "command": "scripts/final-check.sh",
+      "status": "PASS",
+      "result": "Run 4 (Team Lead recheck, 2026-04-08T17:18:48+02:00): BUILD SUCCESS, surefire=110, failsafe=35, checkstyle=PASS, spotless=PASS, PMD=PASS, CPD=PASS, SpotBugs BugInstance=0, JaCoCo gate=PASS",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/spotbugsXml.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "startup": {
+      "command": "scripts/karate-test.sh",
+      "status": "PASS",
+      "result": "Application started successfully under local profile; Karate scenarios ran against http://localhost:8080"
+    },
+    "smokeChecks": [
+      {
+        "command": "scripts/karate-test.sh",
+        "status": "PASS",
+        "result": "features=6 passed, scenarios=17 passed; issues-get-single.feature 3 scenarios passed",
+        "reportPath": "flow-orchestrator/target/karate-reports/karate-summary.html"
+      }
+    ],
+    "commandRedactionNote": "Secret-bearing commands must use helper scripts or have tokens redacted; no secrets in this artifact"
+  },
+  "phase2Decision": {
+    "decision": "APPROVED",
+    "reason": "Implementation is functionally correct and all quality gates pass. Both blocking items from the previous FAIL cycle are resolved: (1) documentation/context-map.md is now fully in sync — all 5 new orchestration model files, 4 new IssueDetailDto inner records, and LabelChangeSetTest confirmed present; (2) implementation report approvedDeviations now correctly documents the Karate non-smoke scenario omission with matching justification. All constitution boundaries, testing matrix, static analysis, and evidence checks remain PASS. One approved deviation: Karate issues-get-single.feature not updated — justified by existing @smoke scenario already asserting changeSets array shape, documented in both report and session brief.",
+    "blockingIssues": []
+  },
+  "signOff": {
+    "finalReviewerStatus": "APPROVED",
+    "redCardRerunRequired": false,
+    "signedOffBy": "Reviewer — 2026-04-08"
+  }
+}

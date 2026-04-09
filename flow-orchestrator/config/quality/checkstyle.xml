@@ -10,11 +10,21 @@
     </module>
 
     <module name="TreeWalker">
+        <module name="PackageName"/>
         <module name="OuterTypeFilename"/>
         <module name="OneTopLevelClass"/>
         <module name="AvoidStarImport"/>
         <module name="UnusedImports"/>
         <module name="RedundantImport"/>
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="RecordComponentName"/>
+        <module name="LocalVariableName"/>
+        <module name="LocalFinalVariableName"/>
+        <module name="CatchParameterName"/>
+        <module name="LambdaParameterName"/>
         <module name="FinalLocalVariable">
             <property name="validateEnhancedForLoopVariable" value="true"/>
         </module>

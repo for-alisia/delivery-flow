@@ -1,0 +1,258 @@
+{
+  "artifactType": "implementation-report",
+  "schemaVersion": "1.0",
+  "featureName": "label-events-api",
+  "status": "complete",
+  "summary": "Implemented approved slices 1-3 for label-events-api. Slice 3 replaces the label-events stub with live GitLab integration via /resource_label_events, adds dedicated integration DTO and mapper, extends adapter and component/unit test coverage for populated/empty/failure/no-partial scenarios, and updates context-map documentation while preserving the existing GET /api/issues/{issueId} contract.",
+  "sourceArtifacts": {
+    "originalRequestSource": "artifacts/user-prompts/label-events-api.md",
+    "storyPath": "artifacts/user-stories/label-events-api.story.md",
+    "planPath": "artifacts/implementation-plans/label-events-api.plan.md",
+    "phase1ReviewPath": "artifacts/review-reports/label-events-api.review.json"
+  },
+  "revisionEvidence": {
+    "changedFiles": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabLabelEventResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Change.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangedBy.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/EnrichedIssueDetail.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSet.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabLabelEventsStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-label-events-response.json",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSetTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDtoTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "documentation/context-map.md"
+    ],
+    "verificationLogPath": "artifacts/implementation-reports/label-events-api-verification.log"
+  },
+  "delivery": {
+    "documentationUpdates": [
+      "flow-orchestrator/http/issues.http",
+      "documentation/context-map.md"
+    ],
+    "approvedDeviations": [
+      "Karate .feature files were not modified because the existing issues-get-single smoke scenario already validates changeSets as an array on GET /api/issues/{issueId}; impact is limited to no new non-smoke Karate scenario being added in this story."
+    ],
+    "assumptions": [
+      "GitLab label events with required null fields (user, label, action, created_at) are treated as integration failures via mapper guard exceptions and centralized exception mapping.",
+      "Existing Karate smoke scenario already validates changeSets array shape on GET /api/issues/{issueId}; no Karate .feature modification was performed in this coder batch."
+    ]
+  },
+  "verification": {
+    "qualityGateStatus": "PASS",
+    "quickVerify": {
+      "command": "scripts/verify-quick.sh",
+      "status": "PASS",
+      "result": "Initial run failed on Spotless formatting for slice-3 files; after scripts/format-code.sh rerun passed with BUILD SUCCESS and Tests run: 110, Failures: 0, Errors: 0, Skipped: 0."
+    },
+    "localQuality": {
+      "command": "scripts/final-check.sh",
+      "status": "PASS",
+      "result": "First run failed due to a component assertion expecting 500 instead of mapped 502; after fixing the assertion, rerun passed with BUILD SUCCESS. checkstyle=PASS; spotless=PASS; surefire tests=110; failsafe tests=35; pmd=PASS; cpd=PASS; spotbugs=PASS; jacoco=PASS. Team Lead recheck after the final batch also passed with BUILD SUCCESS, surefire tests=110, failsafe tests=35, and all quality reports regenerated.",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/spotbugsXml.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "startup": {
+      "command": "scripts/karate-test.sh",
+      "status": "PASS",
+      "result": "Karate smoke verification started flow-orchestrator with the local profile, ran against http://localhost:8080, and stopped the application started by the script after completion."
+    },
+    "smokeChecks": [
+      {
+        "command": "scripts/karate-test.sh",
+        "status": "PASS",
+        "result": "Karate smoke suite passed with features=6, scenarios=17, and issues-get-single.feature scenarios=3.",
+        "reportPaths": [
+          "flow-orchestrator/target/karate-reports/karate-summary.html"
+        ]
+      }
+    ],
+    "blockedChecks": []
+  },
+  "codeGuidanceLedger": {
+    "Code Standards Gate": {
+      "status": "PASS",
+      "evidence": [
+        "Added immutable integration DTO record GitLabLabelEventResponse and immutable mapping output via LabelChangeSet/LabelChange/ChangedBy.",
+        "GitLabIssuesAdapter remains constructor-injected via @RequiredArgsConstructor with explicit structured logging around label-events calls."
+      ]
+    },
+    "Package Structure And Model Gate": {
+      "status": "PASS",
+      "evidence": [
+        "Provider DTO and mapper were added under integration/gitlab/issues/dto and integration/gitlab/issues/mapper.",
+        "Client-facing ChangeSetDto mapping remains in orchestration/issues/rest/mapper/IssuesResponseMapper."
+      ]
+    },
+    "Testing Matrix": {
+      "status": "PASS",
+      "evidence": [
+        "Added GitLabLabelEventMapperTest (unit) for action/user/label/created_at mapping, empty input, and null-label guard.",
+        "Updated GitLabIssuesAdapterTest for real getLabelEvents endpoint mapping, empty array, and null body failure.",
+        "Updated IssuesApiComponentTest with label-events populated, empty, failure, and issue-detail-fails-without-label-events-call scenarios.",
+        "scripts/verify-quick.sh PASS and scripts/final-check.sh PASS after addressed failures."
+      ]
+    },
+    "Local Static Analysis Gate": {
+      "status": "PASS",
+      "evidence": [
+        "scripts/final-check.sh PASS with checkstyle, PMD, CPD, SpotBugs, and JaCoCo checks green."
+      ]
+    }
+  },
+  "acceptanceCriteriaEvidence": {
+    "AC7": {
+      "criterion": "Client-facing changeSets mapping happens in orchestration",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC8": {
+      "criterion": "Integration exposes separate method and orchestration assembles both calls",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC1": {
+      "criterion": "GET /api/issues/{issueId} returns changeSets populated from GitLab label events",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC2": {
+      "criterion": "changeType and changedBy map from GitLab label-event action and user",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC3": {
+      "criterion": "change.field is label and label id/name are mapped",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC4": {
+      "criterion": "Label events keep GitLab response ordering",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabLabelEventMapper.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC5": {
+      "criterion": "Empty label history returns changeSets: []",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+        "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC11": {
+      "criterion": "Extensible design via changeSet and change contracts",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/ChangeSet.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Change.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSet.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChange.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/LabelChangeSetTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC9": {
+      "criterion": "No partial failure when one downstream call fails",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC10": {
+      "criterion": "Backward compatibility for Story 1 clients",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueDetailDto.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java"
+      ],
+      "verificationEvidence": [
+        "scripts/verify-quick.sh",
+        "scripts/final-check.sh"
+      ],
+      "status": "VERIFIED"
+    },
+    "AC12": {
+      "criterion": "GitLab label-events endpoint alignment",
+      "implementationEvidence": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabLabelEventResponse.java"
+      ],
+      "verificationEvidence": [
+        "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java"
+      ],
+      "status": "VERIFIED"
+    }
+  },
+  "notes": [
+    "All approved implementation slices for label-events-api are complete.",
+    "Karate .feature files were not modified in this coder batch per mode constraints."
+  ]
+}

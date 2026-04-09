@@ -1,0 +1,8 @@
+Hi Team,
+
+Our next feature is to implement the DELETE endpoint for issues. This will be a pass-through feature, meaning we won't add any domain logic yet, but we will start this work soon. The DELETE endpoint should take `issueId` as a parameter and call the appropriate GitLab API (using the encoded path instead of the project numeric ID) to delete an issue. The endpoint should return a 200 OK status if the deletion is successful or an error status accordingly (404 if the issue is not found by ID). We know that deletion in GitLab is heavily dependant on PAT access rights, but for MVP let's assume that our PAT will always have the correct access.
+
+```
+DELETE /api/issues/{issueId}
+
+```

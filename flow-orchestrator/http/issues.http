@@ -1,4 +1,5 @@
 @baseUrl = http://localhost:8080
+@issueId = 17
 
 ### Default search request (no body)
 POST {{baseUrl}}/api/issues/search
@@ -30,7 +31,7 @@ Content-Type: application/json
 	}
 }
 
-### Create issue request (full payload)
+### Create issue request (full payload) — response includes issueId (project-scoped number from GitLab iid)
 POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
@@ -55,3 +56,13 @@ Content-Type: application/json
 {
 	"title": "   "
 }
+
+### Delete issue request (existing issue)
+DELETE {{baseUrl}}/api/issues/26
+
+### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field=LABEL], changedAt)
+GET {{baseUrl}}/api/issues/{{issueId}}
+
+
+### Delete issue request (non-existent issue)
+DELETE {{baseUrl}}/api/issues/999999

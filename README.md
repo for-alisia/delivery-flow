@@ -31,6 +31,16 @@ npm run build
 npm start
 ```
 
+Formatting and verification:
+
+```bash
+./scripts/final-check.sh
+```
+
+`./scripts/final-check.sh` applies repository formatting and then runs the full verification gate.
+
+Use `./scripts/format-code.sh check` for a read-only formatting validation across the Java and TypeScript modules.
+
 ## Issues API (MVP)
 
 `flow-orchestrator` exposes a read-only issues endpoint via `POST /api/issues`.
