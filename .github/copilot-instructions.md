@@ -4,6 +4,7 @@
 
 - `flow-orchestrator/`: Java Spring Boot application — root packages: `common`, `config`, `orchestration`, `integration`
 - `mcp-server/`: TypeScript MCP server — thin client of `flow-orchestrator`, no business logic
+- `flow-log/`: Node.js CLI tool for delivery state tracking — single source of truth for feature workflow state at `artifacts/flow-logs/<feature-name>.json`
 
 ## Build And Verify
 
@@ -25,8 +26,9 @@ After modifying code or tests in `flow-orchestrator/`: follow [local-quality-rul
 
 Read on demand when relevant; do not load all upfront.
 
-- Capability map and package index: [context-map.md](../documentation/context-map.md)
+- Capability map and package index: [context-map.md](../documentation/context-map.md) (slim index) + [capabilities/](../documentation/capabilities/) (per-capability detail)
 - Architecture rules and boundaries: [constitution.md](../documentation/constitution.md)
+- Architectural decision guidance: [architecture-guidance.md](../documentation/architecture-guidance.md)
 - Coding standards, quality gates, testing matrix: [code-guidance.md](../documentation/code-guidance.md)
 - Project context and business goals: [project-overview.md](../documentation/project-overview.md)
 - GitLab REST API index: `https://docs.gitlab.com/api/api_resources/`

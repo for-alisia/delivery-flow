@@ -31,7 +31,7 @@ If one issue required multiple actions, list them in the same cell as separate b
 | | | |
 | | | |
 
-## Flow Setup Diagram
+## Flow Setup
 
 Use this section to show the intended flow design for the version captured in this log.
 The goal is to make the orchestration path and quality gates visible before the run notes start.
@@ -85,30 +85,49 @@ Suggested content:
 
 ---
 
-## Run Notes (manually populated by user)
+## Runs
 
-Use this section as a chronological list of observations from the run.
+Each run is a separate delivery attempt within this version.
+Record one expandable section per run. Copy the run template below for each new run.
+Between runs, apply fixes and document them in the "Fixes Applied After This Run" subsection.
+
+<!-- ────────────── RUN TEMPLATE (copy for each run) ────────────── -->
+
+<details>
+<summary><strong>Run N — YYYY-MM-DD — short label</strong></summary>
+
+### Run Configuration
+
+- **Feature:** feature-name or description
+- **Environment:** IDE / CLI
+- **Flow-log state:** `artifacts/flow-logs/<feature-name>.json` (if used)
+- **Models:**
+  - Team Lead: model-name
+  - Product Manager: model-name
+  - Architect: model-name
+  - Coder: model-name
+  - Reviewer: model-name
+
+### Run Notes
+
+Chronological observations from the run. Write freely — timestamps, context %, and key moments.
 
 - 
 - 
 - 
 
-## Post Run Checks (manually populated by user)
+### Post Run Checks
 
-Use short status markers such as `PASS`, `FAIL`, `PARTIAL`, `NOT VERIFIED`.
+- Application started without errors:
+- Tests are green:
+- Code-quality check passed:
+- API is verified:
+- Main story functionality is delivered:
+- Run took (time):
+- Run used context (%):
+- Run took premium requests (optional):
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Application has started without errors |  |  |
-| Tests are green |  |  |
-| Code-quality check passed |  |  |
-| API is verified |  |  |
-| Main story functionality is delivered |  |  |
-| Run took (time) |  |  |
-| Run used context (%) |  |  |
-| Run took premium requests (optional) |  |  |
-
-## Code Observations (manually populated by user)
+### Code Observations
 
 Capture code quality, structure, naming, readability, test quality, architecture, and maintainability observations.
 
@@ -116,17 +135,30 @@ Capture code quality, structure, naming, readability, test quality, architecture
 - 
 - 
 
-## Bugs Identified (manually populated by user)
+### Bugs Identified
 
-Describe confirmed bugs, missing behavior, requirement mismatches, or suspicious areas that still need verification.
+Describe confirmed bugs, missing behavior, requirement mismatches, or suspicious areas.
 
 - 
 - 
 - 
+
+### Fixes Applied After This Run
+
+List prompt, workflow, code, or tooling fixes applied before the next run. Leave empty if this is the last run.
+
+- 
+- 
+- 
+
+</details>
+
+<!-- ────────────── END RUN TEMPLATE ────────────── -->
 
 ## User Suggestions (manually populated by user)
 
 Use this section for improvement ideas for the next version of the flow, tooling, prompts, agent setup, verification, or coding standards.
+Applies to the version as a whole, not a single run.
 
 - 
 - 

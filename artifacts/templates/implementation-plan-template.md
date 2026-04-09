@@ -53,10 +53,37 @@ Provide concrete examples when the change affects request/response or error cont
 
 ## Class Structure
 
+### Model Definitions
+
+Define all new or changed models completely. For each record/interface/enum:
+
+- Full field list with types and nullability
+- Interface contracts with all accessor methods
+- Sealed hierarchy with permitted implementations
+- Enum values
+- `@Builder` annotation
+- Defensive copy fields
+
+| Model | Type | Fields / Contract | Notes |
+|---|---|---|---|
+
 ### Affected Classes
 
 | Class Path | Status | Proposed Behavior |
 |---|---|---|
+
+## Composition Strategy
+
+When the feature involves multiple port calls in a single service method, state the execution approach:
+
+- **Independent calls → parallel** (default). List the calls and confirm no data dependency.
+- **Dependent calls → sequential**. State the dependency that requires ordering.
+
+## Shared Infrastructure Impact
+
+- Reused shared mechanisms:
+- New shared extractions (if any):
+- See `documentation/context-map.md` → "Shared Infrastructure" for current inventory.
 
 ## Implementation Slices
 
@@ -90,4 +117,4 @@ Repeat the slice structure below for as many slices as needed. Keep each slice p
 - `scripts/verify-quick.sh`
 - Local static analysis via `scripts/quality-check.sh` for `flow-orchestrator` when production code changes
 - Repository-supported startup verification
-- Required `curl` smoke checks via `scripts/smoke-test.sh`
+- API smoke tests via `scripts/karate-test.sh`

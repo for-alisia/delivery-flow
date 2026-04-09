@@ -27,7 +27,7 @@ Implement approved plan slices for the `flow-orchestrator` Spring Boot module.
 
 ## Must not
 
-- Do not add scope, behavior, or files not defined in the approved plan, and do not override locked constraints from the plan or Reviewer Phase 1.
+- Do not add scope, behavior, or files not defined in the approved plan, and do not override locked constraints from the plan or architecture review.
 - Do not run custom bash pipelines to parse command output.
 - Do not hide failures or weak evidence.
 - Do not write or modify Karate `.feature` files.
@@ -35,15 +35,20 @@ Implement approved plan slices for the `flow-orchestrator` Spring Boot module.
 
 ## Inputs
 
-Read only what is needed for the current batch:
+Read the feature context via flow-log before starting:
+```
+node flow-log/flow-log.mjs summary --feature <feature-name>
+```
 
-- approved implementation plan
-- Phase 1 reviewer report
+Then read only what is needed for the current batch:
+
+- approved implementation plan (path from flow-log summary)
 - `documentation/context-map.md`
+- `documentation/capabilities/<capability>.md` for the capability being implemented
 - `documentation/code-guidance.md`
 - `documentation/constitution.md`
 
-Read `documentation/context-map.md` first. Then read only the files relevant to the current slice. Do not scan the full codebase.
+Read `documentation/context-map.md` first, then load the relevant `documentation/capabilities/<capability>.md`. Read only the files relevant to the current slice. Do not scan the full codebase.
 
 ## External verification
 
@@ -52,20 +57,33 @@ Record assumptions in the implementation report.
 
 ## Execution protocol
 
+### When implementing new slices
+
 For each slice:
 
 1. implement production code for the current slice
 2. add required tests
 3. run `scripts/verify-quick.sh` and fix failures before moving on
-4. update required implementation artifacts
+4. record the check: `node flow-log/flow-log.mjs set-check --feature <feature-name> --name verifyQuick --status PASS --by JavaCoder --command scripts/verify-quick.sh`
+5. record changed files: `node flow-log/flow-log.mjs add-change --feature <feature-name> --file <path> [--file <path>]...`
 
-Before handoff:
+### When fixing code review findings
+
+If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findings`), fix them before new work:
+
+1. Read each OPEN/REOPENED finding from `flow-log summary → codeFindings.findings`.
+2. For each finding:
+   - If you agree and can fix it → fix the code, then: `node flow-log/flow-log.mjs respond-finding --feature <feature-name> --id <N> --status FIXED --note "<what you changed>" --by JavaCoder`
+   - If the finding is wrong or already covered → `node flow-log/flow-log.mjs respond-finding --feature <feature-name> --id <N> --status DISPUTED --note "<why this is not an issue>" --by JavaCoder`
+3. After all findings are addressed, run `scripts/verify-quick.sh` and record the check.
+
+### Before handoff
 
 1. verify plan compliance
 2. verify acceptance criteria
 3. run `scripts/final-check.sh` and fix all findings
-4. update consumer-facing docs (`README.md`, `.http`) only if endpoint behavior or examples changed
-5. update `documentation/context-map.md` if the implementation added, renamed, or removed any packages, classes, endpoints, models, or configuration entries
+4. record the check: `node flow-log/flow-log.mjs set-check --feature <feature-name> --name finalCheck --status PASS --by JavaCoder --command scripts/final-check.sh`
+5. run `scripts/coder-handoff-check.sh <feature-name>` — fix any failures before returning
 
 ## Evidence rule
 
@@ -77,6 +95,11 @@ After each verification script, report:
 Do not build custom parsing pipelines.
 
 ## Required handoff
+
+Before returning, verify delivery state:
+```
+node flow-log/flow-log.mjs status --feature <feature-name>
+```
 
 Return:
 

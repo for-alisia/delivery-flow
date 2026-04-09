@@ -12,7 +12,8 @@ description: "Delivery flow rules for Team Lead, Product Manager, Java Architect
 - Do not advance on chat-only claims; the on-disk artifact is the source of truth.
 - Use `<<ESCALATE_TO_ARCHITECT>>` when a fundamental plan flaw blocks progress.
 - After 2 Java Coder false-positive red cards on the same feature, route back to Java Architect for plan revision.
-- Use `/memories/session/<feature-name>-checkpoint.json` as the shared context source.
+- Use `flow-log` CLI (`node flow-log/flow-log.mjs`) as the shared state source. The state file at `artifacts/flow-logs/<feature-name>.json` is the single source of truth for delivery state and gate readiness.
+- Flow-log commands must be run from the repository root directory.
 - **[CRITICAL]** No flow agent may run git commands (`git commit`, `git push`, `git add`, `git branch`, `git checkout`, `git reset`, or any other `git` subcommand). Version control is managed by the user outside this workflow.
 
 ### Blocker Escalation

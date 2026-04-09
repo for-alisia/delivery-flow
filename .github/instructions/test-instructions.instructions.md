@@ -9,6 +9,10 @@ description: "Test placement, naming, levels, coverage, and quality rules for wr
 - Mirror the production package path under every test root.
 - Keep fast isolated tests in `src/test/java` and name classes `*Test`.
 - Use `src/test/java` for unit logic, validation, defaulting, mapping, error translation, adapter tests with mocked collaborators, and lightweight config/context tests.
+- Keep architecture tests in `src/test/architecture/java` and name classes `*ArchitectureTest`.
+- Use `src/test/architecture/java` for ArchUnit and similar structural rules that validate package boundaries, dependency rules, layering, and cycle constraints without starting Spring or a running application.
+- The Architect defines new ArchUnit rules when a plan introduces new layer interactions or package boundaries not covered by existing rules. The Coder implements those rules alongside production code. Same ownership model as Karate tests.
+- Do not remove or weaken existing ArchUnit rules without explicit approval. They enforce `constitution.md` boundaries.
 - Keep Spring-backed integration tests in `src/test/integration/java` and name classes `*IT`.
 - Use `src/test/integration/java` for `@WebMvcTest` and other Spring-wired slice or integration tests that prove request binding, validation, response mapping, HTTP errors, or cross-bean behavior.
 - Keep running-application tests in `src/test/component/java` and name classes `*ComponentTest`.
@@ -33,4 +37,5 @@ description: "Test placement, naming, levels, coverage, and quality rules for wr
 - When using Mockito argument matchers (`any()`, `eq()`, `argThat()`), ALL arguments in the same stubbing or verification call must use matchers. Do not mix raw values with matchers — wrap raw values with `eq()`.
 - Do not duplicate string literals across test files. Extract repeated test constants (URLs, paths, fixture values) into `private static final` fields or a shared test-support class.
 - Each plan slice must include at least one edge-case or boundary-condition test. If the slice has no edge cases, document why in the plan.
+- For mappers that guard N fields with `requiredField()` or equivalent null-checks, tests must cover null input for each guarded field independently, not just one representative field.
 - Required module line coverage is `85%+`; `mvn verify` must stay green.
