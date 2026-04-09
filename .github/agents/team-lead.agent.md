@@ -75,7 +75,7 @@ Use `flow-log` CLI as the single source of truth. State file: `artifacts/flow-lo
 2. Invoke `Code Reviewer` — records findings via `add-finding`
 3. `code-review-gate --feature <name>`:
    - `PASS` → `set-review --name codeReview --status PASS` → proceed to audit
-   - `FAIL` → route OPEN/REOPENED findings to `Java Coder` → back to Reviewer
+   - `FAIL` → route OPEN/REOPENED findings to `Java Coder` → back to Reviewer. **Exception:** if a finding changes an ArchUnit rule (owned by Architect per workflow), route that finding to `Java Architect` instead of `Java Coder`.
    - `ESCALATE` → stop and report to user (3 rounds of unresolved Critical/High)
 4. Do not self-assess Coder's responses.
 

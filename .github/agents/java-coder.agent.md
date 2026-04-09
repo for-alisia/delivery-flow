@@ -33,6 +33,17 @@ Implement approved plan slices for the `flow-orchestrator` Spring Boot module.
 - Do not write or modify Karate `.feature` files.
 - Do not run `scripts/karate-test.sh`.
 
+## Terminal stall recovery
+
+If a terminal command (test run, compilation, script) produces no output for more than 60 seconds:
+
+1. Kill the terminal immediately — do not wait passively for output.
+2. Read the test or source file that was running to diagnose the likely cause (deadlock, infinite loop, missing latch countdown, blocking I/O without timeout).
+3. Apply a targeted fix to the code.
+4. Retry the command.
+
+Do not repeatedly re-run the same hanging command without changing something first.
+
 ## Inputs
 
 Read the feature context via flow-log before starting:
@@ -52,7 +63,8 @@ Read `documentation/context-map.md` first, then load the relevant `documentation
 
 ## External verification
 
-Use Context7 or official docs only when an API or framework behavior is unclear.
+When you need to understand a Spring, JDK, or third-party API surface (method signatures, configuration options, factory patterns), use Context7 MCP tool or web search against official documentation. Do not decompile jars from the local Maven cache — it is slow and unreliable.
+
 Record assumptions in the implementation report.
 
 ## Execution protocol

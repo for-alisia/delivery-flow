@@ -1,5 +1,7 @@
 package com.gitlabflow.floworchestrator.architecture;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
@@ -85,6 +87,22 @@ class FlowOrchestratorArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("..orchestration..rest..", "..orchestration..rest.dto..");
+
+    @ArchTest
+    static final ArchRule orchestration_common_should_not_depend_on_capability_packages = noClasses()
+            .that()
+            .resideInAPackage("..orchestration.common..")
+            .should()
+            .dependOnClassesThat(
+                    resideInAPackage("..orchestration..").and(not(resideInAPackage("..orchestration.common.."))));
+
+    @ArchTest
+    static final ArchRule async_composer_should_not_depend_on_integration_or_config = noClasses()
+            .that()
+            .haveSimpleName("AsyncComposer")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("..integration..", "..config..");
 
     // --- Injection rules ---
 

@@ -3,7 +3,7 @@ name: "Java Architect"
 description: "Create an executable implementation plan for Java Coder in flow-orchestrator. Produce a precise slice-based plan with class structure, payload examples, validation placement, test expectations, logging, and required documentation updates."
 target: vscode
 tools: [read, search, edit, todo, io.github.upstash/context7/*, web, vscode/memory, execute]
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.4 (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide feature name, requirement source, locked constraints, and affected area if known."
@@ -89,12 +89,13 @@ When `flow-log summary` shows `architecturalRisks` with OPEN or REOPENED risks:
 
 1. Read the existing plan.
 2. Read each risk's `description` and (if reopened) prior `responseNote` from the summary's `architecturalRisks.risks` array.
-3. For each OPEN or REOPENED Critical/High risk, either:
+3. **Self-review before responding:** Re-read the full plan end-to-end and cross-check against `documentation/constitution.md`, `documentation/architecture-guidance.md`, and `documentation/code-guidance.md`. Look for internal inconsistencies, cascading impacts of the changes you are about to make, and any issues the Reviewer has not yet raised. Fix proactively — do not wait for the Reviewer to find them.
+4. For each OPEN or REOPENED Critical/High risk, either:
    - Fix the plan and mark addressed: `node flow-log/flow-log.mjs respond-risk --feature <feature-name> --id <N> --status ADDRESSED --note "<what was changed>" --by JavaArchitect`
    - Argue it is not a valid concern: `node flow-log/flow-log.mjs respond-risk --feature <feature-name> --id <N> --status INVALIDATED --note "<why this is not an issue>" --by JavaArchitect`
-4. Medium/Low risks: address if convenient, otherwise leave OPEN (non-blocking).
-5. Revise the plan in place — same file path. Do not create a new file.
-6. Do not change parts of the plan unrelated to the findings unless a finding cascades.
+5. Medium/Low risks: address if convenient, otherwise leave OPEN (non-blocking).
+6. Revise the plan in place — same file path. Do not create a new file.
+7. Do not change parts of the plan unrelated to the findings unless a finding cascades.
 
 ## Required plan content
 

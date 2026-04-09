@@ -27,6 +27,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 class GitLabIssuesAdapterTest {
@@ -71,7 +73,8 @@ class GitLabIssuesAdapterTest {
     void setUp() {
         final RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        final GitLabProjectLocator locator = new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted"));
+        final GitLabProjectLocator locator =
+                new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted", 5, 30));
         adapter = createAdapter(builder, locator);
     }
 
@@ -123,6 +126,19 @@ class GitLabIssuesAdapterTest {
     void mapsTransportFailuresToGenericIntegrationError() {
         server.expect(requestTo(API_URL + "?page=1&per_page=40")).andRespond(request -> {
             throw new IOException("connection reset");
+        });
+
+        assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+    }
+
+    @Test
+    @DisplayName("maps timeout transport failures to generic integration error")
+    void mapsTimeoutTransportFailuresToGenericIntegrationError() {
+        server.expect(requestTo(API_URL + "?page=1&per_page=40")).andRespond(request -> {
+            throw new ResourceAccessException("read timed out", new SocketTimeoutException("Read timed out"));
         });
 
         assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))

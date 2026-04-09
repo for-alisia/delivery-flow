@@ -108,6 +108,18 @@ Repeat the slice structure below for as many slices as needed. Keep each slice p
 | Level | Required | Planned Coverage | Evidence Target |
 |---|---|---|---|
 
+### Karate checklist (required when plan adds or changes API endpoints)
+
+- [ ] `.feature` file defined under `src/test/karate/resources/<capability>/`
+- [ ] Scenario names, HTTP methods, endpoint paths, expected status codes, and key response assertions specified
+- [ ] Smoke scenarios tagged with `@smoke`
+- [ ] Karate runner updated if a new capability is introduced
+
+### ArchUnit checklist (required when plan introduces new layer interactions or package boundaries)
+
+- [ ] New ArchUnit rule defined in Testing Matrix for each new boundary
+- [ ] Existing rules in `FlowOrchestratorArchitectureTest.java` reviewed — plan decisions comply
+
 ## Acceptance Criteria
 
 - 

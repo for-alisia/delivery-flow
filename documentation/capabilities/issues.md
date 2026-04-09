@@ -12,7 +12,7 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 
 | File | Role |
 |------|------|
-| `orchestration/issues/IssuesService.java` | Service — coordinates port calls, returns `EnrichedIssueDetail` for get-single |
+| `orchestration/issues/IssuesService.java` | Service — coordinates parallel port calls via `AsyncComposer`, returns `EnrichedIssueDetail` for get-single |
 | `orchestration/issues/IssuesPort.java` | Port interface — implemented by integration adapter |
 
 ## Orchestration Models (`orchestration/issues/model/`)
@@ -95,6 +95,7 @@ Paths relative to `flow-orchestrator/src/test/`.
 | `java/.../integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java` | Unit |
 | `java/.../integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java` | Unit |
 | `integration/java/.../orchestration/issues/rest/IssuesControllerIT.java` | Integration |
+| `integration/java/.../integration/gitlab/GitLabRestClientConfigIT.java` | Integration |
 | `component/java/.../issues/IssuesApiComponentTest.java` | Component |
 | `component/java/.../issues/support/GitLabIssuesStubSupport.java` | Component support |
 | `component/java/.../issues/support/GitLabCreateIssueStubSupport.java` | Component support |

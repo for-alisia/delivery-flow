@@ -2,6 +2,7 @@ package com.gitlabflow.floworchestrator.orchestration.issues;
 
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
+import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
@@ -11,7 +12,6 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +23,7 @@ public class IssuesService {
 
     private final IssuesPort issuesPort;
     private final IssuesApiProperties issuesApiProperties;
+    private final AsyncComposer asyncComposer;
 
     public IssuePage getIssues(final IssueQuery query) {
         validatePerPage(query.perPage());
@@ -64,17 +65,11 @@ public class IssuesService {
         final long startedAt = System.nanoTime();
 
         final CompletableFuture<IssueDetail> issueDetailFuture =
-                CompletableFuture.supplyAsync(() -> issuesPort.getIssueDetail(issueId));
+                asyncComposer.submit(() -> issuesPort.getIssueDetail(issueId));
         final CompletableFuture<List<ChangeSet>> changeSetsFuture =
-                CompletableFuture.supplyAsync(() -> issuesPort.getLabelEvents(issueId));
+                asyncComposer.submit(() -> issuesPort.getLabelEvents(issueId));
 
-        try {
-            CompletableFuture.allOf(issueDetailFuture, changeSetsFuture).join();
-        } catch (final CompletionException exception) {
-            issueDetailFuture.cancel(true);
-            changeSetsFuture.cancel(true);
-            throw unwrapCompletionFailure(exception);
-        }
+        asyncComposer.joinFailFast(List.of(issueDetailFuture, changeSetsFuture));
 
         final IssueDetail issueDetail = issueDetailFuture.join();
         final List<ChangeSet> changeSets = changeSetsFuture.join();
@@ -89,17 +84,6 @@ public class IssuesService {
                 .issueDetail(issueDetail)
                 .changeSets(changeSets)
                 .build();
-    }
-
-    private RuntimeException unwrapCompletionFailure(final CompletionException exception) {
-        final Throwable cause = exception.getCause();
-        if (cause instanceof RuntimeException runtimeException) {
-            return runtimeException;
-        }
-        if (cause instanceof Error error) {
-            throw error;
-        }
-        return new IllegalStateException("Issue detail composition failed", cause);
     }
 
     private void validatePerPage(final int perPage) {

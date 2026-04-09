@@ -2,6 +2,7 @@ package com.gitlabflow.floworchestrator.orchestration.issues;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -9,6 +10,7 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
+import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
@@ -21,6 +23,9 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,11 +39,19 @@ class IssuesServiceTest {
     @Mock
     private IssuesPort issuesPort;
 
+    private ExecutorService asyncExecutor;
     private IssuesService issuesService;
 
     @BeforeEach
     void setUp() {
-        issuesService = new IssuesService(issuesPort, new IssuesApiProperties(40, 100));
+        asyncExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        issuesService =
+                new IssuesService(issuesPort, new IssuesApiProperties(40, 100), new AsyncComposer(asyncExecutor));
+    }
+
+    @AfterEach
+    void tearDown() {
+        asyncExecutor.close();
     }
 
     @Test
@@ -190,7 +203,10 @@ class IssuesServiceTest {
                 ErrorCode.INTEGRATION_FAILURE, "GitLab get issue detail operation failed", "gitlab");
         when(issuesPort.getIssueDetail(42L)).thenThrow(exception);
 
-        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+        final IntegrationException thrown =
+                assertThrowsExactly(IntegrationException.class, () -> issuesService.getIssueDetail(42L));
+
+        assertThat(thrown).isSameAs(exception);
     }
 
     @Test
@@ -201,7 +217,10 @@ class IssuesServiceTest {
         when(issuesPort.getIssueDetail(42L)).thenThrow(exception);
         when(issuesPort.getLabelEvents(42L)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+        final IntegrationException thrown =
+                assertThrowsExactly(IntegrationException.class, () -> issuesService.getIssueDetail(42L));
+
+        assertThat(thrown).isSameAs(exception);
         verify(issuesPort).getIssueDetail(42L);
         verify(issuesPort).getLabelEvents(42L);
     }
@@ -225,7 +244,10 @@ class IssuesServiceTest {
         when(issuesPort.getIssueDetail(42L)).thenReturn(detail);
         when(issuesPort.getLabelEvents(42L)).thenThrow(exception);
 
-        assertThatThrownBy(() -> issuesService.getIssueDetail(42L)).isSameAs(exception);
+        final IntegrationException thrown =
+                assertThrowsExactly(IntegrationException.class, () -> issuesService.getIssueDetail(42L));
+
+        assertThat(thrown).isSameAs(exception);
         verify(issuesPort).getIssueDetail(42L);
         verify(issuesPort).getLabelEvents(42L);
     }

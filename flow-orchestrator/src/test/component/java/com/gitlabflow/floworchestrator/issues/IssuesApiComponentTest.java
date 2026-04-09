@@ -33,6 +33,9 @@ class IssuesApiComponentTest {
 
     private static final long ISSUE_ID = 42L;
     private static final String ISSUE_DETAIL_PATH = "/api/issues/" + ISSUE_ID;
+    private static final int GITLAB_CONNECT_TIMEOUT_SECONDS = 2;
+    private static final int GITLAB_READ_TIMEOUT_SECONDS = 1;
+    private static final int LABEL_EVENTS_DELAY_MILLIS = 3_000;
 
     private static WireMockServer wireMockServer;
 
@@ -59,6 +62,8 @@ class IssuesApiComponentTest {
     static void registerProperties(final DynamicPropertyRegistry registry) {
         registry.add("app.gitlab.url", () -> wireMockServer.baseUrl() + "/group/project");
         registry.add("app.gitlab.token", () -> "component-test-token");
+        registry.add("app.gitlab.connect-timeout-seconds", () -> GITLAB_CONNECT_TIMEOUT_SECONDS);
+        registry.add("app.gitlab.read-timeout-seconds", () -> GITLAB_READ_TIMEOUT_SECONDS);
         registry.add("app.issues-api.default-page-size", () -> 40);
         registry.add("app.issues-api.max-page-size", () -> 100);
     }
@@ -246,6 +251,26 @@ class IssuesApiComponentTest {
         final JsonNode json = objectMapper.readTree(response.getBody());
         assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_FAILURE");
         assertThat(json.has("issueId")).isFalse();
+
+        GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);
+    }
+
+    @Test
+    @DisplayName("returns integration failure when GitLab label events call exceeds read timeout")
+    void returnsIntegrationFailureWhenGitLabLabelEventsCallExceedsReadTimeout() throws Exception {
+        wireMockServer.resetAll();
+        GitLabSingleIssueStubSupport.stubGetIssueDetail(wireMockServer, ISSUE_ID);
+        GitLabLabelEventsStubSupport.stubGetLabelEventsDelayed(wireMockServer, ISSUE_ID, LABEL_EVENTS_DELAY_MILLIS);
+
+        final long startedAt = System.nanoTime();
+        final ResponseEntity<String> response = restTemplate.getForEntity(ISSUE_DETAIL_PATH, String.class);
+        final long durationMillis = (System.nanoTime() - startedAt) / 1_000_000L;
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_FAILURE");
+        assertThat(durationMillis).isLessThan(LABEL_EVENTS_DELAY_MILLIS);
 
         GitLabSingleIssueStubSupport.verifyGetIssueDetailRequest(wireMockServer, ISSUE_ID);
         GitLabLabelEventsStubSupport.verifyGetLabelEventsRequest(wireMockServer, ISSUE_ID);

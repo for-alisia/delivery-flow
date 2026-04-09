@@ -52,7 +52,18 @@ Test: `java/.../common/web/GlobalExceptionHandlerTest.java`
 
 | File | Role |
 |------|------|
-| `config/GitLabProperties.java` | `app.gitlab.*` — `url`, `token` |
+| `config/GitLabProperties.java` | `app.gitlab.*` — `url`, `token`, `connect-timeout-seconds`, `read-timeout-seconds` |
+| `config/AsyncExecutionConfig.java` | Exposes `asyncComposerExecutor` bean (virtual-thread-per-task `ExecutorService`) for `AsyncComposer` |
+
+### orchestration/common
+
+Shared cross-capability orchestration utilities.
+
+| File | Role |
+|------|------|
+| `orchestration/common/async/AsyncComposer.java` | Fail-fast parallel composition helper — submits tasks via virtual-thread `ExecutorService`, cancels siblings on first failure, unwraps `CompletionException` before rethrow |
+
+Test: `java/.../orchestration/common/async/AsyncComposerTest.java`
 
 ### integration/gitlab (shared)
 
@@ -69,6 +80,7 @@ Tests:
 - `java/.../integration/gitlab/GitLabExceptionMapperTest.java`
 - `java/.../integration/gitlab/GitLabProjectLocatorTest.java`
 - `java/.../integration/gitlab/GitLabUriFactoryTest.java`
+- `integration/java/.../integration/gitlab/GitLabRestClientConfigIT.java` (bean-inspection IT: verifies `JdkClientHttpRequestFactory` and bound timeout values; no outbound network calls)
 
 ### scripts
 
@@ -80,6 +92,16 @@ Tests:
 | `scripts/format-code.sh` | Spotless apply/check |
 | `scripts/karate-test.sh` | Karate API smoke tests; reuses a healthy local app or starts one automatically |
 | `scripts/coder-handoff-check.sh` | Pre-handoff gate for Java Coder: verifies flow-log state, checks, and final-check |
+
+### orchestration/common/async
+
+| File | Role |
+|------|------|
+| `orchestration/common/async/AsyncComposer.java` | Fail-fast parallel composition utility — submits suppliers to the virtual-thread executor, cancels siblings on first failure, and unwraps `CompletionException` before rethrowing |
+
+Test: `java/.../orchestration/common/async/AsyncComposerTest.java`
+
+---
 
 ### test infrastructure
 

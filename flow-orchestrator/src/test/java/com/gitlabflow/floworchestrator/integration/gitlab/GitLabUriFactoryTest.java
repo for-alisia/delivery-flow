@@ -11,7 +11,7 @@ class GitLabUriFactoryTest {
     private static final String PROJECT_URL = "https://gitlab.example.com/group/subgroup/project";
 
     private final GitLabProjectLocator projectLocator =
-            new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted"));
+            new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted", 5, 30));
 
     private final GitLabUriFactory gitLabUriFactory = new GitLabUriFactory(projectLocator);
 
