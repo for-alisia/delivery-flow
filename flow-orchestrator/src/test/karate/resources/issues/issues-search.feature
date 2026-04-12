@@ -74,7 +74,7 @@ Feature: Issues search API
     * def matched = karate.filter(response.items, function(x){ return x.issueId == createdIssueId })[0]
     And match matched.issueId == createdIssueId
     And match matched.changeSets == '#[]'
-    And match matched.changeSets[0].change.field == 'label'
+    And match matched.changeSets[0].change.field == 'LABEL'
     And match matched.changeSets[0].changeType == 'add'
 
     Given path 'api/issues', createdIssueId
@@ -84,6 +84,13 @@ Feature: Issues search API
   Scenario: search rejects unsupported audit values
     Given path 'api/issues/search'
     And request { filters: { audit: ['milestone'] } }
+    When method post
+    Then status 400
+    And match response.code == 'VALIDATION_ERROR'
+
+  Scenario: search rejects perPage above 40
+    Given path 'api/issues/search'
+    And request { pagination: { page: 1, perPage: 41 } }
     When method post
     Then status 400
     And match response.code == 'VALIDATION_ERROR'

@@ -1,113 +1,93 @@
-# User Story: Search Enhancement API — Audit-Enriched Issue Search
+# User Story: Search Enhancement — Audit Trail Visibility
 
-**Feature name:** `search-enhancement-api`
+**Feature name:** `search-enhancement-api`  
 **Story date:** `2026-04-09`
 
 ## Business Goal
 
-Enable search results to be optionally enriched with audit change history (starting with label changes), so delivery managers can see how issues have evolved directly in search results without making additional API calls for each item.
+Enable delivery teams to quickly understand the change history of multiple issues in a single request. Teams currently must fetch audit trails issue-by-issue, creating inefficiency during bottleneck analysis. Bulk audit visibility in search results reduces round trips and helps teams understand workflow progression across multiple items at once.
 
 ## Problem Statement
 
-The search endpoint returns current snapshots of issues. Managers performing bulk searches for audit or troubleshooting purposes must choose between searching without history context or fetching change history separately for each result. This creates friction and forces extra API calls. By embedding change history into search results when requested, managers gain immediate visibility into issue evolution within a single operation.
+Delivery teams and managers need to understand why issues have reached their current state — specifically, when labels were added or removed and by whom. The existing single-issue endpoint provides this trail, but applying it to search results requires multiple sequential API calls. This creates performance and usability friction when analyzing multiple issues in a milestone or by state.
 
 ## User Story
 
-As a delivery manager or auditor,
-I want to retrieve a list of issues with their label change history included in a single search request,
-so that I can understand how issues have evolved without making separate API calls and can audit workflow progression at scale.
+As a delivery manager or team lead,  
+I want to optionally request audit trails (specifically label-change history) for multiple issues in a single search call,  
+so that I can quickly understand workflow progression and who is responsible for state changes without multiple round trips.
 
 ## Locked Request Constraints
 
-These constraints are non-negotiable and locked by Team Lead:
+These are the non-negotiable constraints from the original request:
 
-- **Endpoint:** Extend only `POST /api/issues/search`; do not create separate endpoints.
-- **Audit filter field:** Add optional `audit` filter as an array of strings in the request payload.
-- **Extensible enum:** Model `audit` as open for future values (e.g., `milestone`). For this story, only `"label"` is supported.
-- **Supported values:** Accept `"label"` in the `audit` array. Reject requests with any other values with explicit validation error (null values within the array are omitted, not errors).
-- **Payload semantics:** When `audit` is missing, `null`, or empty array, all three are equivalent: no enrichment, no extra GitLab calls.
-- **Enrichment logic:** When `audit` contains `"label"`, populate `changeSets` in each search result using label-event history (via GitLab `resource_label_events` endpoint).
-- **Data flow:** Execute search as today → after issues returned from GitLab → fetch label events for each returned issue in parallel → merge into results as `changeSets` → return response.
-- **Model reuse:** Extend the existing orchestration `Issue` model with optional `changeSets` field (null when audit not requested); keep this model reusable across all endpoints (search with/without audit, single issue, delete).
-- **ChangeSet design:** Reuse the same `changeSet` and `change` models from the label-events API; no separate models unless REST transport requires dedicated DTOs.
-- **Layering:** Orchestration owns enrichment orchestration logic (multiple parallel calls, merging); REST DTOs are transport only; main business modeling stays in orchestration models.
-- **Performance:** Use existing AsyncComposer for parallel label-event calls; do not make sequential calls.
-- **Pagination limits:** Enforce maximum `perPage` of `40`; set default `perPage` to `20` (previously unspecified or higher).
-- **Failure semantics:** If any enrichment call (label events for any issue) fails, treat as full failure and return error response to client. Partial success is not allowed in this iteration.
-- **Response model:** Issue model used in response includes `changeSets` (populated when audit requested, null/omitted otherwise); all other search response fields remain unchanged from current search behavior.
+- **Audit request model:** `audit` is an array field in the search filters; unsupported values must return a validation error; `null`, missing, or empty array are all treated identically (no audit enrichment).
+- **Supported audit types:** Only `"label"` is supported in this story; the model must permit future types (e.g., `"milestone"`) without contract breaking.
+- **Enrichment strategy:** If `audit` contains `"label"`, each returned search item receives populated `changeSets` (built from GitLab label-event history); if `audit` is absent/null/empty, no extra calls are made and `changeSets` is null.
+- **Model reuse:** The `changeSets` structure must match the existing single-issue label-event modelling. The core `Issue` model must not duplicate or diverge.
+- **Error handling:** If any GitLab call needed for enrichment fails, treat it as a full request failure and return an error to the client.
+- **Page size constraints:** Maximum `perPage` is 40 (client agreed); default `perPage` is 20.
+- **Performance strategy:** Use the existing async parallel-composition capability to fetch label events for multiple issues concurrently, not sequentially.
 
 ## Business Context and Constraints
 
-- **Primary users:** Delivery managers, auditors, and agile team members performing bulk issue searches to track delivery workflow and audit label-driven state transitions.
-- **Primary stakeholder:** Product leadership and orchestration domain teams.
-- **Important terminology:**
-  - *Audit filter:* Optional search filter request field that specifies which types of change history to include in results.
-  - *ChangeSet:* A sequence of label change records, each capturing when a label was added or removed, by whom, and when.
-  - *Enrichment:* The process of fetching and merging label-event history into each search result.
-- **Business-facing performance expectation:** Response should be delivered in real time with no noticeable latency to the user. Parallel fetching of label events must keep response time acceptable for typical search result sets (the audit enrichment itself should not significantly degrade response time beyond a baseline search).
-- **Security expectation:** No sensitive fields beyond what the authenticated GitLab user would see on the connected project; label events visible only to users with permission to see the underlying issues and labels; no over-disclosure of internal state.
+- **Primary users:** Delivery managers, team leads, and engineering leads analyzing milestone progress or bottlenecks.
+- **Business terminology:** "Audit trail" = label-change history showing what changed, when, and by whom. "Enrichment" = adding audit context to the search result set.
+- **Related capability:** The single-issue endpoint already returns `changeSets`; this story extends that pattern to search results.
+- **Performance expectation:** Audit-enriched searches must remain responsive even for 40 issues; parallel event fetching must prevent sequential bottlenecks.
+- **Data consistency:** Label events must be fetched from the same source as the single-issue audit trail (GitLab `resource_label_events` endpoint) to ensure consistency.
 
 ## Scope
 
 ### In Scope
 
-- Extend `POST /api/issues/search` endpoint to accept optional `audit` filter field (array of strings).
-- Validate `audit` filter: reject requests with unsupported audit types; allow `"label"` only in this story; treat null array elements as ignored (not errors).
-- When `audit` contains `"label"`, fetch label-event history from GitLab for each returned search result in parallel using AsyncComposer.
-- Map GitLab label events to client-facing `changeSet` structure (`changeType`, `changedBy`, `change.field`, `change.id`, `change.name`, `changedAt`).
-- Extend orchestration `Issue` model with optional `changeSets` field (populated when audit requested, null when not).
-- Enforce maximum `perPage` limit of `40` and set default `perPage` to `20`.
-- Update integration layer to expose separate method for fetching issue label events (reuse existing method if available from label-events-api work).
-- Orchestration layer orchestrates both search and enrichment calls; assemble final response with changeSets merged into each issue.
-- Handle empty label history correctly: return `changeSets: []` when no events exist, not null or omitted.
-- Implement no-partial-failure semantics: if any enrichment call fails, return error response with no partial search results.
-- Preserve all current search response fields and structure; only populate the previously null/empty `changeSets` field.
-- Keep `Issue` model reusable across all endpoints (search with/without audit, single issue, delete endpoints).
+- Add optional `audit` filter array to the `POST /api/issues/search` request contract.
+- When `audit` contains `"label"`, fetch and merge label-event history into each search result as `changeSets`.
+- Enforce maximum page size of 40 and change default to 20.
+- Validate `audit` array; reject unsupported values with explicit error.
+- Handle all three null-like cases (`null`, missing, empty array) as "no-audit" behavior.
+- Use async parallel composition to avoid sequential bottlenecks when fetching multiple label-event sequences.
+- Extend response contract to include `changeSets` when audit is requested.
 
 ### Out of Scope
 
-- Support for other audit event types (e.g., milestone changes, assignment events, state transitions): explicitly deferred; design must be extensible but implementation only supports `"label"` in this story.
-- Separate public endpoint for label events; use search endpoint with audit filter only.
-- GitLab API-level pagination or filtering of label events (accept server defaults; orchestration layer does not offer client-level filtering on changeSets).
-- Modifying, deleting, or creating label events through this API.
-- Role-based filtering or masking of label-event visibility (GitLab authentication scope determines visibility).
-- Backward-compatibility breaks for existing search API clients. Existing clients not using `audit` filter must receive no response structure changes.
+- Audit types other than `"label"` (milestone, pipeline status, MR integration, etc.).
+- Partial failure modes (e.g., skip one issue if its audit fetch fails; current requirement is all-or-nothing).
+- Client-side filtering, sorting, or grouping by audit metadata.
+- Audit trail persistence; events come directly from GitLab sources.
+- Modifying the single-issue `GET /api/issues/{issueId}` endpoint or its `changeSets` structure.
 
 ## Acceptance Criteria
 
-1. **Audit filter field accepted:** `POST /api/issues/search` accepts optional `audit` field in request payload as an array of strings (e.g., `"audit": ["label"]`).
+1. **Given** a client calls `POST /api/issues/search` without `audit` or with `audit: null` or `audit: []`, **when** the response is returned, **then** no extra GitLab event calls are made and each issue object has `changeSets: null`.
 
-2. **Default pagination:** When `perPage` is not specified, default is `20`; when specified, enforce maximum of `40`.
+2. **Given** a client calls `POST /api/issues/search` with `audit: ["label"]`, **when** the response is returned, **then** each issue object includes a populated `changeSets` array (possibly empty if no label events exist for that issue) containing label-change records identical in structure to those returned by the single-issue endpoint.
 
-3. **No enrichment when audit absent:** When `audit` is missing, `null`, or empty array in request, no label-event queries are made and `changeSets` is null (or omitted) in each search result.
+3. **Given** a client sends `audit` with unsupported values (e.g., `audit: ["milestone"]`), **when** the request is processed, **then** a validation error is returned explicitly identifying the unsupported value.
 
-4. **Label history populated:** When `audit` contains `"label"`, each search result includes `changeSets` populated with one entry per label event (in GitLab order), using the same `changeSet` structure as label-events-api.
+4. **Given** a client sends `perPage: 50`, **when** the request is processed, **then** it is rejected with a validation error stating the maximum is 40.
 
-5. **ChangeSet fields correct:** Each `changeSets` entry includes `changeType` (from GitLab action), `changedBy` (id, username, name), `change` (field="label", id, name), and `changedAt` (timestamp).
+5. **Given** the system receives a valid search request with `audit: ["label"]` for 10 issues, **when** GitLab label-event responses are fetched, **then** all 10 event sequences are fetched concurrently (not sequentially).
 
-6. **Empty history returns empty array:** When an issue has no label events, `changeSets: []` is included in that result (not null, not omitted).
+6. **Given** a valid search request with `audit: ["label"]` is being processed and one GitLab label-event call fails, **when** the failure is detected, **then** the entire search request returns an error to the client (no partial-success response).
 
-7. **Validation — unsupported audit values:** Request containing unsupported `audit` values (e.g., `["label", "milestone"]`) returns explicit validation error; null elements in audit array are silently omitted and do not cause errors.
+7. **Given** the API default behavior when `perPage` is omitted, **when** a search request is submitted, **then** `perPage` defaults to 20.
 
-8. **All current fields preserved:** Search response includes all current search fields unchanged except `changeSets` is now populated instead of null/omitted.
-
-9. **Parallel execution:** Label events for multiple search results are fetched in parallel using AsyncComposer, not sequentially.
-
-10. **Full-failure semantics:** If any label-event fetch fails for any search result, endpoint returns error response (4xx/5xx) with no partial search results.
-
-11. **Model reusability maintained:** The `Issue` model used in all endpoints (search with/without audit, single issue, delete) is the same; `changeSets` is optional and null when not requested.
-
-12. **Orchestration owns enrichment:** Orchestration layer calls both search and enrichment integration methods and assembles response; integration layer returns GitLab-native responses; REST DTOs are transport only.
-
-13. **Backward compatibility:** Existing search API clients that do not use `audit` filter continue to work with no response structure changes.
+8. **Given** a search result set is returned with `audit: ["label"]`, **when** the response is validated against the contract, **then** each issue object contains a `changeSets` field with the same structure and field names as the single-issue endpoint's `changeSets` (matching GitLab label-event action types and including timestamp, actor, and change details).
 
 ## Dependencies and Assumptions
 
-- **External dependency:** GitLab REST API endpoints `GET /projects/:id/issues` (for search) and `GET /projects/:id/issues/:issue_iid/resource_label_events` are available for the configured project.
-- **Architectural dependency:** Label-events-api implementation (Story 2) must be complete; this story reuses its `changeSet` and `change` models and integrations for label-event fetching.
-- **Code dependency:** AsyncComposer exists and is available for parallelizing label-event fetches across multiple issues.
-- **Assumption:** GitLab label-events endpoint returns events in consistent order (or GitLab-canonical order); no client-side sorting or filtering of label events is performed.
+- **External dependencies:**
+  - GitLab `resource_label_events` endpoint is available and stable (search functionality depends on label-event fetching).
+  - The async parallel-composition capability already exists and is production-ready.
+
+- **Assumptions:**
+  - The single-issue `changeSets` structure will not change during this story's implementation; if it does, both endpoints must evolve together.
+  - GitLab label events are returned in chronological order (or project convention mirrors single-issue behavior).
+  - The orchestration layer coordinates all enrichment logic; REST DTOs are transport carriers only.
+  - Clients accept that audit enrichment increases response time proportionally with result set size and audit type complexity.
 
 ## Open Questions
 
-- None at handoff; locked constraints are complete and unambiguous.
+- **null handling:** Should `null` inside the `audit` array (e.g., `audit: ["label", null]`) be silently stripped or returned as a validation error? Current assumption: strip silently and process only the valid values.
+- **Future audit types:** Should the response include metadata indicating which audit types were requested vs. which were populated? Current assumption: the client tracks this; response is implicit (if `changeSets` is populated, it came from `audit: ["label"]`).
