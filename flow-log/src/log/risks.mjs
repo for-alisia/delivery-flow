@@ -1,7 +1,7 @@
 import { nextRiskId, timestamp, validateValue } from "./common.mjs";
 import { MAX_ARCHITECTURE_REVIEW_ROUNDS, RISK_SEVERITIES } from "./schema.mjs";
 
-export function addRisk(state, severity, description, by, suggestedFix) {
+export function addRisk(state, severity, description, by, suggestedFix, planRefs = [], connectedAreas = []) {
   validateValue(severity, RISK_SEVERITIES, "risk severity");
   ensureRisksSection(state);
 
@@ -12,6 +12,8 @@ export function addRisk(state, severity, description, by, suggestedFix) {
     severity,
     description,
     suggestedFix: suggestedFix ?? null,
+    planRefs: sanitizeStringArray(planRefs),
+    connectedAreas: sanitizeStringArray(connectedAreas),
     status: "OPEN",
     round: state.architecturalRisks.round,
     createdBy: by ?? null,
@@ -170,6 +172,8 @@ export function summarizeRisks(state) {
       status: risk.status,
       description: risk.description,
       suggestedFix: risk.suggestedFix ?? null,
+      planRefs: risk.planRefs ?? [],
+      connectedAreas: risk.connectedAreas ?? [],
       responseNote: risk.responseNote
     }))
   };
@@ -187,4 +191,14 @@ function ensureRisksSection(state) {
   if (!state.architecturalRisks) {
     state.architecturalRisks = { round: 0, risks: [] };
   }
+}
+
+function sanitizeStringArray(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value) => value.length > 0);
 }

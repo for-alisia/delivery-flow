@@ -2,8 +2,8 @@
 
 Minimal workflow state CLI for feature delivery.
 
-This tool keeps one machine-owned JSON state file per feature and leaves human-readable
-artifacts such as story and plan as separate Markdown files.
+This tool keeps one machine-owned JSON state file per feature and tracks external
+workflow artifacts by path (for example story Markdown and canonical plan JSON).
 
 ## State File
 
@@ -20,21 +20,19 @@ You can override that with `--state-path`.
 - answer readiness questions deterministically
 - stay flow-agnostic: story, plan, reviews, checks, readiness
 
-## Current Commands
+## Workflow Quickstart
 
-Create a log:
+### 1) Create Flow State
 
 ```bash
 node flow-log/flow-log.mjs create --feature label-events-api
-```
-
-Lock requirements:
-
-```bash
 node flow-log/flow-log.mjs lock-requirements --feature label-events-api --by TL
 ```
 
-Register and approve story/plan artifacts:
+### 2) Story Artifact (Creation + Validation)
+
+Story content is authored outside `flow-log` (for example `artifacts/user-stories/<feature>.story.md`).
+`flow-log` validates story existence during registration/approval.
 
 ```bash
 node flow-log/flow-log.mjs register-artifact story \
@@ -44,15 +42,43 @@ node flow-log/flow-log.mjs register-artifact story \
 node flow-log/flow-log.mjs approve-artifact story \
   --feature label-events-api \
   --by TL
+```
 
+### 3) Implementation Plan Artifact (Creation + Validation)
+
+Canonical artifact: `artifacts/implementation-plans/<feature>.plan.json` (schema `3.0`).
+
+Create and validate plan through the v3 draft lifecycle:
+
+```bash
+# create canonical v3 skeleton
+node flow-log/flow-log.mjs init-plan --feature label-events-api
+
+# create/resume tool-managed draft
+node flow-log/flow-log.mjs plan-create-draft --feature label-events-api
+
+# validate draft (shape + readiness + risk link stability)
+node flow-log/flow-log.mjs plan-validate-draft --feature label-events-api
+
+# accept validated draft into canonical plan
+node flow-log/flow-log.mjs plan-accept-draft --feature label-events-api
+```
+
+Register and approve canonical plan artifact in flow-log:
+
+```bash
 node flow-log/flow-log.mjs register-artifact plan \
   --feature label-events-api \
-  --path artifacts/implementation-plans/label-events-api.plan.md
+  --path artifacts/implementation-plans/label-events-api.plan.json
 
 node flow-log/flow-log.mjs approve-artifact plan \
   --feature label-events-api \
   --by TL
 ```
+
+Important: when `plan-accept-draft` changes canonical content, flow-log invalidates prior plan approval metadata (`approved`, `approvedRevision`, `approvedHash`) until TL approves again.
+
+## Additional Commands
 
 Record reviews:
 
@@ -292,205 +318,93 @@ node flow-log/flow-log.mjs code-review-gate --feature label-events-api
 - `summary` is a medium-detail snapshot.
 - `history` is the explicit retry and red-card trail.
 
-### Plan Structure (v2.0)
+### Plan Structure (v3.0)
 
-The plan is a single JSON file at `artifacts/implementation-plans/<feature>.plan.json`.
-It replaces the Markdown implementation plan entirely — **there is no separate prose plan**.
-The Architect populates the plan using CLI write commands. All agents can read it.
+The canonical plan artifact is:
 
-**Access control:**
-- **Architect** — full write access (all `add-plan-*`, `set-plan-*`, `init-plan`, `revise-plan`)
-- **All agents** — read access (`plan-get`, `plan-summary`, `validate-plan`)
+`artifacts/implementation-plans/<feature>.plan.json`
 
-Schema version: `2.0`. Sections: `payloadExamples`, `validationBoundary`, `models`, `classes`, `compositionStrategy`, `sharedInfra`, `slices`, `testingMatrix`, `karate`, `archUnit`.
+The tool now uses a draft lifecycle. Architect edits a tool-managed draft, then `flow-log` validates and accepts it into canonical JSON.
 
-#### Initialize
+#### Draft Lifecycle (recommended)
 
 ```bash
+# create canonical v3 skeleton
 node flow-log/flow-log.mjs init-plan --feature my-feature
-node flow-log/flow-log.mjs init-plan --feature my-feature --force   # overwrite existing
+
+# create or resume tool-managed draft
+node flow-log/flow-log.mjs plan-create-draft --feature my-feature
+
+# validate draft (shape + readiness + enforced risk link stability)
+node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
+
+# accept validated draft into canonical plan
+node flow-log/flow-log.mjs plan-accept-draft --feature my-feature
+
+# inspect or discard draft
+node flow-log/flow-log.mjs plan-draft-status --feature my-feature
+node flow-log/flow-log.mjs plan-discard-draft --feature my-feature
 ```
 
-#### Payload Examples
+Draft path:
+
+`/tmp/flow-log-plan-drafts/<feature>.draft.json`
+
+`plan-accept-draft` behavior:
+- validates before write
+- exits non-zero if validation fails
+- returns `changed: false` on no-op
+- bumps canonical `revision` and recomputes `hash` on change
+- invalidates flow-log plan approval metadata (`approved`, `approvedRevision`, `approvedHash`) when canonical content changes
+
+`plan-create-draft` behavior:
+- creates a new draft from canonical when no draft exists
+- returns the existing draft when it already matches canonical
+- refuses to silently reuse a draft that has unapplied changes; inspect it with `plan-draft-status` or reset it with `plan-discard-draft`
+
+#### Read/Validate Commands (all agents)
 
 ```bash
-node flow-log/flow-log.mjs add-plan-example \
-  --feature my-feature \
-  --label "Search with audit" \
-  --type request \
-  --body '{"pagination":{"page":1},"filters":{"audit":["label"]}}'
-```
-
-Types: `request`, `success`, `error`, `validation-error`. Body is parsed JSON.
-
-#### Validation Boundary
-
-```bash
-node flow-log/flow-log.mjs add-plan-validation \
-  --feature my-feature \
-  --rule "perPage <= 40" \
-  --boundary "IssuesService" \
-  --reason "Existing runtime guard"
-```
-
-#### Models
-
-```bash
-# Record with inline fields
-node flow-log/flow-log.mjs add-plan-model \
-  --feature my-feature \
-  --qualified-name com.example.orchestration.model.Issue \
-  --type record \
-  --status modified \
-  --justification "Orchestration entity per constitution Principle 2" \
-  --annotations "@Builder" \
-  --fields '[{"name":"id","type":"long"},{"name":"labels","type":"List<String>","nullable":false,"defensiveCopy":true}]' \
-  --notes "Defensive copy on labels"
-
-# Enum model
-node flow-log/flow-log.mjs add-plan-model \
-  --feature my-feature \
-  --qualified-name com.example.orchestration.model.AuditType \
-  --type enum \
-  --status new \
-  --justification "Domain concept in orchestration" \
-  --values "LABEL" \
-  --methods "String value(),static AuditType fromValue(String raw)"
-
-# Add field to existing model incrementally
-node flow-log/flow-log.mjs add-plan-model-field \
-  --feature my-feature \
-  --model com.example.orchestration.model.Issue \
-  --name changeSets \
-  --type "List<ChangeSet>" \
-  --nullable \
-  --defensive-copy
-```
-
-Model types: `record`, `enum`, `interface`, `sealed-interface`. Status: `new`, `modified`.
-Each model must have a `justification` defending its package placement per constitution rules.
-Adding a model with the same `--qualified-name` replaces the existing entry.
-
-#### Classes
-
-```bash
-node flow-log/flow-log.mjs add-plan-class \
-  --feature my-feature \
-  --path "src/main/java/com/example/IssuesService.java" \
-  --status modified \
-  --role "Search with audit"
-```
-
-Statuses: `new`, `modified`, `existing`. Adding the same `--path` updates in place.
-
-#### Slices
-
-```bash
-# Full slice with inline tests and logging
-node flow-log/flow-log.mjs add-plan-slice \
-  --feature my-feature \
-  --id 1 \
-  --title "Orchestration models" \
-  --goal "Add SearchIssuesInput and wire service" \
-  --files "SearchIssuesInput.java,IssuesService.java" \
-  --unit-test "IssuesServiceTest: search with audit" \
-  --unit-test "IssuesServiceTest: search without audit" \
-  --component-test "IssuesApiComponentTest: audit returns changeSets" \
-  --info-log "IssuesService logs audit types" \
-  --error-log "None"
-
-# Add test incrementally
-node flow-log/flow-log.mjs add-plan-slice-test \
-  --feature my-feature --slice 1 --level unit \
-  --test "IssuesServiceTest: failure propagation"
-
-# Update logging
-node flow-log/flow-log.mjs set-plan-slice-logging \
-  --feature my-feature --slice 1 \
-  --error "IssuesService logs enrichment failure"
-```
-
-Test levels: `unit`, `integration`, `component`. Repeated `--unit-test`, `--integration-test`, `--component-test` flags supported.
-
-#### Composition Strategy
-
-```bash
-node flow-log/flow-log.mjs set-plan-composition \
-  --feature my-feature \
-  --approach "dependent-then-parallel" \
-  --description "Search first, then parallel enrichment"
-```
-
-#### Shared Infrastructure
-
-```bash
-node flow-log/flow-log.mjs set-plan-infra \
-  --feature my-feature \
-  --reused "AsyncComposer,GitLabExceptionMapper"
-```
-
-#### Testing Matrix
-
-```bash
-node flow-log/flow-log.mjs add-plan-test \
-  --feature my-feature \
-  --level Unit --required --coverage "IssuesServiceTest"
-
-node flow-log/flow-log.mjs add-plan-test \
-  --feature my-feature \
-  --level Component --required --coverage "IssuesApiComponentTest"
-```
-
-#### Karate
-
-```bash
-node flow-log/flow-log.mjs set-plan-karate \
-  --feature my-feature \
-  --feature-file "src/test/karate/resources/issues/search-audit.feature" \
-  --scenario "Search with label audit" \
-  --scenario "Search without audit" \
-  --smoke-tagged
-```
-
-#### ArchUnit
-
-```bash
-node flow-log/flow-log.mjs set-plan-archunit \
-  --feature my-feature \
-  --existing-reviewed
-```
-
-#### Revision and Validation
-
-```bash
-# Bump revision (clears ALL sections for re-population)
-node flow-log/flow-log.mjs revise-plan --feature my-feature
-
-# Validate completeness
 node flow-log/flow-log.mjs validate-plan --feature my-feature
+node flow-log/flow-log.mjs plan-summary --feature my-feature
+node flow-log/flow-log.mjs plan-get --feature my-feature
+node flow-log/flow-log.mjs plan-get --feature my-feature --section slices
 ```
 
-Validation checks: models exist with justification, records have fields, classes registered, slices registered, Java-file slices have tests.
+v3 sections:
+- `scope`
+- `implementationFlow`
+- `contractExamples`
+- `validationRules`
+- `designDecisions`
+- `models`
+- `classes`
+- `slices`
+- `verification`
 
-#### Read Commands (all agents)
+#### Reviewer Risk References
+
+`add-risk` now supports plan-aware references:
 
 ```bash
-# Full plan
-node flow-log/flow-log.mjs plan-get --feature my-feature
-
-# Specific section
-node flow-log/flow-log.mjs plan-get --feature my-feature --section models
-node flow-log/flow-log.mjs plan-get --feature my-feature --section slices
-
-# Compact summary
-node flow-log/flow-log.mjs plan-summary --feature my-feature
+node flow-log/flow-log.mjs add-risk \
+  --feature my-feature \
+  --severity HIGH \
+  --description "Flow step ownership is unclear" \
+  --plan-ref F3 \
+  --connected-area S2 \
+  --connected-area M4 \
+  --suggested-fix "Split flow step and rebind slice ownership"
 ```
 
-Available sections: `payloadExamples`, `validationBoundary`, `models`, `classes`, `compositionStrategy`, `sharedInfra`, `slices`, `testingMatrix`, `karate`, `archUnit`.
-- `get` returns the full raw state when detailed inspection is needed.
-- Risk lifecycle: `OPEN` → `ADDRESSED`/`INVALIDATED` (by Architect) → `RESOLVED` (by Reviewer) or `REOPENED` (by Reviewer). Only Reviewer can resolve or reopen.
-- `architecture-gate` returns `PASS` when no unresolved Critical/High risks remain, `FAIL` when they exist, `ESCALATE` after 5 rounds with unresolved Critical/High. On `ESCALATE`, TL uses `add-event --type archEscalationDecision --decision <PROCEED_TO_CODING|FINAL_ADJUSTMENT|ESCALATE_TO_USER>` to log the decision.
-- `summary` includes full `architecturalRisks` section with per-risk detail, severity/status counts, and round number.
-- Finding lifecycle: `OPEN` → `FIXED`/`DISPUTED` (by Coder) → `RESOLVED` (by Code Reviewer) or `REOPENED` (by Code Reviewer). Only Code Reviewer can resolve or reopen.
-- `code-review-gate` returns `PASS` when no unresolved Critical/High findings remain, `FAIL` when they exist, `ESCALATE` after 3 rounds with unresolved Critical/High.
-- `summary` includes full `codeFindings` section with per-finding detail (including file path), severity/status counts, and round number.
+Fields:
+- `planRefs`: primary directly affected plan IDs
+- `connectedAreas`: secondary related plan IDs
+- `suggestedFix`: reviewer-proposed remediation
+
+Risk link enforcement during validation and acceptance applies to `OPEN`, `REOPENED`, and `ADDRESSED` risks.
+
+#### Legacy v2 Commands (transition only)
+
+Legacy `add-plan-*`, `set-plan-*`, and `revise-plan` commands are still available for existing `schemaVersion: "2.0"` plans.
+They are marked as legacy in CLI help and should not be used for new plans.

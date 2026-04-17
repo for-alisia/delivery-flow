@@ -68,6 +68,8 @@ function summarizeArtifactCompact(entry, cwd) {
   return {
     path: entry.path,
     exists: artifactExists(cwd, entry.path),
-    approved: entry.approved
+    approved: entry.approved,
+    approvedRevision: entry.approvedRevision ?? null,
+    approvedHash: entry.approvedHash ?? null
   };
 }

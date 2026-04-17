@@ -72,6 +72,8 @@ export function createArtifactEntry() {
     approved: false,
     approvedAt: null,
     approvedBy: null,
+    approvedRevision: null,
+    approvedHash: null,
     lastVerifiedExistsAt: null
   };
 }

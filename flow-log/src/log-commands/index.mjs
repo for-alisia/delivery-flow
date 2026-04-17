@@ -34,7 +34,7 @@ export const LOG_COMMAND_HELP = [
   "start-batch --feature <name> [--slice <name>]... [--by <actor>] [--state-path <path>]",
   "complete-batch --feature <name> [--status <complete|failed|blocked>] [--state-path <path>]",
   "reset-checks --feature <name> [--reason <text>] [--by <actor>] [--target <agent>] [--state-path <path>]",
-  "add-risk --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--suggested-fix <text>] [--by <actor>] [--state-path <path>]",
+  "add-risk --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--suggested-fix <text>] [--plan-ref <id>]... [--connected-area <id>]... [--by <actor>] [--state-path <path>]",
   "respond-risk --feature <name> --id <number> --status <ADDRESSED|INVALIDATED> --note <text> [--by <actor>] [--state-path <path>]",
   "resolve-risk --feature <name> --id <number> [--by <actor>] [--state-path <path>]",
   "reopen-risk --feature <name> --id <number> [--reason <text>] [--by <actor>] [--state-path <path>]",

@@ -29,6 +29,8 @@ export function registerArtifactPath(state, artifactType, artifactPath) {
   entry.approved = false;
   entry.approvedAt = null;
   entry.approvedBy = null;
+  entry.approvedRevision = null;
+  entry.approvedHash = null;
   recordArtifactVerification(entry);
   return entry;
 }

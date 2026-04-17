@@ -8,6 +8,7 @@ import {
   saveState
 } from "../log/index.mjs";
 import {
+  normalizeArray,
   optionalFlag,
   parsePositiveInteger,
   requiredFlag
@@ -18,9 +19,11 @@ export function handleAddRisk(parsed, cwd) {
   const severity = requiredFlag(parsed, "severity");
   const description = requiredFlag(parsed, "description");
   const suggestedFix = optionalFlag(parsed, "suggested-fix");
+  const planRefs = parseMultiValueFlags(optionalFlag(parsed, "plan-ref"));
+  const connectedAreas = parseMultiValueFlags(optionalFlag(parsed, "connected-area"));
   const by = optionalFlag(parsed, "by");
   const { feature, state, statePath } = openState(parsed, cwd);
-  const risk = addRisk(state, severity, description, by, suggestedFix);
+  const risk = addRisk(state, severity, description, by, suggestedFix, planRefs, connectedAreas);
   saveState(statePath, state);
 
   return {
@@ -30,6 +33,13 @@ export function handleAddRisk(parsed, cwd) {
     statePath,
     risk
   };
+}
+
+function parseMultiValueFlags(rawValue) {
+  return normalizeArray(rawValue)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 export function handleRespondRisk(parsed, cwd) {
