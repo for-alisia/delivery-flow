@@ -7,11 +7,13 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,19 +29,38 @@ public class IssuesService {
 
     public IssuePage getIssues(final IssueQuery query) {
         validatePerPage(query.perPage());
+        final long startedAt = System.nanoTime();
 
         log.info(
-                "Requesting issues page={} perPage={} filters=[state:{},label:{},assignee:{},milestone:{}]",
+                "Requesting issues page={} perPage={} auditTypes={} filters=[state:{},label:{},assignee:{},milestone:{}]",
                 query.page(),
                 query.perPage(),
+                query.auditTypes(),
                 query.state(),
                 query.label(),
                 query.assignee(),
                 query.milestone());
 
         final IssuePage issuePage = issuesPort.getIssues(query);
-        log.info("Issues retrieved count={} page={}", issuePage.count(), issuePage.page());
-        return issuePage;
+        if (!query.auditTypes().contains(IssueAuditType.LABEL)
+                || issuePage.items().isEmpty()) {
+            log.info(
+                    "Issues retrieved count={} page={} auditTypes={} enrichmentApplied=false durationMs={}",
+                    issuePage.count(),
+                    issuePage.page(),
+                    query.auditTypes(),
+                    toDurationMs(startedAt));
+            return issuePage;
+        }
+
+        final IssuePage enrichedIssuePage = enrichWithLabelEvents(issuePage);
+        log.info(
+                "Issues retrieved count={} page={} auditTypes={} enrichmentApplied=true durationMs={}",
+                enrichedIssuePage.count(),
+                enrichedIssuePage.page(),
+                query.auditTypes(),
+                toDurationMs(startedAt));
+        return enrichedIssuePage;
     }
 
     public Issue createIssue(final CreateIssueInput input) {
@@ -92,5 +113,44 @@ public class IssuesService {
                     "Request validation failed",
                     List.of("pagination.perPage must be less than or equal to " + issuesApiProperties.maxPageSize()));
         }
+    }
+
+    private IssuePage enrichWithLabelEvents(final IssuePage issuePage) {
+        final List<CompletableFuture<List<ChangeSet>>> changeSetFutures = issuePage.items().stream()
+                .map(issue -> asyncComposer.submit(() -> issuesPort.getLabelEvents(issue.issueId())))
+                .toList();
+
+        asyncComposer.joinFailFast(changeSetFutures);
+
+        final List<Issue> enrichedItems = IntStream.range(0, issuePage.items().size())
+                .mapToObj(index -> enrichIssue(
+                        issuePage.items().get(index),
+                        changeSetFutures.get(index).join()))
+                .toList();
+
+        return IssuePage.builder()
+                .items(enrichedItems)
+                .count(issuePage.count())
+                .page(issuePage.page())
+                .build();
+    }
+
+    private Issue enrichIssue(final Issue issue, final List<ChangeSet> changeSets) {
+        return Issue.builder()
+                .id(issue.id())
+                .issueId(issue.issueId())
+                .title(issue.title())
+                .description(issue.description())
+                .state(issue.state())
+                .labels(issue.labels())
+                .assignee(issue.assignee())
+                .milestone(issue.milestone())
+                .parent(issue.parent())
+                .changeSets(changeSets)
+                .build();
+    }
+
+    private long toDurationMs(final long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 }

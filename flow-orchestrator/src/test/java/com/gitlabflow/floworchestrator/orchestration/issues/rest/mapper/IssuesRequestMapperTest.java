@@ -2,8 +2,8 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class IssuesRequestMapperTest {
 
-    private final IssuesRequestMapper mapper = new IssuesRequestMapper(new IssuesApiProperties(40, 100));
+    private final IssuesRequestMapper mapper = new IssuesRequestMapper();
 
     @Test
     @DisplayName("maps null body to default page and perPage")
@@ -25,11 +25,12 @@ class IssuesRequestMapperTest {
         final IssueQuery query = mapper.toIssueQuery(null);
 
         assertThat(query.page()).isEqualTo(1);
-        assertThat(query.perPage()).isEqualTo(40);
+        assertThat(query.perPage()).isEqualTo(20);
         assertThat(query.state()).isNull();
         assertThat(query.label()).isNull();
         assertThat(query.assignee()).isNull();
         assertThat(query.milestone()).isNull();
+        assertThat(query.auditTypes()).isEmpty();
     }
 
     @Test
@@ -37,7 +38,8 @@ class IssuesRequestMapperTest {
     void mapsNestedValuesIntoQuery() {
         final SearchIssuesRequest request = new SearchIssuesRequest(
                 new PaginationRequest(2, 20),
-                new IssueFiltersRequest("opened", List.of("bug"), List.of("john.doe"), List.of("M1")));
+                new IssueFiltersRequest(
+                        "opened", List.of("bug"), List.of("john.doe"), List.of("M1"), List.of("label")));
 
         final IssueQuery query = mapper.toIssueQuery(request);
 
@@ -47,6 +49,7 @@ class IssuesRequestMapperTest {
         assertThat(query.label()).isEqualTo("bug");
         assertThat(query.assignee()).isEqualTo("john.doe");
         assertThat(query.milestone()).isEqualTo("M1");
+        assertThat(query.auditTypes()).containsExactly(IssueAuditType.LABEL);
     }
 
     @Test
@@ -55,14 +58,21 @@ class IssuesRequestMapperTest {
         final IssueQuery query = mapper.toIssueQuery(new SearchIssuesRequest(null, null));
 
         assertThat(query.page()).isEqualTo(1);
-        assertThat(query.perPage()).isEqualTo(40);
+        assertThat(query.perPage()).isEqualTo(20);
+        assertThat(query.auditTypes()).isEmpty();
     }
 
     @Test
     @DisplayName("extracts only first non-null filter value")
     void extractsSingleFilterValue() {
         final SearchIssuesRequest request = new SearchIssuesRequest(
-                null, new IssueFiltersRequest("all", Arrays.asList(null, "bug"), List.of("alice"), List.of("v1")));
+                null,
+                new IssueFiltersRequest(
+                        "all",
+                        Arrays.asList(null, "bug"),
+                        List.of("alice"),
+                        List.of("v1"),
+                        Arrays.asList("label", "label")));
 
         final IssueQuery query = mapper.toIssueQuery(request);
 
@@ -70,6 +80,7 @@ class IssuesRequestMapperTest {
         assertThat(query.label()).isEqualTo("bug");
         assertThat(query.assignee()).isEqualTo("alice");
         assertThat(query.milestone()).isEqualTo("v1");
+        assertThat(query.auditTypes()).containsExactly(IssueAuditType.LABEL);
     }
 
     @Test

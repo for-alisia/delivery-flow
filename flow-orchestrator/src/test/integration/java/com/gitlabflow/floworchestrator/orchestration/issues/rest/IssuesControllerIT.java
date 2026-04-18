@@ -15,11 +15,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
+import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.common.web.GlobalExceptionHandler;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesService;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
@@ -29,6 +31,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetail
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
@@ -78,7 +81,7 @@ class IssuesControllerIT {
     @Test
     @DisplayName("accepts missing body and returns 200")
     void acceptsMissingBody() throws Exception {
-        final IssueQuery query = new IssueQuery(1, 40, null, null, null, null);
+        final IssueQuery query = new IssueQuery(1, 20, null, null, null, null, List.of());
         final IssuePage issuePage = new IssuePage(List.of(), 0, 1);
         final SearchIssuesResponse response = new SearchIssuesResponse(List.of(), 0, 1);
         when(issuesRequestMapper.toIssueQuery(null)).thenReturn(query);
@@ -100,12 +103,15 @@ class IssuesControllerIT {
     void acceptsValidFilterBody() throws Exception {
         final SearchIssuesRequest request = new SearchIssuesRequest(
                 new PaginationRequest(2, 20),
-                new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1")));
-        final IssueQuery query = new IssueQuery(2, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1");
+                new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1"), List.of()));
+        final IssueQuery query = new IssueQuery(2, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1", List.of());
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
+                List.of(new Issue(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L, null)), 1, 2);
         final SearchIssuesResponse response = new SearchIssuesResponse(
-                List.of(new IssueDto(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L)), 1, 2);
+                List.of(new SearchIssueDto(
+                        123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L, null)),
+                1,
+                2);
 
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class))).thenReturn(query);
         when(issuesService.getIssues(query)).thenReturn(issuePage);
@@ -119,6 +125,53 @@ class IssuesControllerIT {
                 .andExpect(jsonPath("$.page").value(2))
                 .andExpect(jsonPath("$.items[0].id").value(123))
                 .andExpect(jsonPath("$.items[0].issueId").value(5));
+    }
+
+    @Test
+    @DisplayName("returns lowercase change field for search audit response")
+    void returnsLowercaseChangeFieldForSearchAuditResponse() throws Exception {
+        final SearchIssuesRequest request = new SearchIssuesRequest(
+                new PaginationRequest(1, 20),
+                new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1"), List.of("label")));
+        final IssueQuery query =
+                new IssueQuery(1, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1", List.of(IssueAuditType.LABEL));
+        final IssuePage issuePage = new IssuePage(List.of(), 0, 1);
+        final SearchIssueDto responseItem = SearchIssueDto.builder()
+                .id(123L)
+                .issueId(5L)
+                .title("Title")
+                .description("Desc")
+                .state(OPENED)
+                .labels(List.of("bug"))
+                .assignee(JOHN_DOE)
+                .milestone("M1")
+                .parent(42L)
+                .changeSets(List.of(SearchIssueDto.ChangeSetDto.builder()
+                        .changeType("add")
+                        .changedBy(SearchIssueDto.ChangedByDto.builder()
+                                .id(1L)
+                                .username("root")
+                                .name("Administrator")
+                                .build())
+                        .change(SearchIssueDto.LabelChangeDto.builder()
+                                .field("label")
+                                .id(73L)
+                                .name("bug")
+                                .build())
+                        .changedAt(null)
+                        .build()))
+                .build();
+        final SearchIssuesResponse response = new SearchIssuesResponse(List.of(responseItem), 1, 1);
+
+        when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class))).thenReturn(query);
+        when(issuesService.getIssues(query)).thenReturn(issuePage);
+        when(issuesResponseMapper.toSearchIssuesResponse(issuePage)).thenReturn(response);
+
+        mockMvc.perform(post(SEARCH_ENDPOINT)
+                        .contentType(APPLICATION_JSON)
+                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].changeSets[0].change.field").value("label"));
     }
 
     @Test
@@ -164,6 +217,21 @@ class IssuesControllerIT {
     }
 
     @Test
+    @DisplayName("rejects unsupported audit filter values")
+    void rejectsUnsupportedAuditFilterValues() throws Exception {
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "filters": {
+                                                                                                                                                "audit": ["milestone"]
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("filters.audit[0]"))));
+    }
+
+    @Test
     @DisplayName("rejects invalid pagination values")
     void rejectsInvalidPaginationValues() throws Exception {
         mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
@@ -192,7 +260,7 @@ class IssuesControllerIT {
     @DisplayName("maps search integration rate limit to too many requests")
     void mapsSearchIntegrationRateLimitToTooManyRequests() throws Exception {
         when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class)))
-                .thenReturn(new IssueQuery(1, 40, null, null, null, null));
+                .thenReturn(new IssueQuery(1, 20, null, null, null, null, List.of()));
         when(issuesService.getIssues(any(IssueQuery.class)))
                 .thenThrow(new IntegrationException(
                         ErrorCode.INTEGRATION_RATE_LIMITED, "GitLab issues operation failed", "gitlab"));
@@ -204,6 +272,28 @@ class IssuesControllerIT {
     }
 
     @Test
+    @DisplayName("maps perPage above max to validation error")
+    void mapsPerPageAboveMaxToValidationError() throws Exception {
+        final IssueQuery query = new IssueQuery(1, 41, null, null, null, null, List.of());
+        when(issuesRequestMapper.toIssueQuery(any(SearchIssuesRequest.class))).thenReturn(query);
+        when(issuesService.getIssues(query))
+                .thenThrow(new ValidationException(
+                        "Request validation failed", List.of("pagination.perPage must be less than or equal to 40")));
+
+        mockMvc.perform(post(SEARCH_ENDPOINT).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "pagination": {
+                                                                                                                                                "page": 1,
+                                                                                                                                                "perPage": 41
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value("pagination.perPage must be less than or equal to 40"));
+    }
+
+    @Test
     @DisplayName("creates issue with full payload and returns 201")
     void createsIssueWithFullPayloadAndReturns201() throws Exception {
         final CreateIssueRequest request =
@@ -211,7 +301,7 @@ class IssuesControllerIT {
         final CreateIssueInput input =
                 new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
         final Issue issue = new Issue(
-                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
+                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null, null);
         final IssueDto response = new IssueDto(
                 84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
 
@@ -239,7 +329,7 @@ class IssuesControllerIT {
     @DisplayName("creates issue with title only and returns 201")
     void createsIssueWithTitleOnlyAndReturns201() throws Exception {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
-        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null, null);
         final IssueDto response = new IssueDto(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null);
 
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))

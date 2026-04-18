@@ -17,6 +17,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -32,7 +33,7 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue page to API response contract")
     void mapsIssuePageToApiResponse() {
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, 5L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L)),
+                List.of(new Issue(123L, 5L, "Title", "Description", "opened", List.of("bug"), "john", "M1", 42L, null)),
                 1,
                 2);
 
@@ -52,13 +53,14 @@ class IssuesResponseMapperTest {
     @DisplayName("keeps nullable fields as null")
     void keepsNullableFieldsAsNull() {
         final IssuePage issuePage =
-                new IssuePage(List.of(new Issue(1L, 2L, "T", null, "closed", List.of(), null, null, null)), 1, 1);
+                new IssuePage(List.of(new Issue(1L, 2L, "T", null, "closed", List.of(), null, null, null, null)), 1, 1);
 
         final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
 
         assertThat(response.items().getFirst().assignee()).isNull();
         assertThat(response.items().getFirst().milestone()).isNull();
         assertThat(response.items().getFirst().parent()).isNull();
+        assertThat(response.items().getFirst().changeSets()).isNull();
     }
 
     @Test
@@ -78,8 +80,8 @@ class IssuesResponseMapperTest {
     void mapsMultipleIssuesIntoMultipleResponseItems() {
         final IssuePage issuePage = new IssuePage(
                 List.of(
-                        new Issue(11L, 3L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L),
-                        new Issue(12L, 4L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L)),
+                        new Issue(11L, 3L, "A", "Desc A", "opened", List.of("bug"), "alice", "M1", 1L, null),
+                        new Issue(12L, 4L, "B", "Desc B", "closed", List.of("infra"), "bob", "M2", 2L, null)),
                 2,
                 4);
 
@@ -99,7 +101,16 @@ class IssuesResponseMapperTest {
     @DisplayName("maps issue fields to issue dto")
     void mapsIssueFieldsToIssueDto() {
         final Issue issue = new Issue(
-                84L, 6L, "Deploy failure", "Step 3 failed", "opened", List.of("bug", "deploy"), "john", "M1", 42L);
+                84L,
+                6L,
+                "Deploy failure",
+                "Step 3 failed",
+                "opened",
+                List.of("bug", "deploy"),
+                "john",
+                "M1",
+                42L,
+                null);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
@@ -117,7 +128,7 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("keeps nullable description as null for issue dto")
     void keepsNullableDescriptionAsNullForIssueDto() {
-        final Issue issue = new Issue(85L, 7L, "Reporting bug", null, "opened", List.of(), null, null, null);
+        final Issue issue = new Issue(85L, 7L, "Reporting bug", null, "opened", List.of(), null, null, null, null);
 
         final IssueDto response = mapper.toIssueDto(issue);
 
@@ -129,11 +140,53 @@ class IssuesResponseMapperTest {
     @Test
     @DisplayName("maps issueId from issue to dto")
     void mapsIssueIdFromIssueToDto() {
-        final Issue issue = new Issue(1L, 99L, "Title", null, "opened", List.of(), null, null, null);
+        final Issue issue = new Issue(1L, 99L, "Title", null, "opened", List.of(), null, null, null, null);
 
         final IssueDto dto = mapper.toIssueDto(issue);
 
         assertThat(dto.issueId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("maps search change sets with lowercase label field enum")
+    void mapsSearchChangeSetsWithLowercaseLabelFieldEnum() {
+        final LabelChangeSet changeSet = LabelChangeSet.builder()
+                .changeType("add")
+                .changedBy(ChangedBy.builder()
+                        .id(1L)
+                        .username("root")
+                        .name("Administrator")
+                        .build())
+                .change(LabelChange.builder().id(73L).name("bug").build())
+                .changedAt(OffsetDateTime.parse("2026-01-15T09:30:00Z"))
+                .build();
+        final IssuePage issuePage = new IssuePage(
+                List.of(new Issue(
+                        123L,
+                        5L,
+                        "Title",
+                        "Description",
+                        "opened",
+                        List.of("bug"),
+                        "john",
+                        "M1",
+                        42L,
+                        List.of(changeSet))),
+                1,
+                1);
+
+        final SearchIssuesResponse response = mapper.toSearchIssuesResponse(issuePage);
+
+        assertThat(response.items()).hasSize(1);
+        final List<SearchIssueDto.ChangeSetDto> searchChangeSets =
+                Objects.requireNonNull(response.items().getFirst().changeSets());
+        assertThat(searchChangeSets).hasSize(1);
+        final SearchIssueDto.ChangeSetDto changeSetDto = searchChangeSets.getFirst();
+        assertThat(changeSetDto.changeType()).isEqualTo("add");
+        assertThat(changeSetDto.changedBy().id()).isEqualTo(1L);
+        assertThat(changeSetDto.change().field()).isEqualTo("label");
+        assertThat(changeSetDto.change().id()).isEqualTo(73L);
+        assertThat(changeSetDto.change().name()).isEqualTo("bug");
     }
 
     @Test

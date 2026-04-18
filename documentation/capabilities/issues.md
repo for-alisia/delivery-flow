@@ -19,9 +19,10 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 
 | File | Role |
 |------|------|
-| `Issue.java` | Unified output model for search and create |
+| `Issue.java` | Unified output model for search and create — carries nullable `changeSets` populated only on enriched search responses |
+| `IssueAuditType.java` | Enum for audit enrichment types (`LABEL`); `fromValue` factory accepts case-insensitive string |
 | `IssuePage.java` | Paginated search result |
-| `IssueQuery.java` | Search query parameters |
+| `IssueQuery.java` | Search query parameters — includes immutable `auditTypes` list |
 | `IssueState.java` | Enum: `opened`, `closed`, `all` |
 | `CreateIssueInput.java` | Input for issue creation |
 | `IssueDetail.java` | Single-issue detail — pure integration-mapped model (10 fields), maps 1:1 from GitLab |
@@ -49,13 +50,16 @@ Inner records: `IssueDetail.AssigneeDetail`, `IssueDetail.MilestoneDetail`
 |------|------|
 | `SearchIssuesRequest.java` | Request body for search |
 | `SearchIssuesResponse.java` | Paginated search response |
+| `SearchIssueDto.java` | Search-only item DTO — carries nullable `changeSets` (omitted from JSON when null); `change.field` serialized as lowercase `label` |
 | `CreateIssueRequest.java` | Request body for create |
-| `IssueDto.java` | Response for search, create, delete |
+| `IssueDto.java` | Response for create (search uses `SearchIssueDto`; delete returns no body) |
 | `IssueDetailDto.java` | Response for get-single including `changeSets` mapped from GitLab label-event history |
 | `IssueFiltersRequest.java` | Filter fields inside search request |
 | `PaginationRequest.java` | Pagination fields inside search request |
 
 Inner records: `IssueDetailDto.AssigneeDto`, `IssueDetailDto.MilestoneDto`, `IssueDetailDto.ChangeSetDto`, `IssueDetailDto.ChangeDto`, `IssueDetailDto.LabelChangeSetDto`, `IssueDetailDto.ChangedByDto`, `IssueDetailDto.LabelChangeDto`
+
+Inner records for `SearchIssueDto`: `SearchIssueDto.ChangeSetDto`, `SearchIssueDto.ChangedByDto`, `SearchIssueDto.LabelChangeDto`
 
 ## Integration — GitLab
 
@@ -74,7 +78,7 @@ Inner records: `IssueDetailDto.AssigneeDto`, `IssueDetailDto.MilestoneDto`, `Iss
 
 | File | Role |
 |------|------|
-| `config/IssuesApiProperties.java` | `app.issues-api.*` — `default-page-size`, `max-page-size` |
+| `config/IssuesApiProperties.java` | `app.issues-api.*` — `default-page-size` (must be 20) and `max-page-size` (must be 40); startup throws `IllegalArgumentException` if either value deviates from the locked contract |
 
 ## Tests
 
@@ -82,6 +86,7 @@ Paths relative to `flow-orchestrator/src/test/`.
 
 | File | Level |
 |------|-------|
+| `java/.../config/IssuesApiPropertiesTest.java` | Unit |
 | `java/.../orchestration/issues/IssuesServiceTest.java` | Unit |
 | `java/.../orchestration/issues/model/IssuePageTest.java` | Unit |
 | `java/.../orchestration/issues/rest/dto/CreateIssueRequestTest.java` | Unit |

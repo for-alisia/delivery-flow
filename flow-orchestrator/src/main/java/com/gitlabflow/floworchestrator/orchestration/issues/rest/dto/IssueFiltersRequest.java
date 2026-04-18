@@ -18,11 +18,14 @@ public record IssueFiltersRequest(
         List<String> assignee,
 
         @Size(max = 1, message = "must contain at most 1 value")
-        List<String> milestone) {
+        List<String> milestone,
+
+        List<@Pattern(regexp = "label", message = "must be one of [label]") String> audit) {
     public IssueFiltersRequest {
         labels = sanitize(labels);
         assignee = sanitize(assignee);
         milestone = sanitize(milestone);
+        audit = sanitize(audit);
     }
 
     @Override
@@ -38,6 +41,11 @@ public record IssueFiltersRequest(
     @Override
     public List<String> milestone() {
         return List.copyOf(milestone);
+    }
+
+    @Override
+    public List<String> audit() {
+        return List.copyOf(audit);
     }
 
     private static List<String> sanitize(final List<String> values) {

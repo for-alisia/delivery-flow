@@ -49,7 +49,7 @@ class GitLabIssuesAdapterTest {
     private static final String GET_SINGLE_API_URL = API_URL + "/42";
     private static final String GET_LABEL_EVENTS_API_URL = GET_SINGLE_API_URL + "/resource_label_events";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
-    private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
+    private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null, List.of());
     private static final CreateIssueInput CREATE_INPUT =
             new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
 
@@ -90,7 +90,7 @@ class GitLabIssuesAdapterTest {
                         .contentType(APPLICATION_JSON)
                         .body("[]"));
 
-        final var result = adapter.getIssues(new IssueQuery(2, 20, IssueState.OPENED, "bug", "jane", "M1"));
+        final var result = adapter.getIssues(new IssueQuery(2, 20, IssueState.OPENED, "bug", "jane", "M1", List.of()));
 
         assertThat(result.count()).isZero();
         assertThat(result.page()).isEqualTo(2);

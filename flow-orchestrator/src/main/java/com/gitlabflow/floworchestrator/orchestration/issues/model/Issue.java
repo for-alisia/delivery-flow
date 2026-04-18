@@ -14,9 +14,11 @@ public record Issue(
         List<String> labels,
         @Nullable String assignee,
         @Nullable String milestone,
-        @Nullable Long parent) {
+        @Nullable Long parent,
+        @Nullable List<ChangeSet> changeSets) {
 
     public Issue {
         labels = labels == null ? List.of() : List.copyOf(labels);
+        changeSets = changeSets == null ? null : List.copyOf(changeSets);
     }
 }

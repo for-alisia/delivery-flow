@@ -2,8 +2,8 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper;
 
 import static java.util.Optional.ofNullable;
 
-import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
@@ -12,16 +12,13 @@ import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationR
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class IssuesRequestMapper {
 
     private static final int DEFAULT_PAGE = 1;
-
-    private final IssuesApiProperties issuesApiProperties;
+    private static final int DEFAULT_PER_PAGE = 20;
 
     public IssueQuery toIssueQuery(final SearchIssuesRequest request) {
         final PaginationRequest pagination =
@@ -31,7 +28,7 @@ public class IssuesRequestMapper {
 
         final int page = ofNullable(pagination).map(PaginationRequest::page).orElse(DEFAULT_PAGE);
         final int perPage =
-                ofNullable(pagination).map(PaginationRequest::perPage).orElse(issuesApiProperties.defaultPageSize());
+                ofNullable(pagination).map(PaginationRequest::perPage).orElse(DEFAULT_PER_PAGE);
 
         final IssueState state = ofNullable(filters)
                 .map(IssueFiltersRequest::state)
@@ -48,6 +45,7 @@ public class IssuesRequestMapper {
                         ofNullable(filters).map(IssueFiltersRequest::assignee).orElse(null)))
                 .milestone(extractSingleValue(
                         ofNullable(filters).map(IssueFiltersRequest::milestone).orElse(null)))
+                .auditTypes(mapAuditTypes(filters))
                 .build();
     }
 
@@ -64,5 +62,12 @@ public class IssuesRequestMapper {
         return ofNullable(values)
                 .flatMap(list -> list.stream().filter(Objects::nonNull).findFirst())
                 .orElse(null);
+    }
+
+    private List<IssueAuditType> mapAuditTypes(final IssueFiltersRequest filters) {
+        return ofNullable(filters).map(IssueFiltersRequest::audit).orElse(List.of()).stream()
+                .map(IssueAuditType::fromValue)
+                .distinct()
+                .toList();
     }
 }
