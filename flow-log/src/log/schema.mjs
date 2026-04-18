@@ -7,11 +7,11 @@ export const CHECK_NAMES = ["verifyQuick", "finalCheck", "karate"];
 export const CHECK_STATUSES = ["NOT_RUN", "PASS", "FAIL", "BLOCKED"];
 export const EVENT_TYPES = ["redCard", "rejection", "reroute", "note", "batchStart", "batchEnd", "archEscalationDecision"];
 export const ARCH_ESCALATION_DECISIONS = ["PROCEED_TO_CODING", "FINAL_ADJUSTMENT", "ESCALATE_TO_USER"];
-export const RISK_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+export const RISK_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNCLASSIFIED"];
 export const RISK_STATUSES = ["OPEN", "ADDRESSED", "INVALIDATED", "RESOLVED", "REOPENED"];
 export const FINDING_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 export const FINDING_STATUSES = ["OPEN", "FIXED", "DISPUTED", "RESOLVED", "REOPENED"];
-export const MAX_ARCHITECTURE_REVIEW_ROUNDS = 5;
+export const MAX_ARCHITECTURE_REVIEW_ROUNDS = 3;
 export const MAX_CODE_REVIEW_ROUNDS = 3;
 
 export function createInitialState(feature) {

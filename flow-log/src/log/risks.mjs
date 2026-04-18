@@ -2,14 +2,15 @@ import { nextRiskId, timestamp, validateValue } from "./common.mjs";
 import { MAX_ARCHITECTURE_REVIEW_ROUNDS, RISK_SEVERITIES } from "./schema.mjs";
 
 export function addRisk(state, severity, description, by, suggestedFix, planRefs = [], connectedAreas = []) {
-  validateValue(severity, RISK_SEVERITIES, "risk severity");
+  const effectiveSeverity = severity ?? "UNCLASSIFIED";
+  validateValue(effectiveSeverity, RISK_SEVERITIES, "risk severity");
   ensureRisksSection(state);
 
   const id = nextRiskId(state.architecturalRisks.risks);
 
   const risk = {
     id,
-    severity,
+    severity: effectiveSeverity,
     description,
     suggestedFix: suggestedFix ?? null,
     planRefs: sanitizeStringArray(planRefs),
@@ -80,6 +81,21 @@ export function reopenRisk(state, riskId, reason, by) {
   return risk;
 }
 
+export function reclassifyRisk(state, riskId, newSeverity, reason, by) {
+  validateValue(newSeverity, RISK_SEVERITIES, "risk severity");
+  ensureRisksSection(state);
+  const risk = findRisk(state, riskId);
+
+  const previousSeverity = risk.severity;
+  risk.severity = newSeverity;
+  risk.reclassifiedBy = by ?? null;
+  risk.reclassifiedAt = timestamp();
+  risk.reclassificationReason = reason ?? null;
+  risk.previousSeverity = previousSeverity;
+
+  return risk;
+}
+
 export function incrementReviewRound(state) {
   ensureRisksSection(state);
 
@@ -97,7 +113,7 @@ export function getUnresolvedBlockingRisks(state) {
   ensureRisksSection(state);
 
   return state.architecturalRisks.risks.filter(
-    (risk) => (risk.severity === "CRITICAL" || risk.severity === "HIGH") &&
+    (risk) => (risk.severity === "CRITICAL" || risk.severity === "HIGH" || risk.severity === "UNCLASSIFIED") &&
       risk.status !== "RESOLVED"
   );
 }
@@ -119,7 +135,7 @@ export function buildArchitectureGate(state) {
       round,
       unresolvedBlocking: 0,
       totalRisks: risks.length,
-      message: "No unresolved Critical/High risks. Ready for implementation."
+      message: "No unresolved Critical/High/Unclassified risks. Ready for implementation."
     };
   }
 
@@ -135,7 +151,7 @@ export function buildArchitectureGate(state) {
         status: risk.status
       })),
       totalRisks: risks.length,
-      message: `${unresolvedBlocking.length} unresolved Critical/High risk(s) after ${round} round(s). TL must decide: PROCEED_TO_CODING, FINAL_ADJUSTMENT, or ESCALATE_TO_USER.`
+      message: `${unresolvedBlocking.length} unresolved Critical/High/Unclassified risk(s) after ${round} round(s). TL must decide: PROCEED_TO_CODING, FINAL_ADJUSTMENT, or ESCALATE_TO_USER.`
     };
   }
 
@@ -145,7 +161,7 @@ export function buildArchitectureGate(state) {
     unresolvedBlocking: unresolvedBlocking.length,
     allResponded,
     totalRisks: risks.length,
-    message: `${unresolvedBlocking.length} unresolved Critical/High risk(s) in round ${round}.`
+    message: `${unresolvedBlocking.length} unresolved Critical/High/Unclassified risk(s) in round ${round}.`
   };
 }
 
@@ -153,7 +169,7 @@ export function summarizeRisks(state) {
   const section = state.architecturalRisks ?? { round: 0, risks: [] };
   const risks = section.risks;
 
-  const bySeverity = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const bySeverity = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNCLASSIFIED: 0 };
   const byStatus = { OPEN: 0, ADDRESSED: 0, INVALIDATED: 0, RESOLVED: 0, REOPENED: 0 };
 
   for (const risk of risks) {

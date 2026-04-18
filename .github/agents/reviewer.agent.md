@@ -3,7 +3,7 @@ name: "Code Reviewer"
 description: "Post-implementation validation gate. Reviews code quality, test coverage, verification evidence, and plan compliance. Returns structured findings to Team Lead."
 target: vscode
 tools: [read, search, edit, execute, todo, web, vscode/memory]
-model: GPT-5.4-mini (copilot)
+model: Claude Sonnet 4.6 (copilot)
 user-invocable: false
 disable-model-invocation: true
 argument-hint: "Provide feature name. Run flow-log summary to load context."
@@ -80,15 +80,13 @@ If Team Lead issues a red card, rerun the full review.
 
 ## Code quality review
 
+**Finding commands reference:** [flow-log/docs/review-commands.md](../../flow-log/docs/review-commands.md) — `add-finding`, `resolve-finding`, `reopen-finding`, round management.
+
 After evidence validation, review changed files for issues that tooling may miss.
 
 ### First review
 
-Record each material finding via:
-
-```
-node flow-log/flow-log.mjs add-finding --feature <feature-name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description "<finding>" --file "<path>" --by CodeReviewer
-```
+Record each material finding via `add-finding` with `--severity`, `--description`, `--file`, and `--by CodeReviewer`.
 
 Severity guide:
 - **CRITICAL** — security flaw, data loss, broken contract
@@ -100,8 +98,8 @@ Severity guide:
 
 On re-invocation, read each finding's `responseNote` from `flow-log summary → codeFindings.findings`:
 
-- If the fix is correct → `node flow-log/flow-log.mjs resolve-finding --feature <feature-name> --id <N> --by CodeReviewer`
-- If the fix is wrong or incomplete → `node flow-log/flow-log.mjs reopen-finding --feature <feature-name> --id <N> --reason "<why>" --by CodeReviewer`
+- If the fix is correct → `resolve-finding`
+- If the fix is wrong or incomplete → `reopen-finding` with `--reason`
 - If new issues are found → `add-finding` as in first review
 
 Focus re-review on OPEN and REOPENED findings. Do not re-scan resolved items. New code from fixes may introduce new issues — check those too.

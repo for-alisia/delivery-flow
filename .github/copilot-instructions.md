@@ -4,7 +4,7 @@
 
 - `flow-orchestrator/`: Java Spring Boot application — root packages: `common`, `config`, `orchestration`, `integration`
 - `mcp-server/`: TypeScript MCP server — thin client of `flow-orchestrator`, no business logic
-- `flow-log/`: Node.js CLI tool for delivery state tracking — single source of truth for feature workflow state at `artifacts/flow-logs/<feature-name>.json`
+- `flow-log/`: Node.js CLI tool for delivery state tracking — single source of truth for feature workflow state at `artifacts/flow-logs/<feature-name>.json`. Core docs: [README](../flow-log/README.md), [plan management](../flow-log/docs/plan-management.md), [review commands](../flow-log/docs/review-commands.md)
 
 ## Build And Verify
 

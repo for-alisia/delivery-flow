@@ -49,10 +49,10 @@ Suggested content:
 │                        INTENDED FLOW                                 │
 │                                                                      │
 │   1:TL ──────► 2:PM ──────► 3:TL ──────► 4:ARCH ──────► 5:TL      │
-│    chkpt+req    story.md     story.md      plan.md       story+plan  │
+│    create+lock   story.md     register     plan.json      register   │
 │                                                                      │
-│   5:TL ──────────────────────────► 6:REV1 ──────────────► 7:TL     │
-│    story + plan + chkpt             review.json (Phase 1)            │
+│   5:TL ──► 6:ARCH-REV ◄──► 4:ARCH (loop) ──► 7:TL                 │
+│    increment     risks (UNCLASSIFIED)          arch-gate PASS        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,26 +62,26 @@ Suggested content:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                                                                      │
 │   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
-│    approved slices               report.json                         │
+│    start-batch (max 2 slices)   set-check + add-change               │
 │                                                                      │
-│   9:TL ──────────────────────► 10:REV2 ─────────────────► 11:TL    │
-│    brief + impl evidence          review.json              sign-off  │
+│   9:TL ──► 10:CODE-REV ◄──► 8:CODER (loop) ──► 11:TL              │
+│    increment   findings         code-review-gate PASS    sign-off    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Flow Step Clarification
 
-- **1:TL** — Requirement lock, writes checkpoint; hands off `chkpt + locked request` to PM
+- **1:TL** — Requirement lock; `create` + `lock-requirements` with request source path
 - **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria
-- **3:TL** — Story gate; hands off `story.md` to Architect
-- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.md`; plan must include slices, payloads, validation boundaries, logging, and tests
-- **5:TL** — Plan gate; hands off `story + plan + chkpt` to Reviewer Phase 1
-- **6:REV1** — Produces `artifacts/review-reports/<feature>.review.json`; no `FAIL` or `BLOCKED` items allowed
-- **7:TL** — Phase 1 gate; hands off approved slices to Coder
-- **8:CODER** — Produces `artifacts/implementation-reports/<feature>.report.json`; evidence must be complete and recheckable
-- **9:TL** — Coder gate, independent verification; hands off `brief + impl evidence` to Reviewer Phase 2
-- **10:REV2** — Produces `artifacts/review-reports/<feature>.review.json`; no unresolved verification gaps
-- **11:TL** — Final audit gate; produces `artifacts/implementation-signoffs/<feature>.signoff.json`
+- **3:TL** — Story gate; `register-artifact story` + `approve-artifact story`
+- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via v3 draft lifecycle; plan must include slices, payloads, validation boundaries, logging, and tests
+- **5:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
+- **6:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
+- **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slices to Coder
+- **8:CODER** — Implements slices; records checks via `set-check` and files via `add-change`; runs `coder-handoff-check.sh`
+- **9:TL** — Coder gate; independent `final-check.sh` + `karate-test.sh`; records checks; `increment-code-review-round` and invokes Code Reviewer
+- **10:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
+- **11:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
 
 ---
 
@@ -265,10 +265,11 @@ Capture deviations such as:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        ACTUAL FLOW — vX.Y.Z                          │
 │                                                                      │
-│   1:TL ── 2:PM ── 3:TL ── 4:ARCH ── 5:TL ── 6:REV1 ── 7:TL        │
-│   chkpt   story   story    plan      story    review.j               │
+│   1:TL ── 2:PM ── 3:TL ── 4:ARCH ── 5:TL ── 6:ARCH-REV ── 7:TL   │
+│   create   story   register  plan    register  risks                 │
 │                                                                      │
-│  (annotate retries inline, e.g.: 2:PM×2 if PM was re-invoked)       │
+│  (annotate retries inline, e.g.: 4:ARCH×2 if Architect was          │
+│   re-invoked after architecture review risks)                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -277,11 +278,11 @@ Capture deviations such as:
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                                                                          │
-│   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✗─ 8:CODER×4 ─✓─ 9:TL     │
-│   <reason>      <reason>        <reason>        report.json              │
+│   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✓─ 9:TL                    │
+│   <reason>      <reason>        set-check+add-change                     │
 │                                                                          │
-│   9:TL ── 10:REV2×1 ─✗─ 10:REV2×2 ─✗─  BLOCKED / DONE               │
-│   brief    <reason>      <reason>                                        │
+│   9:TL ── 10:CODE-REV×1 ─✗─ 10:CODE-REV×2 ─✓─  11:TL / BLOCKED      │
+│   final-check  <reason>          findings resolved    sign-off           │
 │                                                                          │
 │  CTX   ████  ██  ████  ██  ███  ██  ████████████  ██  ▓▓▓▓  ░░░░      │
 │                                            ↑                  ↑         │
@@ -292,9 +293,9 @@ Capture deviations such as:
 ##### Actual Flow Deviations
 
 Describe what deviated from the intended flow and the cost of each deviation:
-- **Planning deviations** (PM retries, Architect re-invocations, Phase 1 rejections):
+- **Planning deviations** (PM retries, Architect re-invocations, architecture review rounds):
 - **Coder loops** (count, root cause per loop, false positives):
-- **Reviewer reruns** (count, root cause, context state at time of failure):
+- **Code Reviewer reruns** (count, root cause, context state at time of failure):
 - **Biggest single cost or quality impact:**
 
 ### 4. Cost And Context Efficiency

@@ -2,7 +2,7 @@ import { parseArgs } from "./cli-helpers.mjs";
 import { dispatchLogCommand, LOG_COMMAND_HELP } from "./log-commands.mjs";
 import { dispatchPlanCommand, PLAN_COMMAND_HELP } from "./plan-commands.mjs";
 
-const FLOW_LOG_VERSION = "0.7.0";
+const FLOW_LOG_VERSION = "0.8.0";
 
 export function runCli(argv, io) {
   try {

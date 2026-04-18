@@ -426,7 +426,7 @@ test("flow-log add-risk stores suggestedFix and surfaces it in summary", () => {
   assert.equal(summary.summary.architecturalRisks.risks[1].suggestedFix, null);
 });
 
-test("flow-log architectural risks reopen and escalation after 5 rounds", () => {
+test("flow-log architectural risks reopen and escalation after 3 rounds", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -452,7 +452,7 @@ test("flow-log architectural risks reopen and escalation after 5 rounds", () => 
   ]);
   assert.equal(reopened.risk.status, "REOPENED");
 
-  for (let round = 2; round <= 4; round += 1) {
+  for (let round = 2; round <= 2; round += 1) {
     runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
     runCli(tempRoot, [
       "respond-risk", "--feature", "demo", "--state-path", statePath,
@@ -480,7 +480,7 @@ test("flow-log architectural risks reopen and escalation after 5 rounds", () => 
 
   const gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
   assert.equal(gate.gate, "ESCALATE");
-  assert.equal(gate.round, 5);
+  assert.equal(gate.round, 3);
   assert.equal(gate.unresolvedBlocking, 1);
   assert.ok(gate.unresolvedRisks.length === 1);
   assert.equal(gate.unresolvedRisks[0].severity, "HIGH");
@@ -529,6 +529,70 @@ test("flow-log architectural risks invalidation path", () => {
 
   const gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
   assert.equal(gate.gate, "PASS");
+});
+
+test("flow-log reclassify-risk changes severity and preserves previous", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
+
+  // Reviewer adds risk without severity (defaults to UNCLASSIFIED)
+  const added = runCli(tempRoot, [
+    "add-risk", "--feature", "demo", "--state-path", statePath,
+    "--description", "Shared infra duplicated — will cause runtime class conflicts in production",
+    "--by", "ArchitectureReviewer"
+  ]);
+  assert.equal(added.risk.severity, "UNCLASSIFIED");
+
+  // Gate blocks on UNCLASSIFIED risk
+  let gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(gate.gate, "FAIL");
+  assert.equal(gate.unresolvedBlocking, 1);
+
+  // TL classifies the risk
+  const result = runCli(tempRoot, [
+    "reclassify-risk", "--feature", "demo", "--state-path", statePath,
+    "--id", "1", "--severity", "HIGH",
+    "--reason", "Genuine runtime failure risk", "--by", "TL"
+  ]);
+
+  assert.equal(result.risk.severity, "HIGH");
+  assert.equal(result.risk.previousSeverity, "UNCLASSIFIED");
+  assert.equal(result.risk.reclassifiedBy, "TL");
+  assert.equal(result.risk.reclassificationReason, "Genuine runtime failure risk");
+  assert.ok(result.risk.reclassifiedAt);
+
+  // Gate should still FAIL because of unresolved HIGH risk
+  gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(gate.gate, "FAIL");
+  assert.equal(gate.unresolvedBlocking, 1);
+});
+
+test("flow-log reclassify-risk to LOW makes risk non-blocking", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
+
+  runCli(tempRoot, [
+    "add-risk", "--feature", "demo", "--state-path", statePath,
+    "--description", "Naming convention mismatch — advisory only",
+    "--by", "ArchitectureReviewer"
+  ]);
+
+  // TL classifies as LOW — not blocking
+  runCli(tempRoot, [
+    "reclassify-risk", "--feature", "demo", "--state-path", statePath,
+    "--id", "1", "--severity", "LOW",
+    "--reason", "Naming preference, not a correctness issue", "--by", "TL"
+  ]);
+
+  const gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(gate.gate, "PASS");
+  assert.equal(gate.unresolvedBlocking, 0);
 });
 
 test("flow-log code findings full lifecycle: add, respond, resolve/reopen, gate", () => {

@@ -16,6 +16,7 @@ import {
   handleAddRisk,
   handleArchitectureGate,
   handleIncrementRound,
+  handleReclassifyRisk,
   handleReopenRisk,
   handleResolveRisk,
   handleRespondRisk
@@ -34,10 +35,11 @@ export const LOG_COMMAND_HELP = [
   "start-batch --feature <name> [--slice <name>]... [--by <actor>] [--state-path <path>]",
   "complete-batch --feature <name> [--status <complete|failed|blocked>] [--state-path <path>]",
   "reset-checks --feature <name> [--reason <text>] [--by <actor>] [--target <agent>] [--state-path <path>]",
-  "add-risk --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--suggested-fix <text>] [--plan-ref <id>]... [--connected-area <id>]... [--by <actor>] [--state-path <path>]",
+  "add-risk --feature <name> [--severity <CRITICAL|HIGH|MEDIUM|LOW|UNCLASSIFIED>] --description <text> [--suggested-fix <text>] [--plan-ref <id>]... [--connected-area <id>]... [--by <actor>] [--state-path <path>]",
   "respond-risk --feature <name> --id <number> --status <ADDRESSED|INVALIDATED> --note <text> [--by <actor>] [--state-path <path>]",
   "resolve-risk --feature <name> --id <number> [--by <actor>] [--state-path <path>]",
   "reopen-risk --feature <name> --id <number> [--reason <text>] [--by <actor>] [--state-path <path>]",
+  "reclassify-risk --feature <name> --id <number> --severity <CRITICAL|HIGH|MEDIUM|LOW> --reason <text> [--by <actor>] [--state-path <path>]",
   "increment-round --feature <name> [--state-path <path>]",
   "architecture-gate --feature <name> [--state-path <path>]",
   "add-finding --feature <name> --severity <CRITICAL|HIGH|MEDIUM|LOW> --description <text> [--file <path>] [--by <actor>] [--state-path <path>]",
@@ -98,6 +100,8 @@ export function dispatchLogCommand(command, subcommand, parsed, cwd) {
       return handleResolveRisk(parsed, cwd);
     case "reopen-risk":
       return handleReopenRisk(parsed, cwd);
+    case "reclassify-risk":
+      return handleReclassifyRisk(parsed, cwd);
     case "increment-round":
       return handleIncrementRound(parsed, cwd);
     case "architecture-gate":

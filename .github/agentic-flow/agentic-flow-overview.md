@@ -49,20 +49,20 @@
 
 - Pre-implementation architectural risk gate
 - Reads context via `flow-log summary` — including existing risks and Architect's response notes
-- Records findings via `flow-log add-risk`; on re-review, resolves or reopens risks via `flow-log resolve-risk` / `reopen-risk`
-- Classifies findings by severity: Critical, High, Medium, Low
-- Critical/High findings block implementation; Medium/Low are advisory
+- Records findings via `flow-log add-risk` without severity (defaults to UNCLASSIFIED); on re-review, resolves or reopens risks via `flow-log resolve-risk` / `reopen-risk`
+- Does not assign severity — describes what is violated and consequences; TL classifies via `reclassify-risk` before running the gate
 - Verifies that new layer interactions or package boundaries are covered by ArchUnit rules in the plan
 - Does not edit any artifact
 
 ### Architecture Review Loop
 
 1. TL runs `increment-round`, invokes Architecture Reviewer
-2. Reviewer records risks via `add-risk`, returns outcome
-3. TL runs `architecture-gate`: `PASS` → proceed; `FAIL` → route to Architect; `ESCALATE` → TL escalation decision
-4. Architect reads risks from `flow-log summary`, responds via `respond-risk` (ADDRESSED/INVALIDATED with note)
-5. TL routes back to Reviewer — Reviewer reads Architect's notes, resolves or reopens each risk
-6. Repeat until gate is `PASS` or `ESCALATE` (max 5 rounds)
+2. Reviewer records findings via `add-risk` (all UNCLASSIFIED — describes violation + consequences), returns outcome
+3. TL classifies each finding's severity via `reclassify-risk` based on project needs and delivery cost
+4. TL runs `architecture-gate`: `PASS` → proceed; `FAIL` → route to Architect; `ESCALATE` → TL escalation decision
+5. Architect reads risks from `flow-log summary`, responds via `respond-risk` (ADDRESSED/INVALIDATED with note)
+6. TL routes back to Reviewer — Reviewer reads Architect's notes, resolves or reopens each risk
+7. Repeat until gate is `PASS` or `ESCALATE` (max 3 rounds)
 
 **On ESCALATE**, TL evaluates each unresolved risk and logs a decision via `add-event --type archEscalationDecision`:
 - `PROCEED_TO_CODING` — findings are non-blocking (artifact quality, nice-to-have)
@@ -104,7 +104,7 @@
 
 - Use `flow-log` CLI (`node flow-log/flow-log.mjs`) as the shared state source. The state file at `artifacts/flow-logs/<feature-name>.json` is the single source of truth for delivery state and gate readiness
 - Architectural risks are durable state in flow-log — Reviewer records them, Architect responds to them, Reviewer resolves or reopens them
-- TL uses `architecture-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (5 unresolved rounds hard cap)
+- TL uses `architecture-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (3 unresolved rounds hard cap)
 - Code findings are durable state in flow-log — Code Reviewer records them, Coder responds to them, Code Reviewer resolves or reopens them
 - TL uses `code-review-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (3 unresolved rounds)
 - Invoke agents with feature name; agents query `flow-log summary` to load context
@@ -117,7 +117,7 @@
 
 - Flow-log state: `artifacts/flow-logs/<feature-name>.json`
 - Story: `artifacts/user-stories/<feature-name>.story.md`
-- Plan: `artifacts/implementation-plans/<feature-name>.plan.md`
+- Plan: `artifacts/implementation-plans/<feature-name>.plan.json`
 
 ## Verification Expectations
 

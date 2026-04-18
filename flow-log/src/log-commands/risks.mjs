@@ -2,6 +2,7 @@ import {
   addRisk,
   buildArchitectureGate,
   incrementReviewRound,
+  reclassifyRisk,
   reopenRisk,
   resolveRisk,
   respondToRisk,
@@ -16,7 +17,7 @@ import {
 import { openState } from "./shared.mjs";
 
 export function handleAddRisk(parsed, cwd) {
-  const severity = requiredFlag(parsed, "severity");
+  const severity = optionalFlag(parsed, "severity") ?? null;
   const description = requiredFlag(parsed, "description");
   const suggestedFix = optionalFlag(parsed, "suggested-fix");
   const planRefs = parseMultiValueFlags(optionalFlag(parsed, "plan-ref"));
@@ -87,6 +88,24 @@ export function handleReopenRisk(parsed, cwd) {
   return {
     ok: true,
     command: "reopen-risk",
+    feature,
+    statePath,
+    risk
+  };
+}
+
+export function handleReclassifyRisk(parsed, cwd) {
+  const riskId = parsePositiveInteger(requiredFlag(parsed, "id"), "risk id");
+  const severity = requiredFlag(parsed, "severity");
+  const reason = requiredFlag(parsed, "reason");
+  const by = optionalFlag(parsed, "by");
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const risk = reclassifyRisk(state, riskId, severity, reason, by);
+  saveState(statePath, state);
+
+  return {
+    ok: true,
+    command: "reclassify-risk",
     feature,
     statePath,
     risk

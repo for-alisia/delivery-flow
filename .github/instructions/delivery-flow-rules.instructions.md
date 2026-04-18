@@ -8,6 +8,7 @@ description: "Delivery flow rules for Team Lead, Product Manager, Java Architect
 ### Workflow Control
 
 - Never read or modify `.github/agentic-flow/logs/`.
+- Never read files under `artifacts/archive/`. That folder contains historical evidence for external use, not active workflow state.
 - Subagents return structured summaries, not file contents.
 - Do not advance on chat-only claims; the on-disk artifact is the source of truth.
 - Use `<<ESCALATE_TO_ARCHITECT>>` when a fundamental plan flaw blocks progress.

@@ -69,6 +69,8 @@ Record assumptions in the implementation report.
 
 ## Execution protocol
 
+**Flow-log command reference:** [flow-log/README.md](../../flow-log/README.md) (checks, changes, batches) and [flow-log/docs/review-commands.md](../../flow-log/docs/review-commands.md) (finding responses).
+
 ### When implementing new slices
 
 For each slice:
@@ -76,8 +78,8 @@ For each slice:
 1. implement production code for the current slice
 2. add required tests
 3. run `scripts/verify-quick.sh` and fix failures before moving on
-4. record the check: `node flow-log/flow-log.mjs set-check --feature <feature-name> --name verifyQuick --status PASS --by JavaCoder --command scripts/verify-quick.sh`
-5. record changed files: `node flow-log/flow-log.mjs add-change --feature <feature-name> --file <path> [--file <path>]...`
+4. record the check via `set-check --name verifyQuick --status PASS --by JavaCoder`
+5. record changed files via `add-change --file <path> [--file <path>]...`
 
 ### When fixing code review findings
 
@@ -85,8 +87,8 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 
 1. Read each OPEN/REOPENED finding from `flow-log summary → codeFindings.findings`.
 2. For each finding:
-   - If you agree and can fix it → fix the code, then: `node flow-log/flow-log.mjs respond-finding --feature <feature-name> --id <N> --status FIXED --note "<what you changed>" --by JavaCoder`
-   - If the finding is wrong or already covered → `node flow-log/flow-log.mjs respond-finding --feature <feature-name> --id <N> --status DISPUTED --note "<why this is not an issue>" --by JavaCoder`
+   - If you agree and can fix it → fix the code, then respond `FIXED` via `respond-finding`
+   - If the finding is wrong or already covered → respond `DISPUTED` via `respond-finding`
 3. After all findings are addressed, run `scripts/verify-quick.sh` and record the check.
 
 ### Before handoff
@@ -94,7 +96,7 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 1. verify plan compliance
 2. verify acceptance criteria
 3. run `scripts/final-check.sh` and fix all findings
-4. record the check: `node flow-log/flow-log.mjs set-check --feature <feature-name> --name finalCheck --status PASS --by JavaCoder --command scripts/final-check.sh`
+4. record the check via `set-check --name finalCheck --status PASS --by JavaCoder`
 5. run `scripts/coder-handoff-check.sh <feature-name>` — fix any failures before returning
 
 ## Evidence rule
