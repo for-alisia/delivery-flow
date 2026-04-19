@@ -6,10 +6,12 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInp
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.UpdateIssueRequest;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
@@ -55,6 +57,19 @@ public class IssuesRequestMapper {
                 .title(request.title())
                 .description(request.description())
                 .labels(labels)
+                .build();
+    }
+
+    public UpdateIssueInput toUpdateIssueInput(final long issueId, final UpdateIssueRequest request) {
+        final List<String> addLabels = request.addLabels() == null ? List.of() : request.addLabels();
+        final List<String> removeLabels = request.removeLabels() == null ? List.of() : request.removeLabels();
+
+        return UpdateIssueInput.builder()
+                .issueId(issueId)
+                .title(request.title())
+                .description(request.description())
+                .addLabels(addLabels)
+                .removeLabels(removeLabels)
                 .build();
     }
 

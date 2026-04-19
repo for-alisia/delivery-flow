@@ -11,6 +11,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -72,6 +73,20 @@ public class IssuesService {
 
         final IssueSummary issue = issuesPort.createIssue(input);
         log.info("Issue created id={}", issue.id());
+        return issue;
+    }
+
+    public IssueSummary updateIssue(final UpdateIssueInput input) {
+        final int effectiveFieldCount = countEffectiveUpdateFields(input);
+        log.info(
+                "Updating issue issueId={} effectiveFieldCount={} addLabelCount={} removeLabelCount={}",
+                input.issueId(),
+                effectiveFieldCount,
+                input.addLabels().size(),
+                input.removeLabels().size());
+
+        final IssueSummary issue = issuesPort.updateIssue(input);
+        log.info("Issue updated issueId={}", input.issueId());
         return issue;
     }
 
@@ -153,5 +168,22 @@ public class IssuesService {
 
     private long toDurationMs(final long startedAt) {
         return (System.nanoTime() - startedAt) / 1_000_000L;
+    }
+
+    private int countEffectiveUpdateFields(final UpdateIssueInput input) {
+        int count = 0;
+        if (input.title() != null) {
+            count++;
+        }
+        if (input.description() != null) {
+            count++;
+        }
+        if (!input.addLabels().isEmpty()) {
+            count++;
+        }
+        if (!input.removeLabels().isEmpty()) {
+            count++;
+        }
+        return count;
     }
 }

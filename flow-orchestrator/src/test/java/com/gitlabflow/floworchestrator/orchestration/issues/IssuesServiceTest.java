@@ -12,6 +12,7 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
+import com.gitlabflow.floworchestrator.config.IssuesApiValidationProperties;
 import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
 import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
@@ -24,6 +25,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -48,8 +50,10 @@ class IssuesServiceTest {
     @BeforeEach
     void setUp() {
         asyncExecutor = Executors.newVirtualThreadPerTaskExecutor();
-        issuesService =
-                new IssuesService(issuesPort, new IssuesApiProperties(20, 40), new AsyncComposer(asyncExecutor));
+        issuesService = new IssuesService(
+                issuesPort,
+                new IssuesApiProperties(20, 40, new IssuesApiValidationProperties(3, 255, 1_000_000, 10)),
+                new AsyncComposer(asyncExecutor));
     }
 
     @AfterEach
@@ -248,6 +252,32 @@ class IssuesServiceTest {
         when(issuesPort.createIssue(input)).thenThrow(exception);
 
         assertThatThrownBy(() -> issuesService.createIssue(input)).isSameAs(exception);
+    }
+
+    @Test
+    @DisplayName("delegates update input to port and returns unchanged issue")
+    void delegatesUpdateInputToPortAndReturnsUnchangedIssue() {
+        final UpdateIssueInput input =
+                new UpdateIssueInput(84L, "Updated title", "", List.of("backend"), List.of("bug"));
+        final IssueSummary issue =
+                new IssueSummary(84L, 10L, "Updated title", "", "opened", List.of("backend"), null, null, null, null);
+        when(issuesPort.updateIssue(input)).thenReturn(issue);
+
+        final IssueSummary response = issuesService.updateIssue(input);
+
+        assertThat(response).isEqualTo(issue);
+        verify(issuesPort).updateIssue(input);
+    }
+
+    @Test
+    @DisplayName("propagates update integration exception unchanged")
+    void propagatesUpdateIntegrationExceptionUnchanged() {
+        final UpdateIssueInput input = new UpdateIssueInput(84L, null, null, List.of("backend"), List.of());
+        final IntegrationException exception = new IntegrationException(
+                ErrorCode.INTEGRATION_FAILURE, "GitLab update issue operation failed", "gitlab");
+        when(issuesPort.updateIssue(input)).thenThrow(exception);
+
+        assertThatThrownBy(() -> issuesService.updateIssue(input)).isSameAs(exception);
     }
 
     @Test

@@ -99,12 +99,63 @@ Content-Type: application/json
 	"title": "Reporting bug"
 }
 
+### Invalid create issue request (title shorter than configured minimum length)
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"title": "ab"
+}
+
+### Invalid create issue request (too many labels for one request field)
+POST {{baseUrl}}/api/issues
+Content-Type: application/json
+
+{
+	"title": "Deploy failure",
+	"labels": ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9", "l10", "l11"]
+}
+
 ### Invalid create issue request (blank title)
 POST {{baseUrl}}/api/issues
 Content-Type: application/json
 
 {
 	"title": "   "
+}
+
+### Patch issue request (title, description, and label deltas)
+PATCH {{baseUrl}}/api/issues/{{issueId}}
+Content-Type: application/json
+
+{
+	"title": "Deploy fix complete",
+	"description": "Updated deployment notes",
+	"addLabels": ["backend"],
+	"removeLabels": ["bug"]
+}
+
+### Patch issue request (clear description with empty string)
+PATCH {{baseUrl}}/api/issues/{{issueId}}
+Content-Type: application/json
+
+{
+	"description": ""
+}
+
+### Invalid patch request (empty payload)
+PATCH {{baseUrl}}/api/issues/{{issueId}}
+Content-Type: application/json
+
+{}
+
+### Invalid patch request (add/remove labels overlap)
+PATCH {{baseUrl}}/api/issues/{{issueId}}
+Content-Type: application/json
+
+{
+	"addLabels": ["bug"],
+	"removeLabels": ["bug"]
 }
 
 ### Delete issue request (existing issue)

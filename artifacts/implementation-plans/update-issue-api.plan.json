@@ -1,0 +1,1511 @@
+{
+  "schemaVersion": "3.0",
+  "feature": "update-issue-api",
+  "revision": 4,
+  "status": "draft",
+  "requirementLock": {
+    "requestSource": "artifacts/user-prompts/update-issue-api.md",
+    "storyPath": "artifacts/user-stories/update-issue-api.story.md",
+    "locked": true,
+    "endpoint": "PATCH /api/issues/{issueId}",
+    "nonNegotiables": [
+      "Reuse the existing IssueSummaryDto response contract unchanged for PATCH responses.",
+      "Accept only title, description, addLabels, and removeLabels as mutable request fields.",
+      "Treat description empty string as an intentional clear and description null as no change.",
+      "Reject requests with no effective update field and reject overlapping addLabels/removeLabels values.",
+      "Use shared application.yml-backed title, description, and labels-per-field limits for both create and update.",
+      "Keep the local API as PATCH /api/issues/{issueId} while using GitLab PUT /projects/:id/issues/:issue_iid downstream.",
+      "Use GitLab add_labels and remove_labels rather than full labels replacement for additive label behavior."
+    ]
+  },
+  "scope": {
+    "purpose": "Add PATCH issue updates for title, description, and label deltas while aligning create validation with shared configurable limits and preserving the existing issue summary response contract.",
+    "inScope": [
+      "Expose PATCH /api/issues/{issueId} in the existing issues capability and return HTTP 200 with the existing IssueSummaryDto response shape.",
+      "Add one REST-boundary validator in the existing orchestration/issues/rest package to own create and update payload validation backed by shared issues API properties.",
+      "Extend app.issues-api configuration with nested validation limits for title min length, title max length, description max length, and max labels per request field.",
+      "Introduce provider-agnostic update orchestration input and a new IssuesPort update method.",
+      "Map update requests to the official GitLab project issue update endpoint using title, description, add_labels, and remove_labels.",
+      "Update flow-orchestrator/http/issues.http, documentation/capabilities/issues.md, unit tests, integration tests, component tests, and the existing issues-update Karate smoke feature."
+    ],
+    "outOfScope": [
+      "Updating issue fields other than title, description, addLabels, and removeLabels.",
+      "Changing issue search, delete, get-single, or label-event behavior beyond the shared create/update validation alignment.",
+      "Introducing a new issue response DTO or changing IssueSummaryDto field names, wire values, or null-inclusion behavior.",
+      "Adding project selection per request, batch updates, or any read-before-write reconciliation flow.",
+      "Introducing a new top-level package or a new issues subpackage boundary just for validation."
+    ],
+    "constraints": [
+      "Source of truth remains artifacts/user-prompts/update-issue-api.md and artifacts/user-stories/update-issue-api.story.md approved in flow-log summary on 2026-04-19.",
+      "Official GitLab contract is PUT /projects/:id/issues/:issue_iid with at least one mutable parameter and supported add_labels/remove_labels fields per https://docs.gitlab.com/api/issues/.",
+      "The update success response must keep using the current IssueSummary -> IssueSummaryDto mapping path with assignee, milestone, parent, and nullable changeSets preserved exactly as today.",
+      "IssueSummaryDto.changeSets remains nullable and omitted from JSON when null via existing @JsonInclude(NON_NULL); update responses do not introduce a different omission rule.",
+      "Shared infrastructure reuse is mandatory: keep using GitLabUriFactory, GitLabExceptionMapper, IssuesResponseMapper, and the existing issues capability package layout.",
+      "Because the validator remains in the existing orchestration/issues/rest package, the plan does not introduce a new package relationship and therefore does not require a new ArchUnit rule.",
+      "Create validation alignment is part of the same delivery and must use the same configured limits consumed by PATCH validation."
+    ]
+  },
+  "validationBoundaryDecision": {
+    "decision": "Own create and update request validation in a dedicated IssuesRequestValidator class that lives directly in orchestration/issues/rest, while keeping search field validation and path-variable annotations unchanged.",
+    "details": [
+      "CreateIssueRequest and UpdateIssueRequest stay transport-only and allow deserialization to preserve null values; the validator decides whether those values are acceptable.",
+      "IssuesController calls IssuesRequestValidator before request-to-input mapping for create and patch flows.",
+      "IssuesRequestValidator throws ValidationException with aggregated details so GlobalExceptionHandler continues shaping the outbound 400 response.",
+      "Title and description length rules use IssuesApiProperties.validation values instead of hard-coded Bean Validation annotations.",
+      "The validator treats title as effective only when non-null, description as effective only when non-null, and add/remove label lists as effective only when non-null and non-empty.",
+      "Search endpoint validation and positive issueId path validation continue using the current mechanisms because those rules are already declarative and unchanged by this feature."
+    ]
+  },
+  "compositionStrategy": {
+    "mode": "sequential-single-call",
+    "sequentialDependency": "The update flow has no independent downstream calls to parallelize. Validation happens first, then one orchestration delegation leads to one GitLab PUT call.",
+    "parallelWork": "None.",
+    "failureMode": "Any GitLab HTTP or transport failure is translated by the existing GitLabExceptionMapper path for the update issue resource and returned through the existing GlobalExceptionHandler contract."
+  },
+  "sharedInfrastructureImpact": {
+    "reused": [
+      "config/IssuesApiProperties as the existing app.issues-api root configuration object",
+      "orchestration/issues/rest/mapper/IssuesResponseMapper for IssueSummaryDto mapping",
+      "integration/gitlab/GitLabUriFactory for project-scoped issue URIs",
+      "integration/gitlab/GitLabExceptionMapper for sanitized GitLab error translation",
+      "common/web/GlobalExceptionHandler for REST error responses",
+      "src/test/karate/java/com/gitlabflow/floworchestrator/karate/issues/IssuesKarateTest runner"
+    ],
+    "newExtraction": "None"
+  },
+  "assumptions": [
+    "GitLab project issue update responses contain the same issue summary fields already mapped by GitLabIssueResponse, so update can reuse the existing GitLabIssueResponse -> IssueSummary mapper path.",
+    "Issue identifiers used by the local API remain GitLab issue IIDs, so the downstream path segment is the same project-scoped identifier already used by delete and get-single flows.",
+    "The existing issues-update Karate feature file in src/test/karate/resources/issues should be modified to match the final implementation rather than replaced with a new runner or a second update feature."
+  ],
+  "implementationFlow": [
+    {
+      "id": "F1",
+      "order": 1,
+      "slice": "S1",
+      "layer": "config",
+      "component": "Issues API validation properties",
+      "responsibility": "Extend app.issues-api with nested immutable validation limits and startup validation while preserving the fixed 20/40 pagination contract.",
+      "constitutionReason": "Principle 5 requires centralized validated configuration in the config layer.",
+      "outputs": [
+        "IssuesApiProperties exposes a non-null validation component.",
+        "Shared title, description, and labels-per-field limits are available to both create and update flows."
+      ]
+    },
+    {
+      "id": "F2",
+      "order": 2,
+      "slice": "S1",
+      "layer": "orchestration.rest",
+      "component": "Create validation alignment",
+      "responsibility": "Move create request validation from hard-coded transport annotations to IssuesRequestValidator and keep create defensive-copy behavior intact.",
+      "constitutionReason": "Principles 4, 8, and 12 require boundary validation before business logic and explicit ownership of transport rules.",
+      "outputs": [
+        "Create requests use the shared configured limits.",
+        "Create validation errors still surface through ValidationException and the existing error response shape."
+      ]
+    },
+    {
+      "id": "F3",
+      "order": 3,
+      "slice": "S2",
+      "layer": "orchestration.rest",
+      "component": "PATCH request boundary",
+      "responsibility": "Add UpdateIssueRequest, PATCH /api/issues/{issueId}, and request-to-input mapping while keeping the controller thin and reusing the existing IssueSummaryDto mapper.",
+      "constitutionReason": "Principles 1 and 8 require the controller to validate, delegate, map, and return without provider-specific behavior.",
+      "outputs": [
+        "PATCH /api/issues/{issueId} exists with request-body and path validation.",
+        "UpdateIssueRequest semantics preserve null-versus-empty behavior required by the locked contract."
+      ]
+    },
+    {
+      "id": "F4",
+      "order": 4,
+      "slice": "S2",
+      "layer": "tests",
+      "component": "PATCH boundary verification",
+      "responsibility": "Add focused boundary tests for update validation, mapping, and HTTP response behavior, including overlap rejection and empty-description semantics.",
+      "constitutionReason": "Principle 10 requires changed validation and mapping behavior to be covered at the smallest effective levels.",
+      "outputs": [
+        "Focused unit and WebMvc coverage for PATCH request behavior.",
+        "Evidence that overlap validation short-circuits before downstream delegation."
+      ]
+    },
+    {
+      "id": "F5",
+      "order": 5,
+      "slice": "S3",
+      "layer": "orchestration",
+      "component": "Update service contract",
+      "responsibility": "Add UpdateIssueInput and IssuesPort.updateIssue, then delegate update work through IssuesService with structured logging and no read-before-write composition.",
+      "constitutionReason": "Principles 2 and 13 require orchestration to define the provider-agnostic contract and keep provider mechanics out of the REST layer.",
+      "outputs": [
+        "IssuesService supports updateIssue(UpdateIssueInput).",
+        "IssuesPort exposes a single provider-agnostic update capability."
+      ]
+    },
+    {
+      "id": "F6",
+      "order": 6,
+      "slice": "S4",
+      "layer": "integration",
+      "component": "GitLab issue update adapter",
+      "responsibility": "Map UpdateIssueInput to a GitLab PUT request that serializes add_labels and remove_labels as comma-separated strings, preserves description='', and reuses the existing GitLabIssueResponse mapper output.",
+      "constitutionReason": "Principles 2 and 8 require one external call per adapter method and explicit mapping at the integration boundary.",
+      "outputs": [
+        "GitLab update requests use PUT /projects/{projectPath}/issues/{issueId}.",
+        "The update response maps back to IssueSummary without a new provider response DTO."
+      ]
+    },
+    {
+      "id": "F7",
+      "order": 7,
+      "slice": "S4",
+      "layer": "docs",
+      "component": "Contract documentation",
+      "responsibility": "Update issues.http and documentation/capabilities/issues.md so the local PATCH contract and shared validation configuration stay synchronized with implementation.",
+      "constitutionReason": "Principle 11 requires implementation and integration documentation to change in the same delivery.",
+      "outputs": [
+        "HTTP examples show PATCH success and validation failures.",
+        "Issues capability docs list PATCH and the shared validation contract."
+      ]
+    },
+    {
+      "id": "F8",
+      "order": 8,
+      "slice": "S4",
+      "layer": "karate-and-component",
+      "component": "Runtime smoke and downstream verification",
+      "responsibility": "Extend the existing update smoke feature and component test support so PATCH behavior is verified against a running application and WireMock-backed GitLab responses.",
+      "constitutionReason": "Code-guidance final verification requires API-facing changes to have smoke coverage, and test-instructions require component coverage for changed real downstream HTTP flow.",
+      "outputs": [
+        "IssuesApiComponentTest covers PATCH success and downstream failure behavior.",
+        "issues-update.feature covers a valid PATCH flow and at least one invalid PATCH request."
+      ]
+    }
+  ],
+  "contractExamples": [
+    {
+      "id": "E0",
+      "label": "Create request using shared validation-backed fields",
+      "type": "request",
+      "body": {
+        "title": "New issue title",
+        "description": "Optional description",
+        "labels": [
+          "backend",
+          "triage"
+        ]
+      }
+    },
+    {
+      "id": "E1",
+      "label": "PATCH request with title, description, and label delta",
+      "type": "request",
+      "body": {
+        "title": "Updated title",
+        "description": "Updated description",
+        "addLabels": [
+          "bug"
+        ],
+        "removeLabels": [
+          "test"
+        ]
+      }
+    },
+    {
+      "id": "E2",
+      "label": "PATCH request that intentionally clears description",
+      "type": "request",
+      "body": {
+        "description": ""
+      }
+    },
+    {
+      "id": "E3",
+      "label": "Successful update response reusing IssueSummaryDto",
+      "type": "success",
+      "body": {
+        "id": 84,
+        "issueId": 12,
+        "title": "Updated title",
+        "description": "",
+        "state": "opened",
+        "labels": [
+          "bug",
+          "backend"
+        ],
+        "assignee": "john.doe",
+        "milestone": "Sprint 12",
+        "parent": 42
+      }
+    },
+    {
+      "id": "E4",
+      "label": "GitLab not-found error response mapped through existing error contract",
+      "type": "error",
+      "body": {
+        "code": "RESOURCE_NOT_FOUND",
+        "message": "GitLab update issue operation failed",
+        "details": []
+      }
+    },
+    {
+      "id": "E5",
+      "label": "Validation error when addLabels and removeLabels overlap",
+      "type": "validation-error",
+      "body": {
+        "code": "VALIDATION_ERROR",
+        "message": "Request validation failed",
+        "details": [
+          "addLabels and removeLabels must not contain the same value: bug"
+        ]
+      }
+    }
+  ],
+  "validationRules": [
+    {
+      "id": "V1",
+      "rule": "Create title must be non-null, non-blank, and its length must be between issuesApiProperties.validation.titleMinLength and issuesApiProperties.validation.titleMaxLength inclusive.",
+      "owner": "IssuesRequestValidator.validateCreateRequest",
+      "reason": "The locked request explicitly aligns create title validation with the shared configurable limits.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "V2",
+      "rule": "Create description may be null but, when present, must not exceed issuesApiProperties.validation.descriptionMaxLength.",
+      "owner": "IssuesRequestValidator.validateCreateRequest",
+      "reason": "Create and update must share one description max-length source.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "V3",
+      "rule": "Create labels, when present, must contain at most issuesApiProperties.validation.maxLabelsPerRequestField items and every item must be non-null and non-blank.",
+      "owner": "IssuesRequestValidator.validateCreateRequest",
+      "reason": "The locked request requires labels-per-field alignment across create and update.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "V4",
+      "rule": "Update requests must contain at least one effective change: title non-null, description non-null, addLabels non-empty, or removeLabels non-empty.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "Both the local PATCH contract and the GitLab update endpoint require at least one mutable field.",
+      "appliesToSlices": [
+        "S2",
+        "S4"
+      ]
+    },
+    {
+      "id": "V5",
+      "rule": "Update title, when provided, must be non-blank and its length must be between issuesApiProperties.validation.titleMinLength and issuesApiProperties.validation.titleMaxLength inclusive.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "PATCH title rules are explicitly locked and must reuse the shared configured limits.",
+      "appliesToSlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "V6",
+      "rule": "Update description, when provided, may be the empty string but must not exceed issuesApiProperties.validation.descriptionMaxLength; null means no change and must not be sent as an effective update field.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "The request explicitly distinguishes empty string from null for PATCH description semantics.",
+      "appliesToSlices": [
+        "S2",
+        "S4"
+      ]
+    },
+    {
+      "id": "V7",
+      "rule": "addLabels, when provided, must contain at most issuesApiProperties.validation.maxLabelsPerRequestField items and each item must be non-null and non-blank.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "The request explicitly caps additive labels and requires meaningful non-blank values.",
+      "appliesToSlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "V8",
+      "rule": "removeLabels, when provided, must contain at most issuesApiProperties.validation.maxLabelsPerRequestField items and each item must be non-null and non-blank.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "The request explicitly caps removal labels and requires meaningful non-blank values.",
+      "appliesToSlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "V9",
+      "rule": "Update requests must reject exact-string overlap between addLabels and removeLabels and report the conflicting value list in the validation details.",
+      "owner": "IssuesRequestValidator.validateUpdateRequest",
+      "reason": "The user explicitly requires rejection when the same label appears in both operations.",
+      "appliesToSlices": [
+        "S2",
+        "S4"
+      ]
+    }
+  ],
+  "designDecisions": [
+    {
+      "id": "D1",
+      "title": "Validation Boundary Decision",
+      "decision": "Create a dedicated IssuesRequestValidator class in com.gitlabflow.floworchestrator.orchestration.issues.rest and call it from IssuesController for create and patch requests before request-to-input mapping.",
+      "rationale": "Config-backed lengths, at-least-one-field validation, and cross-list overlap rules are not cleanly expressible with the current field-level annotations. Keeping the validator in the existing rest package keeps the controller thin without introducing a new package boundary that would need separate architectural enforcement.",
+      "alternatives": [
+        "Keep create annotations and add manual checks only for PATCH: rejected because rule ownership would stay split and create would not truly share the configurable limits.",
+        "Add a new orchestration/issues/rest/validation package plus an ArchUnit rule: rejected because one validator class does not justify a new package boundary in this capability."
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "Shared validation configuration",
+      "decision": "Add IssuesApiValidationProperties as a nested component of the existing IssuesApiProperties record under app.issues-api.validation while preserving default-page-size and max-page-size property names.",
+      "rationale": "The issues capability already owns app.issues-api. Nesting the validation settings there keeps all issue API defaults together and satisfies the requirement for shared configuration-backed create/update limits.",
+      "alternatives": [
+        "Hard-code the new limits in request DTO annotations: rejected because the request requires application.yml configurability.",
+        "Create a second top-level issues validation prefix: rejected because it would fragment one capability's configuration across two roots."
+      ]
+    },
+    {
+      "id": "D3",
+      "title": "Update orchestration contract",
+      "decision": "Introduce UpdateIssueInput as the only new orchestration input model and add IssueSummary updateIssue(UpdateIssueInput input) to IssuesPort and IssuesService, while reusing existing IssueSummary and IssueSummaryDto unchanged for success output.",
+      "rationale": "PATCH needs a provider-agnostic write contract carrying issueId plus optional fields. Reusing IssueSummary and IssueSummaryDto preserves the locked response contract and avoids operation-specific response variants.",
+      "alternatives": [
+        "Pass UpdateIssueRequest directly into integration: rejected because it leaks REST transport concerns past the boundary.",
+        "Create a new update response DTO: rejected because the request explicitly forbids it."
+      ]
+    },
+    {
+      "id": "D4",
+      "title": "GitLab update mapping",
+      "decision": "Add GitLabUpdateIssueRequest with wire fields title, description, add_labels, and remove_labels. GitLabIssuesMapper serializes add/remove label lists as comma-separated strings, omits null or empty add/remove values, and preserves description='' so GitLab clears the description when requested.",
+      "rationale": "GitLab's official update issue API is PUT with add_labels/remove_labels. Using those provider fields preserves additive label behavior and avoids a second read-before-write call.",
+      "alternatives": [
+        "Use the labels replacement field: rejected because it would replace the full label set instead of applying deltas.",
+        "Fetch the issue first and compute a replacement labels string: rejected because it adds latency and violates the one-call-per-adapter-method pattern for this flow."
+      ]
+    },
+    {
+      "id": "D5",
+      "title": "Composition Strategy",
+      "decision": "Keep the update flow strictly sequential and single-call: REST validation, request mapping, service delegation, one GitLab PUT call, then response mapping.",
+      "rationale": "There are no independent downstream calls to parallelize. GitLab already returns the updated issue body, so read-after-write composition adds no business value.",
+      "alternatives": [
+        "Pre-fetch the issue to verify existence: rejected because GitLab already returns 404 on update and the extra call adds latency.",
+        "Update then re-read the issue: rejected because the update response already contains the reusable summary fields needed for IssueSummaryDto."
+      ]
+    },
+    {
+      "id": "D6",
+      "title": "Shared infrastructure and architecture-test impact",
+      "decision": "Reuse the existing IssuesResponseMapper, GitLabUriFactory, GitLabExceptionMapper, IssuesKarateTest runner, and issues capability documentation artifact. Do not add a new ArchUnit rule because the revised plan keeps validation in the existing orchestration/issues/rest package and does not introduce a new layer interaction or package boundary.",
+      "rationale": "This feature extends an existing capability and reuses existing boundaries. The prior ArchUnit concern came from a proposed new rest.validation package; that package is no longer part of the plan, so no new structural rule is needed.",
+      "alternatives": [
+        "Introduce a new validation subpackage and add an ArchUnit rule for it: rejected because the package split adds ceremony without architectural value for a single class.",
+        "Extract executeGitLabOperation to shared integration infrastructure now: rejected because architecture guidance says to extract it when a second adapter needs the pattern."
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "M1",
+      "qualifiedName": "com.gitlabflow.floworchestrator.config.IssuesApiProperties",
+      "kind": "record",
+      "status": "modified",
+      "purpose": "Central immutable configuration for issues capability pagination and shared create/update validation limits.",
+      "justification": "Belongs in config because Constitution Principle 5 requires centralized validated configuration objects in the config layer.",
+      "placementJustification": "Belongs in config because Constitution Principle 5 requires centralized validated configuration objects in the config layer.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "defaultPageSize",
+          "type": "int",
+          "nullable": false,
+          "notes": "Existing fixed contract value remains 20."
+        },
+        {
+          "name": "maxPageSize",
+          "type": "int",
+          "nullable": false,
+          "notes": "Existing fixed contract value remains 40."
+        },
+        {
+          "name": "validation",
+          "type": "IssuesApiValidationProperties",
+          "nullable": false,
+          "notes": "New nested configuration object bound from app.issues-api.validation.* and required to be non-null."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M2",
+      "qualifiedName": "com.gitlabflow.floworchestrator.config.IssuesApiValidationProperties",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Holds shared create/update payload limits for title, description, and labels-per-field.",
+      "justification": "This is immutable startup configuration, so it belongs in config rather than orchestration or REST packages.",
+      "placementJustification": "This is immutable startup configuration, so it belongs in config rather than orchestration or REST packages.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "titleMinLength",
+          "type": "int",
+          "nullable": false,
+          "notes": "Default application.yml value: 3."
+        },
+        {
+          "name": "titleMaxLength",
+          "type": "int",
+          "nullable": false,
+          "notes": "Default application.yml value: 255 and must be greater than or equal to titleMinLength."
+        },
+        {
+          "name": "descriptionMaxLength",
+          "type": "int",
+          "nullable": false,
+          "notes": "Default application.yml value: 1000000."
+        },
+        {
+          "name": "maxLabelsPerRequestField",
+          "type": "int",
+          "nullable": false,
+          "notes": "Default application.yml value: 10 and applies separately to labels, addLabels, and removeLabels."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M3",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest",
+      "kind": "record",
+      "status": "modified",
+      "purpose": "REST request DTO for POST /api/issues after moving create payload validation into IssuesRequestValidator.",
+      "justification": "This remains an HTTP transport contract and therefore belongs in orchestration/issues/rest/dto.",
+      "placementJustification": "This remains an HTTP transport contract and therefore belongs in orchestration/issues/rest/dto.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "notes": "Jackson may supply null when the field is absent; IssuesRequestValidator rejects null and blank values."
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true,
+          "notes": "Null means omitted; empty string remains allowed."
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": true,
+          "notes": "Compact constructor preserves null and defensively copies provided non-null elements without changing list order."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M4",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.UpdateIssueRequest",
+      "kind": "record",
+      "status": "new",
+      "purpose": "REST request DTO for PATCH /api/issues/{issueId} carrying optional update fields and label delta lists.",
+      "justification": "This is an HTTP boundary payload and belongs in orchestration/issues/rest/dto to keep transport concerns out of orchestration and integration models.",
+      "placementJustification": "This is an HTTP boundary payload and belongs in orchestration/issues/rest/dto to keep transport concerns out of orchestration and integration models.",
+      "ownedBySlices": [
+        "S2",
+        "S4"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "notes": "Null means no title change; blank is rejected by IssuesRequestValidator."
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true,
+          "notes": "Null means no change; empty string means explicit clear."
+        },
+        {
+          "name": "addLabels",
+          "type": "List<String>",
+          "nullable": true,
+          "notes": "Compact constructor defensively copies provided values and preserves null elements so validator logic can reject them explicitly."
+        },
+        {
+          "name": "removeLabels",
+          "type": "List<String>",
+          "nullable": true,
+          "notes": "Compact constructor defensively copies provided values and preserves null elements so validator logic can reject them explicitly."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M5",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Provider-agnostic orchestration input for create operations.",
+      "justification": "Already correctly placed in orchestration/issues/model as a capability-local input contract.",
+      "placementJustification": "Already correctly placed in orchestration/issues/model as a capability-local input contract.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "notes": "Normalized to immutable empty list when absent."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M6",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Provider-agnostic orchestration input for issue update operations.",
+      "justification": "This is business-intent input for the issues capability, so it belongs in orchestration/issues/model rather than in REST or integration.",
+      "placementJustification": "This is business-intent input for the issues capability, so it belongs in orchestration/issues/model rather than in REST or integration.",
+      "ownedBySlices": [
+        "S2",
+        "S3"
+      ],
+      "fields": [
+        {
+          "name": "issueId",
+          "type": "long",
+          "nullable": false,
+          "notes": "Project-scoped issue iid used by existing issues API paths."
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "notes": "Null means no title change."
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true,
+          "notes": "Null means no change; empty string is preserved for downstream clear semantics."
+        },
+        {
+          "name": "addLabels",
+          "type": "List<String>",
+          "nullable": false,
+          "notes": "Null request lists are normalized to immutable empty lists after validation decides whether they are effective."
+        },
+        {
+          "name": "removeLabels",
+          "type": "List<String>",
+          "nullable": false,
+          "notes": "Null request lists are normalized to immutable empty lists after validation decides whether they are effective."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M7",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.IssuesPort",
+      "kind": "interface",
+      "status": "modified",
+      "purpose": "Provider-agnostic orchestration port for issue operations.",
+      "justification": "Ports must live in orchestration per Constitution Principle 2 and existing issues capability structure.",
+      "placementJustification": "Ports must live in orchestration per Constitution Principle 2 and existing issues capability structure.",
+      "ownedBySlices": [
+        "S3"
+      ],
+      "methods": [
+        "IssuePage getIssues(IssueQuery query)",
+        "IssueSummary createIssue(CreateIssueInput input)",
+        "IssueSummary updateIssue(UpdateIssueInput input)",
+        "void deleteIssue(long issueId)",
+        "IssueDetail getIssueDetail(long issueId)",
+        "List<ChangeSet<?>> getLabelEvents(long issueId)"
+      ]
+    },
+    {
+      "id": "M8",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Entity-shaped orchestration output reused for search, create, and update operations.",
+      "justification": "Already correctly placed as the issues capability output model and reused unchanged by the update feature.",
+      "placementJustification": "Already correctly placed as the issues capability output model and reused unchanged by the update feature.",
+      "ownedBySlices": [
+        "S3",
+        "S4"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "issueId",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "notes": "Compact constructor normalizes null to immutable empty list."
+        },
+        {
+          "name": "assignee",
+          "type": "String",
+          "nullable": true,
+          "notes": "Single display username derived from assignees or deprecated assignee field."
+        },
+        {
+          "name": "milestone",
+          "type": "String",
+          "nullable": true,
+          "notes": "Milestone title when GitLab returns a milestone."
+        },
+        {
+          "name": "parent",
+          "type": "Long",
+          "nullable": true,
+          "notes": "Epic id when GitLab returns epic information."
+        },
+        {
+          "name": "changeSets",
+          "type": "List<ChangeSet<?>>",
+          "nullable": true,
+          "notes": "Null means no audit enrichment was applied; compact constructor defensively copies when present. Create and update flows keep this field null."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M9",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueSummaryDto",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Shared REST response DTO reused unchanged by search, create, and patch update responses.",
+      "justification": "The response contract remains a REST boundary type in orchestration/issues/rest/dto; the request explicitly requires reuse instead of a new DTO.",
+      "placementJustification": "The response contract remains a REST boundary type in orchestration/issues/rest/dto; the request explicitly requires reuse instead of a new DTO.",
+      "ownedBySlices": [
+        "S2",
+        "S4"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "issueId",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "notes": "Compact constructor normalizes null to immutable empty list."
+        },
+        {
+          "name": "assignee",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "milestone",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "parent",
+          "type": "Long",
+          "nullable": true
+        },
+        {
+          "name": "changeSets",
+          "type": "List<ChangeSetDto>",
+          "nullable": true,
+          "notes": "Annotated with @JsonInclude(JsonInclude.Include.NON_NULL); when null it is omitted from JSON, which is the unchanged behavior required for create and update responses."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M10",
+      "qualifiedName": "com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabUpdateIssueRequest",
+      "kind": "record",
+      "status": "new",
+      "purpose": "GitLab provider request DTO for the issue update endpoint.",
+      "justification": "Provider-specific wire fields belong in integration/gitlab/issues/dto per Constitution Principle 2 and code-guidance package rules.",
+      "placementJustification": "Provider-specific wire fields belong in integration/gitlab/issues/dto per Constitution Principle 2 and code-guidance package rules.",
+      "ownedBySlices": [
+        "S4"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "notes": "Serialized as the wire field title when provided."
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true,
+          "notes": "Serialized as the wire field description; empty string must be preserved unchanged."
+        },
+        {
+          "name": "addLabels",
+          "type": "String",
+          "nullable": true,
+          "notes": "Annotated with @JsonProperty(\"add_labels\"); null when no additive labels are provided, otherwise comma-separated label names."
+        },
+        {
+          "name": "removeLabels",
+          "type": "String",
+          "nullable": true,
+          "notes": "Annotated with @JsonProperty(\"remove_labels\"); null when no removal labels are provided, otherwise comma-separated label names."
+        }
+      ],
+      "builder": true
+    },
+    {
+      "id": "M11",
+      "qualifiedName": "com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "GitLab response DTO already used for issue list/create responses and reusable for the update response body.",
+      "justification": "The provider response shape remains inside integration/gitlab/issues/dto and is reused unchanged by the adapter mapper.",
+      "placementJustification": "The provider response shape remains inside integration/gitlab/issues/dto and is reused unchanged by the adapter mapper.",
+      "ownedBySlices": [
+        "S4"
+      ],
+      "methods": [
+        "long id()",
+        "long iid()",
+        "String title()",
+        "String description()",
+        "String state()",
+        "List<String> labels()",
+        "List<GitLabAssignee> assignees()",
+        "GitLabAssignee assignee()",
+        "GitLabMilestone milestone()",
+        "GitLabEpic epic()"
+      ],
+      "builder": true
+    }
+  ],
+  "classes": [
+    {
+      "id": "C1",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiProperties.java",
+      "status": "modified",
+      "role": "Extend the existing issues API configuration record to expose nested validation properties while preserving the 20/40 page-size guards.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C2",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiValidationProperties.java",
+      "status": "new",
+      "role": "New immutable configuration record for shared create/update request limits.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C3",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/resources/application.yml",
+      "status": "modified",
+      "role": "Add default app.issues-api.validation values for title, description, and labels-per-field limits.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C4",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidator.java",
+      "status": "new",
+      "role": "Own create and update payload validation at the REST boundary without introducing a new subpackage.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C5",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/CreateIssueRequest.java",
+      "status": "modified",
+      "role": "Remove create payload Bean Validation annotations that are replaced by IssuesRequestValidator while preserving defensive-copy behavior.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C6",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/UpdateIssueRequest.java",
+      "status": "new",
+      "role": "New PATCH request DTO with nullable title, description, addLabels, and removeLabels fields.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C7",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "status": "modified",
+      "role": "Call IssuesRequestValidator for create and patch requests, expose PATCH /api/issues/{issueId}, and keep using IssuesResponseMapper for success responses.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C8",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapper.java",
+      "status": "modified",
+      "role": "Map UpdateIssueRequest and issueId into UpdateIssueInput while preserving existing search and create mapping behavior.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C9",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "status": "modified",
+      "role": "Add updateIssue orchestration method with structured logging and single-port delegation.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C10",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "status": "modified",
+      "role": "Expose the provider-agnostic issue update contract.",
+      "ownedBySlices": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "id": "C11",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/UpdateIssueInput.java",
+      "status": "new",
+      "role": "New orchestration input record carrying issueId and effective update fields.",
+      "ownedBySlices": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "id": "C12",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "status": "modified",
+      "role": "Implement IssuesPort.updateIssue by sending one GitLab PUT request and mapping the updated issue response.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C13",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapper.java",
+      "status": "modified",
+      "role": "Add UpdateIssueInput -> GitLabUpdateIssueRequest mapping and reuse label-string serialization helpers across create and update.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C14",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabUpdateIssueRequest.java",
+      "status": "new",
+      "role": "Provider-specific request DTO with add_labels and remove_labels wire fields.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C15",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/http/issues.http",
+      "status": "modified",
+      "role": "Document PATCH success, clear-description, empty-payload, and overlap-validation cases plus aligned create-limit examples.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C15A",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/documentation/capabilities/issues.md",
+      "status": "modified",
+      "role": "Update the issues capability inventory and design notes to include PATCH /api/issues/{issueId} and the shared create/update validation contract.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C16",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/config/IssuesApiPropertiesTest.java",
+      "status": "modified",
+      "role": "Verify new validation properties bind and reject invalid startup configurations.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C17",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidatorTest.java",
+      "status": "new",
+      "role": "Unit-test create and update validation rules, including edge cases and overlapping label rejection.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C18",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/CreateIssueRequestTest.java",
+      "status": "modified",
+      "role": "Keep coverage for CreateIssueRequest defensive-copy behavior after moving validation out of annotations.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C20",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapperTest.java",
+      "status": "modified",
+      "role": "Cover UpdateIssueRequest to UpdateIssueInput mapping and preserve create/search mapping expectations.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C21",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "status": "modified",
+      "role": "Cover IssuesService.updateIssue delegation and adjust IssuesApiProperties construction for nested validation config.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C22",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapperTest.java",
+      "status": "modified",
+      "role": "Verify update request wire mapping, including description='' preservation and omission of empty add/remove label strings.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C23",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "status": "modified",
+      "role": "Verify GitLab PUT endpoint, update payload serialization, and error translation for update calls.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C24",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "status": "modified",
+      "role": "Cover create validation alignment and PATCH controller binding, status mapping, and validation responses.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C25",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabUpdateIssueStubSupport.java",
+      "status": "new",
+      "role": "WireMock helper for GitLab issue update success and failure stubs plus request verification.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C26",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "status": "modified",
+      "role": "Add component coverage for PATCH update success, description clear, overlap rejection short-circuit, and GitLab error propagation.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    },
+    {
+      "id": "C27",
+      "path": "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/karate/resources/issues/issues-update.feature",
+      "status": "modified",
+      "role": "Align the existing update smoke feature with the final PATCH contract and validation assertions.",
+      "ownedBySlices": [
+        "S4"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S1",
+      "title": "Shared Config And Create Validation",
+      "goal": "Introduce the shared validation properties and align create-request validation with those limits without adding any new package boundary.",
+      "dependsOn": [],
+      "flowSteps": [
+        "F1",
+        "F2"
+      ],
+      "covers": {
+        "models": [
+          "M1",
+          "M2",
+          "M3",
+          "M5"
+        ],
+        "classes": [
+          "C1",
+          "C2",
+          "C3",
+          "C4",
+          "C5",
+          "C7",
+          "C16",
+          "C17",
+          "C18",
+          "C24"
+        ],
+        "validationRules": [
+          "V1",
+          "V2",
+          "V3"
+        ],
+        "examples": [
+          "E0"
+        ],
+        "decisions": [
+          "D1",
+          "D2"
+        ]
+      },
+      "implementationTasks": [
+        "Add IssuesApiValidationProperties and extend IssuesApiProperties with a required validation component plus startup guards for positive values and titleMaxLength >= titleMinLength.",
+        "Add default application.yml values under app.issues-api.validation.title-min-length, title-max-length, description-max-length, and max-labels-per-request-field.",
+        "Create IssuesRequestValidator in orchestration/issues/rest with validateCreateRequest(CreateIssueRequest request) and validateUpdateRequest(UpdateIssueRequest request) methods that collect all rule violations into ValidationException details.",
+        "Remove the create payload field annotations superseded by IssuesRequestValidator while preserving CreateIssueRequest list-copy behavior.",
+        "Update IssuesController create flow to call IssuesRequestValidator before mapping and extend tests to prove the create endpoint now uses shared configured limits."
+      ],
+      "doneWhen": [
+        "Create requests reject null or blank title, out-of-range title length, too-long description, too many labels, and blank label values using IssuesApiProperties.validation values.",
+        "IssuesApiProperties fails startup for invalid nested validation configuration while keeping the existing 20/40 page-size contract.",
+        "CreateIssueRequest continues defensive-copy behavior and no longer owns business validation annotations for the shared rules.",
+        "At least one edge-case test proves a title boundary or labels-per-field boundary using the new shared configuration."
+      ],
+      "tests": {
+        "unit": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/config/IssuesApiPropertiesTest.java",
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidatorTest.java",
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/CreateIssueRequestTest.java"
+        ],
+        "integration": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java"
+        ],
+        "component": [
+          "None"
+        ]
+      },
+      "logging": {
+        "info": [
+          "None"
+        ],
+        "warn": [
+          "None; validation warning logging remains centralized in GlobalExceptionHandler."
+        ],
+        "error": [
+          "None"
+        ]
+      },
+      "flags": {
+        "contractChanges": true,
+        "validationSensitive": true
+      }
+    },
+    {
+      "id": "S2",
+      "title": "PATCH Request Boundary",
+      "goal": "Add the PATCH transport contract, controller entry point, boundary validation, and request mapping for issue updates in a small independently verifiable increment.",
+      "dependsOn": [
+        "S1"
+      ],
+      "flowSteps": [
+        "F3",
+        "F4"
+      ],
+      "covers": {
+        "models": [
+          "M4",
+          "M6",
+          "M9"
+        ],
+        "classes": [
+          "C4",
+          "C6",
+          "C7",
+          "C8",
+          "C10",
+          "C11",
+          "C17",
+          "C20",
+          "C24"
+        ],
+        "validationRules": [
+          "V4",
+          "V5",
+          "V6",
+          "V7",
+          "V8",
+          "V9"
+        ],
+        "examples": [
+          "E1",
+          "E2",
+          "E5"
+        ],
+        "decisions": [
+          "D1",
+          "D3"
+        ]
+      },
+      "implementationTasks": [
+        "Add UpdateIssueRequest with nullable title, description, addLabels, and removeLabels fields plus defensive-copy behavior that preserves null elements for validator visibility.",
+        "Add IssuesRequestMapper.toUpdateIssueInput(long issueId, UpdateIssueRequest request) that preserves description='' and normalizes null add/remove lists to immutable empty lists in the orchestration input.",
+        "Extend IssuesController with @PatchMapping(\"/{issueId}\") using @Positive path validation, IssuesRequestValidator.validateUpdateRequest, IssuesRequestMapper.toUpdateIssueInput, service delegation, and ResponseEntity.ok(IssueSummaryDto).",
+        "Extend IssuesRequestValidatorTest with update-specific unit coverage for empty payload, blank title, out-of-range lengths, over-limit labels, blank label values, and overlapping add/remove labels.",
+        "Extend IssuesControllerIT with PATCH success binding, PATCH validation failure responses, and create-alignment assertions at the HTTP boundary."
+      ],
+      "doneWhen": [
+        "PATCH /api/issues/{issueId} is exposed and returns HTTP 200 with the unchanged IssueSummaryDto transport contract.",
+        "Update validation rejects empty payloads, blank or out-of-range titles, over-limit description, over-limit label lists, blank label items, and overlapping label operations before downstream calls.",
+        "At least one edge-case test proves description='' is accepted as an effective update and at least one edge-case test proves overlap rejection happens before service delegation."
+      ],
+      "tests": {
+        "unit": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidatorTest.java",
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapperTest.java"
+        ],
+        "integration": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java"
+        ],
+        "component": [
+          "None"
+        ]
+      },
+      "logging": {
+        "info": [
+          "IssuesController PATCH method logs issueId plus titlePresent, descriptionProvided, addLabelCount, and removeLabelCount before delegation and logs issueId after mapping the response."
+        ],
+        "warn": [
+          "None beyond the existing GlobalExceptionHandler validation warning path."
+        ],
+        "error": [
+          "None"
+        ]
+      },
+      "flags": {
+        "contractChanges": true,
+        "validationSensitive": true
+      }
+    },
+    {
+      "id": "S3",
+      "title": "Update Service Contract",
+      "goal": "Add the provider-agnostic update orchestration contract and service delegation as an isolated small slice.",
+      "dependsOn": [
+        "S2"
+      ],
+      "flowSteps": [
+        "F5"
+      ],
+      "covers": {
+        "models": [
+          "M6",
+          "M7",
+          "M8"
+        ],
+        "classes": [
+          "C9",
+          "C10",
+          "C11",
+          "C21"
+        ],
+        "validationRules": [],
+        "examples": [
+          "E3"
+        ],
+        "decisions": [
+          "D3",
+          "D5"
+        ]
+      },
+      "implementationTasks": [
+        "Add IssueSummary updateIssue(UpdateIssueInput input) to IssuesPort.",
+        "Add IssuesService.updateIssue(UpdateIssueInput input) with structured start/completion logging and direct delegation to issuesPort.updateIssue(input).",
+        "Keep the update flow single-call only; no existence prefetch, no read-after-write, and no AsyncComposer use.",
+        "Extend IssuesServiceTest with update delegation coverage and adjust IssuesApiProperties construction to pass the new nested validation configuration."
+      ],
+      "doneWhen": [
+        "IssuesService exposes updateIssue(UpdateIssueInput) and delegates directly to the new port method.",
+        "No orchestration read-before-write composition is introduced for the update path.",
+        "At least one service test proves the port result is returned unchanged and one test proves integration exceptions propagate unchanged."
+      ],
+      "tests": {
+        "unit": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java"
+        ],
+        "integration": [
+          "None"
+        ],
+        "component": [
+          "None"
+        ]
+      },
+      "logging": {
+        "info": [
+          "IssuesService.updateIssue logs operation start with issueId plus effective field counts and logs completion with issueId."
+        ],
+        "warn": [
+          "None"
+        ],
+        "error": [
+          "None"
+        ]
+      },
+      "flags": {
+        "contractChanges": false,
+        "validationSensitive": false
+      }
+    },
+    {
+      "id": "S4",
+      "title": "GitLab Adapter And Runtime Verification",
+      "goal": "Implement the GitLab update adapter path and finish the runtime-facing documentation, component coverage, and smoke verification assets in one bounded slice.",
+      "dependsOn": [
+        "S3"
+      ],
+      "flowSteps": [
+        "F6",
+        "F7",
+        "F8"
+      ],
+      "covers": {
+        "models": [
+          "M4",
+          "M8",
+          "M9",
+          "M10",
+          "M11"
+        ],
+        "classes": [
+          "C12",
+          "C13",
+          "C14",
+          "C15",
+          "C15A",
+          "C22",
+          "C23",
+          "C25",
+          "C26",
+          "C27"
+        ],
+        "validationRules": [
+          "V4",
+          "V6",
+          "V9"
+        ],
+        "examples": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5"
+        ],
+        "decisions": [
+          "D4",
+          "D5",
+          "D6"
+        ]
+      },
+      "implementationTasks": [
+        "Add GitLabUpdateIssueRequest and GitLabIssuesMapper.toUpdateRequest(UpdateIssueInput input); reuse a helper for comma-separated label serialization across create and update paths.",
+        "Implement GitLabIssuesAdapter.updateIssue(UpdateIssueInput input) using PUT to the project-scoped issue URI, resource label update issue, and the existing GitLabIssueResponse -> IssueSummary mapping.",
+        "Add GitLabUpdateIssueStubSupport and extend IssuesApiComponentTest for PATCH success, description clear, downstream not-found/error mapping, and overlap validation short-circuit behavior.",
+        "Update flow-orchestrator/http/issues.http with PATCH success, clear-description, empty-payload, overlap-validation, and aligned create-limit examples.",
+        "Update documentation/capabilities/issues.md so the endpoint inventory and design notes reflect PATCH /api/issues/{issueId} plus the shared validation contract.",
+        "Modify the existing issues-update.feature to assert valid PATCH behavior and one validation failure path under the existing IssuesKarateTest runner."
+      ],
+      "doneWhen": [
+        "GitLabIssuesAdapter issues exactly one PUT call to /projects/{projectPath}/issues/{issueId} and serializes add_labels/remove_labels as comma-separated strings while preserving description=''.",
+        "IssueSummary and IssueSummaryDto remain unchanged and continue to carry assignee, milestone, parent, and nullable changeSets exactly as the current code does.",
+        "flow-orchestrator/http/issues.http and documentation/capabilities/issues.md are updated in the same implementation change set.",
+        "At least one component or smoke test proves a valid PATCH flow and at least one proves a validation or downstream failure path."
+      ],
+      "tests": {
+        "unit": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapperTest.java",
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java"
+        ],
+        "integration": [
+          "None"
+        ],
+        "component": [
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+          "/Users/alisia/Projects/aiProjects/GitlabFlow/flow-orchestrator/src/test/karate/resources/issues/issues-update.feature"
+        ]
+      },
+      "logging": {
+        "info": [
+          "GitLabIssuesAdapter.updateIssue logs before the external call and after a successful update with issueId.",
+          "GitLabIssuesMapper debug logging extends to update request mapping with description-present and add/remove label counts."
+        ],
+        "warn": [
+          "Reuse existing adapter HTTP failure warning logging via mapHttpFailure for the update issue resource."
+        ],
+        "error": [
+          "Reuse existing adapter transport-failure error logging via mapTransportFailure for the update issue resource."
+        ]
+      },
+      "flags": {
+        "contractChanges": true,
+        "validationSensitive": true
+      }
+    }
+  ],
+  "verification": {
+    "slices": [
+      {
+        "slice": "S1",
+        "checks": [
+          "Run targeted unit tests for IssuesApiPropertiesTest, IssuesRequestValidatorTest create cases, and CreateIssueRequestTest.",
+          "Run IssuesControllerIT create cases that prove shared configured limits are enforced at the HTTP boundary."
+        ],
+        "evidence": "JUnit evidence from the targeted S1 test classes, including at least one boundary-condition validation test."
+      },
+      {
+        "slice": "S2",
+        "checks": [
+          "Run targeted unit tests for IssuesRequestValidatorTest update cases and IssuesRequestMapperTest.",
+          "Run IssuesControllerIT PATCH cases for binding, validation failures, and response mapping."
+        ],
+        "evidence": "JUnit evidence showing PATCH validation and request mapping behavior, including overlap rejection and description='' acceptance."
+      },
+      {
+        "slice": "S3",
+        "checks": [
+          "Run IssuesServiceTest update delegation cases."
+        ],
+        "evidence": "JUnit evidence showing IssuesService.updateIssue delegates exactly once and propagates integration failures unchanged."
+      },
+      {
+        "slice": "S4",
+        "checks": [
+          "Run targeted unit tests for GitLabIssuesMapperTest and GitLabIssuesAdapterTest update cases.",
+          "Run IssuesApiComponentTest PATCH scenarios with WireMock-backed GitLab update stubs.",
+          "Verify flow-orchestrator/http/issues.http includes PATCH examples and aligned create examples.",
+          "Verify documentation/capabilities/issues.md documents PATCH /api/issues/{issueId} and the shared validation contract.",
+          "Execute the issues Karate runner and confirm the updated issues-update.feature participates in the @smoke suite."
+        ],
+        "evidence": "JUnit and Karate evidence plus updated documentation artifacts for the PATCH contract."
+      }
+    ],
+    "finalGates": [
+      {
+        "gate": "verifyQuick",
+        "owner": "Java Coder",
+        "required": true,
+        "evidence": "node flow-log/flow-log.mjs run-check --feature update-issue-api --name verifyQuick --by Java Coder"
+      },
+      {
+        "gate": "finalCheck",
+        "owner": "Java Coder",
+        "required": true,
+        "evidence": "node flow-log/flow-log.mjs run-check --feature update-issue-api --name finalCheck --by Java Coder"
+      },
+      {
+        "gate": "karate",
+        "owner": "Team Lead",
+        "required": true,
+        "evidence": "node flow-log/flow-log.mjs run-check --feature update-issue-api --name karate --by Team Lead"
+      },
+      {
+        "gate": "startup-local",
+        "owner": "Team Lead",
+        "required": true,
+        "evidence": "Run the existing spring-boot-run workspace task or SPRING_PROFILES_ACTIVE=local mvn spring-boot:run from flow-orchestrator and confirm clean startup logs if the environment permits it; otherwise record BLOCKED with the exact observed command failure."
+      }
+    ]
+  },
+  "hash": "8c3e26b6c7890549c87bf3ba78befda4044e8fb5f9dc5897a4db56779e2c8d7a"
+}
