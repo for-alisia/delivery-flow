@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabLabelEventResponse;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabLabelEventResponse.GitLabLabelDetail;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabLabelEventResponse.GitLabUserDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -27,7 +27,7 @@ class GitLabLabelEventMapperTest {
     void mapsActionUserLabelAndCreatedAtFromGitLabLabelEvent() {
         final var response = new GitLabLabelEventResponse(1001L, USER, CREATED_AT, LABEL, "add");
 
-        final List<ChangeSet> result = mapper.toLabelChangeSets(List.of(response));
+        final List<ChangeSet<?>> result = mapper.toLabelChangeSets(List.of(response));
 
         assertThat(result).singleElement().isInstanceOfSatisfying(LabelChangeSet.class, changeSet -> {
             assertThat(changeSet.changeType()).isEqualTo("add");
@@ -51,7 +51,7 @@ class GitLabLabelEventMapperTest {
                 new GitLabLabelDetail(99L, "feature"),
                 "remove");
 
-        final List<ChangeSet> result = mapper.toLabelChangeSets(
+        final List<ChangeSet<?>> result = mapper.toLabelChangeSets(
                 List.of(new GitLabLabelEventResponse(1001L, USER, CREATED_AT, LABEL, "add"), secondEvent));
 
         assertThat(result).hasSize(2);
@@ -68,7 +68,7 @@ class GitLabLabelEventMapperTest {
     @Test
     @DisplayName("returns empty list when input label events list is empty")
     void returnsEmptyListWhenInputLabelEventsListIsEmpty() {
-        final List<ChangeSet> result = mapper.toLabelChangeSets(List.of());
+        final List<ChangeSet<?>> result = mapper.toLabelChangeSets(List.of());
 
         assertThat(result).isEmpty();
     }

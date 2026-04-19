@@ -31,6 +31,7 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 | Capability | Endpoints | Detail |
 |-----------|-----------|--------|
 | **issues** — search, create, delete, get-single, label-event history | `POST /api/issues/search`, `POST /api/issues`, `DELETE /api/issues/{issueId}`, `GET /api/issues/{issueId}` | [capabilities/issues.md](capabilities/issues.md) |
+| **milestones** — shared model and DTO foundation (no endpoints yet) | N/A | [capabilities/milestones.md](capabilities/milestones.md) |
 
 ---
 
@@ -64,6 +65,38 @@ Shared cross-capability orchestration utilities.
 | `orchestration/common/async/AsyncComposer.java` | Fail-fast parallel composition helper — submits tasks via virtual-thread `ExecutorService`, cancels siblings on first failure, unwraps `CompletionException` before rethrow |
 
 Test: `java/.../orchestration/common/async/AsyncComposerTest.java`
+
+### orchestration/common/model
+
+Shared orchestration models reused by multiple capabilities.
+
+| File | Role |
+|------|------|
+| `orchestration/common/model/User.java` | Shared user/actor model for assignees and change authors |
+| `orchestration/common/model/Change.java` | Generic change payload contract |
+| `orchestration/common/model/ChangeSet.java` | Generic change-set contract (`ChangeSet<T extends Change>`) |
+| `orchestration/common/model/ChangeField.java` | Enum for change fields (currently `label`) |
+
+### orchestration/common/rest/dto
+
+Shared REST DTO contracts reused by capability responses.
+
+| File | Role |
+|------|------|
+| `orchestration/common/rest/dto/UserDto.java` | Shared user DTO |
+| `orchestration/common/rest/dto/ChangeDto.java` | Generic change DTO contract |
+| `orchestration/common/rest/dto/ChangeSetDto.java` | Generic change-set DTO contract |
+| `orchestration/common/rest/dto/LabelChangeDto.java` | Label change payload DTO |
+| `orchestration/common/rest/dto/LabelChangeSetDto.java` | Label change-set DTO |
+
+### orchestration/milestones
+
+Milestone foundation extracted for cross-capability reuse.
+
+| File | Role |
+|------|------|
+| `orchestration/milestones/model/Milestone.java` | Shared milestone model used by issue detail |
+| `orchestration/milestones/rest/dto/MilestoneDto.java` | Shared milestone REST DTO |
 
 ### integration/gitlab (shared)
 

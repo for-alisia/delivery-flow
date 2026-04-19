@@ -283,7 +283,7 @@ class IssuesApiComponentTest {
                         .asText())
                 .isEqualTo("root");
         assertThat(json.path("changeSets").get(0).path("change").path("field").asText())
-                .isEqualTo("LABEL");
+                .isEqualTo("label");
         assertThat(json.path("changeSets").get(0).path("change").path("id").asLong())
                 .isEqualTo(73L);
         assertThat(json.path("changeSets").get(0).path("change").path("name").asText())

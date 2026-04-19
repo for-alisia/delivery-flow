@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabCreateIssueRequest;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,7 +53,7 @@ class GitLabIssuesMapperTest {
                 new GitLabIssueResponse.GitLabMilestone("M1"),
                 new GitLabIssueResponse.GitLabEpic(42L));
 
-        final Issue issue = mapper.toIssue(response);
+        final IssueSummary issue = mapper.toIssue(response);
 
         assertThat(issue.id()).isEqualTo(100L);
         assertThat(issue.issueId()).isEqualTo(5L);
@@ -77,7 +77,7 @@ class GitLabIssuesMapperTest {
                 null,
                 null);
 
-        final Issue issue = mapper.toIssue(response);
+        final IssueSummary issue = mapper.toIssue(response);
 
         assertThat(issue.labels()).isEmpty();
         assertThat(issue.assignee()).isEqualTo("legacy");
@@ -91,7 +91,7 @@ class GitLabIssuesMapperTest {
         final GitLabIssueResponse response = new GitLabIssueResponse(
                 102L, 7L, "No Assignee", "Desc", "opened", List.of("backend"), null, null, null, null);
 
-        final Issue issue = mapper.toIssue(response);
+        final IssueSummary issue = mapper.toIssue(response);
 
         assertThat(issue.assignee()).isNull();
     }
@@ -111,7 +111,7 @@ class GitLabIssuesMapperTest {
                 null,
                 null);
 
-        final Issue issue = mapper.toIssue(response);
+        final IssueSummary issue = mapper.toIssue(response);
 
         assertThat(issue.assignee()).isEqualTo("fallback-user");
     }
@@ -122,7 +122,7 @@ class GitLabIssuesMapperTest {
         final GitLabIssueResponse response =
                 new GitLabIssueResponse(200L, 42L, "Any Title", null, "opened", List.of(), null, null, null, null);
 
-        final Issue issue = mapper.toIssue(response);
+        final IssueSummary issue = mapper.toIssue(response);
 
         assertThat(issue.issueId()).isEqualTo(42L);
     }

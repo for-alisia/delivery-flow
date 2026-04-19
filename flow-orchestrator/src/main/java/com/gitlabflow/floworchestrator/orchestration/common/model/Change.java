@@ -1,4 +1,4 @@
-package com.gitlabflow.floworchestrator.orchestration.issues.model;
+package com.gitlabflow.floworchestrator.orchestration.common.model;
 
 public interface Change {
 

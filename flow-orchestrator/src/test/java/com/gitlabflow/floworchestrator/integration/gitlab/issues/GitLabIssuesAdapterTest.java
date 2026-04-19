@@ -17,14 +17,14 @@ import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabLabelEventMapper;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -224,7 +224,7 @@ class GitLabIssuesAdapterTest {
                                 }
                                 """));
 
-        final Issue issue = adapter.createIssue(CREATE_INPUT);
+        final IssueSummary issue = adapter.createIssue(CREATE_INPUT);
 
         assertThat(issue.id()).isEqualTo(700L);
         assertThat(issue.title()).isEqualTo("Deploy failure");
@@ -400,7 +400,7 @@ class GitLabIssuesAdapterTest {
                         ]
                         """));
 
-        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+        final List<ChangeSet<?>> result = adapter.getLabelEvents(42L);
 
         assertThat(result).singleElement().isInstanceOfSatisfying(LabelChangeSet.class, changeSet -> {
             assertThat(changeSet.changeType()).isEqualTo("add");
@@ -423,7 +423,7 @@ class GitLabIssuesAdapterTest {
                 .andRespond(
                         withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("[]"));
 
-        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+        final List<ChangeSet<?>> result = adapter.getLabelEvents(42L);
 
         assertThat(result).isEmpty();
         server.verify();

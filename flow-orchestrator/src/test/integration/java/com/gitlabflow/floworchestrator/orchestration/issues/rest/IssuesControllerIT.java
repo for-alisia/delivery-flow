@@ -17,25 +17,31 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.common.web.GlobalExceptionHandler;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.LabelChangeDto;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.LabelChangeSetDto;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.UserDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesService;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
-import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueSummaryDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
-import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesResponseMapper;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
+import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneDto;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
@@ -106,9 +112,11 @@ class IssuesControllerIT {
                 new IssueFiltersRequest(OPENED, List.of("bug"), List.of(JOHN_DOE), List.of("M1"), List.of()));
         final IssueQuery query = new IssueQuery(2, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1", List.of());
         final IssuePage issuePage = new IssuePage(
-                List.of(new Issue(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L, null)), 1, 2);
+                List.of(new IssueSummary(123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L, null)),
+                1,
+                2);
         final SearchIssuesResponse response = new SearchIssuesResponse(
-                List.of(new SearchIssueDto(
+                List.of(new IssueSummaryDto(
                         123L, 5L, "Title", "Desc", OPENED, List.of("bug"), JOHN_DOE, "M1", 42L, null)),
                 1,
                 2);
@@ -136,7 +144,7 @@ class IssuesControllerIT {
         final IssueQuery query =
                 new IssueQuery(1, 20, IssueState.OPENED, "bug", JOHN_DOE, "M1", List.of(IssueAuditType.LABEL));
         final IssuePage issuePage = new IssuePage(List.of(), 0, 1);
-        final SearchIssueDto responseItem = SearchIssueDto.builder()
+        final IssueSummaryDto responseItem = IssueSummaryDto.builder()
                 .id(123L)
                 .issueId(5L)
                 .title("Title")
@@ -146,15 +154,15 @@ class IssuesControllerIT {
                 .assignee(JOHN_DOE)
                 .milestone("M1")
                 .parent(42L)
-                .changeSets(List.of(SearchIssueDto.ChangeSetDto.builder()
+                .changeSets(List.of(LabelChangeSetDto.builder()
                         .changeType("add")
-                        .changedBy(SearchIssueDto.ChangedByDto.builder()
+                        .changedBy(UserDto.builder()
                                 .id(1L)
                                 .username("root")
                                 .name("Administrator")
                                 .build())
-                        .change(SearchIssueDto.LabelChangeDto.builder()
-                                .field("label")
+                        .change(LabelChangeDto.builder()
+                                .field(ChangeField.LABEL)
                                 .id(73L)
                                 .name("bug")
                                 .build())
@@ -300,15 +308,15 @@ class IssuesControllerIT {
                 new CreateIssueRequest("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
         final CreateIssueInput input =
                 new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
-        final Issue issue = new Issue(
+        final IssueSummary issue = new IssueSummary(
                 84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null, null);
-        final IssueDto response = new IssueDto(
-                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null);
+        final IssueSummaryDto response = new IssueSummaryDto(
+                84L, 10L, "Deploy failure", "Step 3 failed", OPENED, List.of("bug", "deploy"), null, null, null, null);
 
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
                 .thenReturn(input);
         when(issuesService.createIssue(input)).thenReturn(issue);
-        when(issuesResponseMapper.toIssueDto(issue)).thenReturn(response);
+        when(issuesResponseMapper.toIssueSummaryDto(issue)).thenReturn(response);
 
         mockMvc.perform(post(CREATE_ENDPOINT)
                         .contentType(APPLICATION_JSON)
@@ -329,13 +337,15 @@ class IssuesControllerIT {
     @DisplayName("creates issue with title only and returns 201")
     void createsIssueWithTitleOnlyAndReturns201() throws Exception {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
-        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null, null);
-        final IssueDto response = new IssueDto(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null);
+        final IssueSummary issue =
+                new IssueSummary(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null, null);
+        final IssueSummaryDto response =
+                new IssueSummaryDto(85L, 11L, "Reporting bug", null, OPENED, List.of(), null, null, null, null);
 
         when(issuesRequestMapper.toCreateIssueInput(any(CreateIssueRequest.class)))
                 .thenReturn(input);
         when(issuesService.createIssue(input)).thenReturn(issue);
-        when(issuesResponseMapper.toIssueDto(issue)).thenReturn(response);
+        when(issuesResponseMapper.toIssueSummaryDto(issue)).thenReturn(response);
 
         mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
                                 {
@@ -501,8 +511,8 @@ class IssuesControllerIT {
                 "SSO broken",
                 OPENED,
                 List.of("bug"),
-                List.of(new IssueDetail.AssigneeDetail(10L, JOHN_DOE, "John Doe")),
-                new IssueDetail.MilestoneDetail(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                List.of(new User(10L, JOHN_DOE, "John Doe")),
+                new Milestone(5L, 3L, "Sprint 12", "active", "2026-04-30"),
                 java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
                 java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
                 null);
@@ -513,8 +523,8 @@ class IssuesControllerIT {
                 "SSO broken",
                 OPENED,
                 List.of("bug"),
-                List.of(new IssueDetailDto.AssigneeDto(10L, JOHN_DOE, "John Doe")),
-                new IssueDetailDto.MilestoneDto(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                List.of(new UserDto(10L, JOHN_DOE, "John Doe")),
+                new MilestoneDto(5L, 3L, "Sprint 12", "active", "2026-04-30"),
                 java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
                 java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
                 null,

@@ -1,8 +1,8 @@
 package com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper;
 
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabLabelEventResponse;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.util.List;
@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class GitLabLabelEventMapper {
 
-    public List<ChangeSet> toLabelChangeSets(final List<GitLabLabelEventResponse> responses) {
-        return responses.stream().<ChangeSet>map(this::toLabelChangeSet).toList();
+    public List<ChangeSet<?>> toLabelChangeSets(final List<GitLabLabelEventResponse> responses) {
+        return responses.stream().<ChangeSet<?>>map(this::toLabelChangeSet).toList();
     }
 
     private LabelChangeSet toLabelChangeSet(final GitLabLabelEventResponse response) {
@@ -31,7 +31,7 @@ public class GitLabLabelEventMapper {
 
         return LabelChangeSet.builder()
                 .changeType(action)
-                .changedBy(ChangedBy.builder()
+                .changedBy(User.builder()
                         .id(user.id())
                         .username(user.username())
                         .name(user.name())

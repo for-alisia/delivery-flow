@@ -9,13 +9,13 @@ import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabSingl
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabLabelEventMapper;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesPort;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import java.net.URI;
 import java.util.List;
 import java.util.function.Supplier;
@@ -51,18 +51,18 @@ public class GitLabIssuesAdapter implements IssuesPort {
     @Override
     public IssuePage getIssues(final IssueQuery query) {
         return executeGitLabOperation(RESOURCE_ISSUES, () -> {
-            final List<Issue> issues = fetchIssues(query);
+            final List<IssueSummary> issues = fetchIssues(query);
             return toIssuePage(query, issues);
         });
     }
 
     @Override
-    public Issue createIssue(final CreateIssueInput input) {
+    public IssueSummary createIssue(final CreateIssueInput input) {
         log.info("Creating GitLab issue");
 
         return executeGitLabOperation(RESOURCE_CREATE_ISSUE, () -> {
             final GitLabIssueResponse issueResponse = requestIssue(input);
-            final Issue issue = gitLabIssuesMapper.toIssue(issueResponse);
+            final IssueSummary issue = gitLabIssuesMapper.toIssue(issueResponse);
             log.info("GitLab issue created id={}", issue.id());
             return issue;
         });
@@ -108,7 +108,7 @@ public class GitLabIssuesAdapter implements IssuesPort {
     }
 
     @Override
-    public List<ChangeSet> getLabelEvents(final long issueId) {
+    public List<ChangeSet<?>> getLabelEvents(final long issueId) {
         log.info("Fetching GitLab label events issueId={}", issueId);
 
         return executeGitLabOperation(RESOURCE_GET_LABEL_EVENTS, () -> {
@@ -125,13 +125,13 @@ public class GitLabIssuesAdapter implements IssuesPort {
                 throw mapTransportFailure(EMPTY_BODY_CATEGORY, RESOURCE_GET_LABEL_EVENTS);
             }
 
-            final List<ChangeSet> changeSets = gitLabLabelEventMapper.toLabelChangeSets(response);
+            final List<ChangeSet<?>> changeSets = gitLabLabelEventMapper.toLabelChangeSets(response);
             log.info("GitLab label events fetched issueId={} count={}", issueId, changeSets.size());
             return changeSets;
         });
     }
 
-    private List<Issue> fetchIssues(final IssueQuery query) {
+    private List<IssueSummary> fetchIssues(final IssueQuery query) {
         final List<GitLabIssueResponse> gitLabIssues = gitLabRestClient
                 .get()
                 .uri(uriBuilder -> {
@@ -163,7 +163,7 @@ public class GitLabIssuesAdapter implements IssuesPort {
         return builder.build(gitLabUriFactory.projectPath());
     }
 
-    private IssuePage toIssuePage(final IssueQuery query, final List<Issue> issues) {
+    private IssuePage toIssuePage(final IssueQuery query, final List<IssueSummary> issues) {
         log.info("GitLab resource={} returned count={}", RESOURCE_ISSUES, issues.size());
         return IssuePage.builder()
                 .items(issues)

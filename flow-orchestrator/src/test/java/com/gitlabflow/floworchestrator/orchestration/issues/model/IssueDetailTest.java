@@ -3,6 +3,7 @@ package com.gitlabflow.floworchestrator.orchestration.issues.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ class IssueDetailTest {
                 .closedAt(null)
                 .build();
         final List<String> detailLabels = detail.labels();
-        final List<IssueDetail.AssigneeDetail> detailAssignees = detail.assignees();
+        final List<User> detailAssignees = detail.assignees();
 
         assertThat(detailLabels).isEmpty();
         assertThat(detailAssignees).isEmpty();
@@ -42,12 +43,9 @@ class IssueDetailTest {
     @DisplayName("defensively copies labels and assignees")
     void defensivelyCopiesLabelsAndAssignees() {
         final List<String> labels = new ArrayList<>(List.of("bug", "high-priority"));
-        final List<IssueDetail.AssigneeDetail> assignees = new ArrayList<>();
-        assignees.add(IssueDetail.AssigneeDetail.builder()
-                .id(10L)
-                .username("john.doe")
-                .name("John Doe")
-                .build());
+        final List<User> assignees = new ArrayList<>();
+        assignees.add(
+                User.builder().id(10L).username("john.doe").name("John Doe").build());
 
         final IssueDetail detail = IssueDetail.builder()
                 .issueId(42L)
@@ -65,7 +63,7 @@ class IssueDetailTest {
         labels.clear();
         assignees.clear();
         final List<String> detailLabels = detail.labels();
-        final List<IssueDetail.AssigneeDetail> detailAssignees = detail.assignees();
+        final List<User> detailAssignees = detail.assignees();
 
         assertThat(detailLabels).containsExactly("bug", "high-priority");
         assertThat(detailAssignees).hasSize(1);

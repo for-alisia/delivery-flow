@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.LabelChangeDto;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.LabelChangeSetDto;
+import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.UserDto;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -17,7 +21,7 @@ class SearchIssuesResponseTest {
     @DisplayName("normalizes null items to empty immutable list")
     void normalizesNullItemsToEmptyImmutableList() {
         final SearchIssuesResponse response = new SearchIssuesResponse(null, 0, 1);
-        final List<SearchIssueDto> responseItems = response.items();
+        final List<IssueSummaryDto> responseItems = response.items();
 
         assertThat(responseItems).isEmpty();
         assertThatThrownBy(() -> responseItems.add(null)).isInstanceOf(UnsupportedOperationException.class);
@@ -26,11 +30,11 @@ class SearchIssuesResponseTest {
     @Test
     @DisplayName("defensively copies and detaches from mutable input list")
     void defensivelyCopiesAndDetachesFromMutableInputList() {
-        final List<SearchIssueDto> items = new ArrayList<>();
-        items.add(new SearchIssueDto(1L, 1L, "A", null, "opened", List.of("bug"), null, null, null, null));
+        final List<IssueSummaryDto> items = new ArrayList<>();
+        items.add(new IssueSummaryDto(1L, 1L, "A", null, "opened", List.of("bug"), null, null, null, null));
 
         final SearchIssuesResponse response = new SearchIssuesResponse(items, 1, 1);
-        final List<SearchIssueDto> responseItems = response.items();
+        final List<IssueSummaryDto> responseItems = response.items();
         items.clear();
 
         assertThat(responseItems).hasSize(1);
@@ -40,7 +44,7 @@ class SearchIssuesResponseTest {
     @Test
     @DisplayName("omits changeSets when search item has null changeSets")
     void omitsChangeSetsWhenSearchItemHasNullChangeSets() throws Exception {
-        final SearchIssueDto item = SearchIssueDto.builder()
+        final IssueSummaryDto item = IssueSummaryDto.builder()
                 .id(1L)
                 .issueId(7L)
                 .title("Issue")
@@ -62,7 +66,7 @@ class SearchIssuesResponseTest {
     @Test
     @DisplayName("serializes change field as lowercase label")
     void serializesChangeFieldAsLowercaseLabel() throws Exception {
-        final SearchIssueDto item = searchIssueWithLabelAudit();
+        final IssueSummaryDto item = searchIssueWithLabelAudit();
 
         final String json = objectMapper.writeValueAsString(new SearchIssuesResponse(List.of(item), 1, 1));
 
@@ -78,8 +82,8 @@ class SearchIssuesResponseTest {
                 .isEqualTo("label");
     }
 
-    private SearchIssueDto searchIssueWithLabelAudit() {
-        return SearchIssueDto.builder()
+    private IssueSummaryDto searchIssueWithLabelAudit() {
+        return IssueSummaryDto.builder()
                 .id(1L)
                 .issueId(7L)
                 .title("Issue")
@@ -89,15 +93,15 @@ class SearchIssuesResponseTest {
                 .assignee("john.doe")
                 .milestone("M1")
                 .parent(null)
-                .changeSets(List.of(SearchIssueDto.ChangeSetDto.builder()
+                .changeSets(List.of(LabelChangeSetDto.builder()
                         .changeType("add")
-                        .changedBy(SearchIssueDto.ChangedByDto.builder()
+                        .changedBy(UserDto.builder()
                                 .id(1L)
                                 .username("root")
                                 .name("Administrator")
                                 .build())
-                        .change(SearchIssueDto.LabelChangeDto.builder()
-                                .field("label")
+                        .change(LabelChangeDto.builder()
+                                .field(ChangeField.LABEL)
                                 .id(73L)
                                 .name("bug")
                                 .build())

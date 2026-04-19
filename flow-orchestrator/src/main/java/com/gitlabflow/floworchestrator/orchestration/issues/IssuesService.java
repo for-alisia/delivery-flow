@@ -3,14 +3,14 @@ package com.gitlabflow.floworchestrator.orchestration.issues;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -63,14 +63,14 @@ public class IssuesService {
         return enrichedIssuePage;
     }
 
-    public Issue createIssue(final CreateIssueInput input) {
+    public IssueSummary createIssue(final CreateIssueInput input) {
         log.info(
                 "Creating issue titleLength={} labelCount={} descriptionPresent={}",
                 input.title().length(),
                 input.labels().size(),
                 input.description() != null);
 
-        final Issue issue = issuesPort.createIssue(input);
+        final IssueSummary issue = issuesPort.createIssue(input);
         log.info("Issue created id={}", issue.id());
         return issue;
     }
@@ -87,13 +87,13 @@ public class IssuesService {
 
         final CompletableFuture<IssueDetail> issueDetailFuture =
                 asyncComposer.submit(() -> issuesPort.getIssueDetail(issueId));
-        final CompletableFuture<List<ChangeSet>> changeSetsFuture =
+        final CompletableFuture<List<ChangeSet<?>>> changeSetsFuture =
                 asyncComposer.submit(() -> issuesPort.getLabelEvents(issueId));
 
         asyncComposer.joinFailFast(List.of(issueDetailFuture, changeSetsFuture));
 
         final IssueDetail issueDetail = issueDetailFuture.join();
-        final List<ChangeSet> changeSets = changeSetsFuture.join();
+        final List<ChangeSet<?>> changeSets = changeSetsFuture.join();
         final long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
         log.info(
                 "Issue detail composed issueId={} changeSetCount={} durationMs={}",
@@ -116,13 +116,14 @@ public class IssuesService {
     }
 
     private IssuePage enrichWithLabelEvents(final IssuePage issuePage) {
-        final List<CompletableFuture<List<ChangeSet>>> changeSetFutures = issuePage.items().stream()
+        final List<CompletableFuture<List<ChangeSet<?>>>> changeSetFutures = issuePage.items().stream()
                 .map(issue -> asyncComposer.submit(() -> issuesPort.getLabelEvents(issue.issueId())))
                 .toList();
 
         asyncComposer.joinFailFast(changeSetFutures);
 
-        final List<Issue> enrichedItems = IntStream.range(0, issuePage.items().size())
+        final List<IssueSummary> enrichedItems = IntStream.range(
+                        0, issuePage.items().size())
                 .mapToObj(index -> enrichIssue(
                         issuePage.items().get(index),
                         changeSetFutures.get(index).join()))
@@ -135,8 +136,8 @@ public class IssuesService {
                 .build();
     }
 
-    private Issue enrichIssue(final Issue issue, final List<ChangeSet> changeSets) {
-        return Issue.builder()
+    private IssueSummary enrichIssue(final IssueSummary issue, final List<ChangeSet<?>> changeSets) {
+        return IssueSummary.builder()
                 .id(issue.id())
                 .issueId(issue.issueId())
                 .title(issue.title())

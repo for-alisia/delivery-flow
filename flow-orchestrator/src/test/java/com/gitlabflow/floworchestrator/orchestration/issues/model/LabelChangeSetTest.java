@@ -3,6 +3,9 @@ package com.gitlabflow.floworchestrator.orchestration.issues.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +29,8 @@ class LabelChangeSetTest {
     @Test
     @DisplayName("builders allow nullable strings for new change-set models")
     void buildersAllowNullableStringsForNewChangeSetModels() {
-        final ChangedBy changedBy =
-                ChangedBy.builder().id(1L).username(null).name("Administrator").build();
+        final User changedBy =
+                User.builder().id(1L).username(null).name("Administrator").build();
         final LabelChange change = LabelChange.builder().id(73L).name(null).build();
         final LabelChangeSet changeSet = LabelChangeSet.builder()
                 .changeType("add")
@@ -46,7 +49,7 @@ class LabelChangeSetTest {
     void enrichedIssueDetailDefensivelyCopiesChangeSets() {
         final LabelChangeSet changeSet = LabelChangeSet.builder()
                 .changeType("add")
-                .changedBy(ChangedBy.builder()
+                .changedBy(User.builder()
                         .id(1L)
                         .username("root")
                         .name("Administrator")
@@ -54,7 +57,7 @@ class LabelChangeSetTest {
                 .change(LabelChange.builder().id(73L).name("bug").build())
                 .changedAt(CHANGED_AT)
                 .build();
-        final List<ChangeSet> changeSets = new ArrayList<>(List.of(changeSet));
+        final List<ChangeSet<?>> changeSets = new ArrayList<>(List.of(changeSet));
 
         final EnrichedIssueDetail enriched = EnrichedIssueDetail.builder()
                 .issueDetail(sampleIssueDetail())
@@ -62,7 +65,7 @@ class LabelChangeSetTest {
                 .build();
 
         changeSets.clear();
-        final List<ChangeSet> enrichedChangeSets = enriched.changeSets();
+        final List<ChangeSet<?>> enrichedChangeSets = enriched.changeSets();
         assertThat(enriched.changeSets()).containsExactly(changeSet);
         assertThatThrownBy(() -> enrichedChangeSets.add(changeSet)).isInstanceOf(UnsupportedOperationException.class);
     }

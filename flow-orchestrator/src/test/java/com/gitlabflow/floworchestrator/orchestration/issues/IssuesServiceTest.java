@@ -13,15 +13,15 @@ import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy;
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.time.OffsetDateTime;
@@ -111,7 +111,9 @@ class IssuesServiceTest {
     void returnsBaseIssuePageAndSkipsEnrichmentWhenAuditTypesAreEmpty() {
         final IssueQuery query = new IssueQuery(1, 20, null, null, null, null, List.of());
         final IssuePage page = new IssuePage(
-                List.of(new Issue(10L, 7L, "Title", null, "opened", List.of("bug"), null, null, null, null)), 1, 1);
+                List.of(new IssueSummary(10L, 7L, "Title", null, "opened", List.of("bug"), null, null, null, null)),
+                1,
+                1);
         when(issuesPort.getIssues(query)).thenReturn(page);
 
         final IssuePage response = issuesService.getIssues(query);
@@ -139,13 +141,14 @@ class IssuesServiceTest {
     @DisplayName("enriches issues with label events in original item order when label audit is requested")
     void enrichesIssuesWithLabelEventsInOriginalItemOrderWhenLabelAuditIsRequested() {
         final IssueQuery query = new IssueQuery(1, 20, null, null, null, null, List.of(IssueAuditType.LABEL));
-        final Issue firstIssue = new Issue(10L, 7L, "First", null, "opened", List.of("bug"), null, null, null, null);
-        final Issue secondIssue =
-                new Issue(11L, 8L, "Second", null, "opened", List.of("backend"), null, null, null, null);
+        final IssueSummary firstIssue =
+                new IssueSummary(10L, 7L, "First", null, "opened", List.of("bug"), null, null, null, null);
+        final IssueSummary secondIssue =
+                new IssueSummary(11L, 8L, "Second", null, "opened", List.of("backend"), null, null, null, null);
         final IssuePage page = new IssuePage(List.of(firstIssue, secondIssue), 2, 1);
         final LabelChangeSet firstChangeSet = LabelChangeSet.builder()
                 .changeType("add")
-                .changedBy(ChangedBy.builder()
+                .changedBy(User.builder()
                         .id(1L)
                         .username("root")
                         .name("Administrator")
@@ -155,11 +158,8 @@ class IssuesServiceTest {
                 .build();
         final LabelChangeSet secondChangeSet = LabelChangeSet.builder()
                 .changeType("remove")
-                .changedBy(ChangedBy.builder()
-                        .id(2L)
-                        .username("jdoe")
-                        .name("Jane Doe")
-                        .build())
+                .changedBy(
+                        User.builder().id(2L).username("jdoe").name("Jane Doe").build())
                 .change(LabelChange.builder().id(99L).name("backend").build())
                 .changedAt(OffsetDateTime.parse("2026-01-16T10:00:00Z"))
                 .build();
@@ -182,9 +182,10 @@ class IssuesServiceTest {
     @DisplayName("propagates first enrichment failure and returns no partially enriched page")
     void propagatesFirstEnrichmentFailureAndReturnsNoPartiallyEnrichedPage() {
         final IssueQuery query = new IssueQuery(1, 20, null, null, null, null, List.of(IssueAuditType.LABEL));
-        final Issue firstIssue = new Issue(10L, 7L, "First", null, "opened", List.of("bug"), null, null, null, null);
-        final Issue secondIssue =
-                new Issue(11L, 8L, "Second", null, "opened", List.of("backend"), null, null, null, null);
+        final IssueSummary firstIssue =
+                new IssueSummary(10L, 7L, "First", null, "opened", List.of("bug"), null, null, null, null);
+        final IssueSummary secondIssue =
+                new IssueSummary(11L, 8L, "Second", null, "opened", List.of("backend"), null, null, null, null);
         final IssuePage page = new IssuePage(List.of(firstIssue, secondIssue), 2, 1);
         final IntegrationException failure = new IntegrationException(
                 ErrorCode.INTEGRATION_FAILURE, "GitLab get label events operation failed", "gitlab");
@@ -204,7 +205,7 @@ class IssuesServiceTest {
     void delegatesCreateInputToPortAndReturnsIssue() {
         final CreateIssueInput input =
                 new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
-        final Issue issue = new Issue(
+        final IssueSummary issue = new IssueSummary(
                 84L,
                 10L,
                 "Deploy failure",
@@ -217,7 +218,7 @@ class IssuesServiceTest {
                 null);
         when(issuesPort.createIssue(input)).thenReturn(issue);
 
-        final Issue response = issuesService.createIssue(input);
+        final IssueSummary response = issuesService.createIssue(input);
 
         assertThat(response).isEqualTo(issue);
         verify(issuesPort).createIssue(input);
@@ -227,10 +228,11 @@ class IssuesServiceTest {
     @DisplayName("returns null description unchanged when port returns null description")
     void returnsNullDescriptionUnchanged() {
         final CreateIssueInput input = new CreateIssueInput("Reporting bug", null, List.of());
-        final Issue issue = new Issue(85L, 11L, "Reporting bug", null, "opened", List.of(), null, null, null, null);
+        final IssueSummary issue =
+                new IssueSummary(85L, 11L, "Reporting bug", null, "opened", List.of(), null, null, null, null);
         when(issuesPort.createIssue(input)).thenReturn(issue);
 
-        final Issue response = issuesService.createIssue(input);
+        final IssueSummary response = issuesService.createIssue(input);
 
         assertThat(response.description()).isNull();
         assertThat(response).isEqualTo(issue);
@@ -272,7 +274,7 @@ class IssuesServiceTest {
                 null);
         final LabelChangeSet firstChangeSet = LabelChangeSet.builder()
                 .changeType("add")
-                .changedBy(ChangedBy.builder()
+                .changedBy(User.builder()
                         .id(1L)
                         .username("root")
                         .name("Administrator")
@@ -282,11 +284,8 @@ class IssuesServiceTest {
                 .build();
         final LabelChangeSet secondChangeSet = LabelChangeSet.builder()
                 .changeType("remove")
-                .changedBy(ChangedBy.builder()
-                        .id(2L)
-                        .username("jdoe")
-                        .name("Jane Doe")
-                        .build())
+                .changedBy(
+                        User.builder().id(2L).username("jdoe").name("Jane Doe").build())
                 .change(LabelChange.builder().id(73L).name("bug").build())
                 .changedAt(OffsetDateTime.parse("2026-02-01T11:00:00.000Z"))
                 .build();
