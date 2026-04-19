@@ -30,6 +30,16 @@ public final class GitLabLabelEventsStubSupport {
                 get(urlPathEqualTo(labelEventsPath(issueId))).willReturn(okJson(EMPTY_LABEL_EVENTS_RESPONSE)));
     }
 
+    public static void stubGetLabelEventsDelayed(
+            final WireMockServer wireMockServer, final long issueId, final int delayMillis) {
+        wireMockServer.stubFor(get(urlPathEqualTo(labelEventsPath(issueId)))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(EMPTY_LABEL_EVENTS_RESPONSE)
+                        .withFixedDelay(delayMillis)));
+    }
+
     public static void stubGetLabelEventsServerError(final WireMockServer wireMockServer, final long issueId) {
         wireMockServer.stubFor(get(urlPathEqualTo(labelEventsPath(issueId)))
                 .willReturn(aResponse().withStatus(500)));

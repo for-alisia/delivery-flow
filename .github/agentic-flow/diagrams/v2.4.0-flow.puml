@@ -1,0 +1,77 @@
+@startuml
+title Agentic Flow v2.4.0 - Actual Run Flow (Run 5 — search-enhancement-api)
+
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequenceMessageAlign center
+
+actor "Team Lead" as TL
+participant "Product Manager" as PM
+participant "Java Architect" as ARCH
+participant "Arch Reviewer" as AREV
+participant "Java Coder" as CODER
+participant "Code Reviewer" as CREV
+
+note over TL,CREV #E2E8F0
+Green = passed gate
+Yellow = rejected / returned
+Red = red card
+New in v2.4.0: Reviewer split into
+Architecture Reviewer + Code Reviewer
+end note
+
+group Planning Phase [12 min, 8% context]
+TL -> TL : flow-log create\n+ lock-requirements
+TL -> PM : Story request
+PM -[#22C55E]> TL : Story accepted\n(~2 min, Haiku)
+TL -> ARCH : Create plan\n(GPT-5.4)
+ARCH -> ARCH : plan-validate fails\nfix and retry
+ARCH -[#22C55E]> TL : Plan accepted\n(plan v3 draft lifecycle)
+end
+
+group Architecture Review [16 min, 15% context]
+TL -> AREV : Round 1\n(GPT-5.4)
+AREV --> TL : 4 risks raised\n(all UNCLASSIFIED)
+TL -> TL : Classify severities\n(3 HIGH, 1 MEDIUM)
+TL -[#F59E0B]> ARCH : Fix risks\n(significant findings)
+ARCH --> TL : Plan revised
+TL -> AREV : Round 2
+AREV -[#22C55E]> TL : All risks resolved\narchitecture-gate PASS
+note right of AREV #D1FAE5
+Severity ownership model validated:
+UNCLASSIFIED → TL classifies → gate.
+Dramatic improvement from Run 1
+(9 rounds, 17 risks, zero delivery)
+end note
+end
+
+group Implementation Phase [~25 min, 32% context]
+TL -> CODER : Batch 1\n(Codex)
+CODER --> TL : Batch returned
+TL -[#DC2626]> TL : Red card #1\nKarate assertion failed
+TL -> CODER : Fix Karate issue
+CODER -> CODER : MODULE_NOT_FOUND\n(flow-log from wrong dir)
+CODER --> TL : Fix returned
+TL -[#DC2626]> TL : Red card #2\nKarate still fails (LABEL vs label)
+note right of TL #FEF3C7
+After 2 red cards on same issue,
+TL routes to Architect instead of
+grinding a third Coder loop
+end note
+TL -[#F59E0B]> ARCH : Plan correction\n(case-mapping spec gap)
+ARCH --> TL : Plan corrected
+TL -> CODER : Continue with\ncorrected plan
+CODER -[#22C55E]> TL : Fix returned
+end
+
+group TL Verification [50% context]
+TL -> TL : final-check + karate\nall PASS
+end
+
+group Code Review [7 min, 52% context]
+TL -> CREV : Code review\n(Sonnet 4.6)
+CREV -[#22C55E]> TL : PASS\n(0 findings, 1 round)
+TL -[#22C55E]> TL : Sign-off + complete\n~84 min, 52% context
+end
+
+@enduml

@@ -1,0 +1,40 @@
+[
+  {
+    "id": 123,
+    "iid": 7,
+    "title": "Issue one",
+    "description": "Issue one description",
+    "state": "opened",
+    "labels": ["bug"],
+    "assignees": [
+      {
+        "username": "john.doe"
+      }
+    ],
+    "milestone": {
+      "title": "M1"
+    },
+    "epic": {
+      "id": 42
+    }
+  },
+  {
+    "id": 124,
+    "iid": 8,
+    "title": "Issue two",
+    "description": "Issue two description",
+    "state": "opened",
+    "labels": ["backend"],
+    "assignees": [
+      {
+        "username": "jane.doe"
+      }
+    ],
+    "milestone": {
+      "title": "M2"
+    },
+    "epic": {
+      "id": 43
+    }
+  }
+]

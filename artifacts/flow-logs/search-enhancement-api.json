@@ -1,0 +1,261 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "search-enhancement-api",
+  "createdAt": "2026-04-09T21:40:02.167Z",
+  "updatedAt": "2026-04-18T14:22:03.939Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-09T21:40:02.259Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/search-enhancement-api.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/search-enhancement-api.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-09T21:41:32.965Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-09T21:41:32.966Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/search-enhancement-api.plan.json",
+      "approved": true,
+      "approvedAt": "2026-04-18T13:59:56.164Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-18T13:59:56.165Z",
+      "approvedRevision": 4,
+      "approvedHash": "c565dacaf46a194224e34e973194ad40338bb82bace4fd1345f20984daf634e1"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-18T13:28:07.493Z",
+      "updatedBy": "Reviewer"
+    },
+    "codeReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-18T14:21:34.633Z",
+      "updatedBy": "CodeReviewer"
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-18T14:11:50.969Z",
+      "updatedBy": "JavaCoder",
+      "command": null,
+      "details": null,
+      "reportPaths": []
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-18T14:15:18.155Z",
+      "updatedBy": "TL",
+      "command": "scripts/final-check.sh",
+      "details": null,
+      "reportPaths": []
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-18T14:15:18.695Z",
+      "updatedBy": "TL",
+      "command": "scripts/karate-test.sh",
+      "details": null,
+      "reportPaths": []
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-09T21:40:02.167Z",
+    "completedAt": "2026-04-18T14:22:03.938Z",
+    "durationMinutes": 12522
+  },
+  "batches": {
+    "current": null,
+    "total": 2,
+    "history": [
+      {
+        "batch": 1,
+        "slices": [
+          "S1",
+          "S2"
+        ],
+        "startedAt": "2026-04-18T13:28:13.862Z",
+        "completedAt": "2026-04-18T13:44:20.050Z",
+        "status": "complete",
+        "by": "TL"
+      },
+      {
+        "batch": 2,
+        "slices": [
+          "S2"
+        ],
+        "startedAt": "2026-04-18T13:44:58.963Z",
+        "completedAt": "2026-04-18T14:15:19.227Z",
+        "status": "complete",
+        "by": "TL"
+      }
+    ]
+  },
+  "changes": {
+    "files": [
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiProperties.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Issue.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueAuditType.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueQuery.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueFiltersRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssueDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssuesResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/main/resources/application.yml",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabIssuesStubSupport.java",
+      "flow-orchestrator/src/test/component/resources/stubs/issues/gitlab-issues-multi.json",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/config/IssuesApiPropertiesTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssuePageTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueFiltersRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssuesResponseTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/karate/resources/issues/issues-search.feature"
+    ]
+  },
+  "architecturalRisks": {
+    "round": 2,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "HIGH",
+        "description": "Shared IssueDto now carries a search-only audit payload, but the plan does not isolate create/delete transport contracts or define a property-level null-omission mechanism. In the current codebase IssueDto has no NON_NULL serialization rule, so this change either leaks changeSets:null into unrelated endpoints or forces a broader null-serialization change on existing fields.",
+        "suggestedFix": "Revise the plan so unrelated endpoints keep their current transport contract: either introduce a search-only item DTO for search responses, or specify a property-level omission mechanism for changeSets only and add tests that prove create/delete JSON stays unchanged.",
+        "planRefs": [
+          "D4"
+        ],
+        "connectedAreas": [
+          "M5"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-18T13:11:36.028Z",
+        "responseNote": "D4 and M5 now isolate search transport behind SearchIssueDto, leaving IssueDto unchanged for create/delete.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-18T13:24:21.746Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-18T13:27:23.898Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-18T13:12:24.520Z",
+        "reclassificationReason": "Shared response DTO leakage can regress unrelated create/delete contracts and the plan does not yet define a safe transport boundary.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 2,
+        "severity": "HIGH",
+        "description": "The plan changes application.yml to 20/40 but leaves defaultPageSize environment-configurable. IssuesApiProperties is only tightened for the maximum, so another profile or deployment override can silently change the API default away from the locked 20-item contract.",
+        "suggestedFix": "Revise the plan to enforce the shipped default as well as the maximum: either validate defaultPageSize == 20 and maxPageSize == 40 at startup, or remove configurability for the default and hardcode 20 at the request-mapping boundary.",
+        "planRefs": [
+          "D5"
+        ],
+        "connectedAreas": [
+          "C9"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-18T13:11:36.165Z",
+        "responseNote": "D5, VR4, and C9 now enforce defaultPageSize 20 and maxPageSize 40 exactly at startup.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-18T13:24:21.875Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-18T13:27:24.017Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-18T13:12:25.091Z",
+        "reclassificationReason": "The locked default page-size contract can drift by environment override unless the plan hardens it, which would silently violate the shipped API behavior.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 3,
+        "severity": "HIGH",
+        "description": "The approved plan drifts from the locked response contract for change.field. The story and request examples require field='label', but EX3 and the reuse strategy in D4 keep the existing enum serialization that currently emits LABEL. Without an explicit contract decision, the coder will either fail the approved acceptance criteria or silently change a client-visible wire value.",
+        "suggestedFix": "Resolve the wire contract in the plan before coding: either align the story/artifacts to the reused uppercase enum if that is the intended contract, or specify a dedicated transport mapping that emits lowercase label while keeping orchestration reuse intact.",
+        "planRefs": [
+          "EX3"
+        ],
+        "connectedAreas": [
+          "M8"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-18T13:11:36.319Z",
+        "responseNote": "EX3 and M8 now define a search-only lowercase change.field wire enum that emits label without changing shared orchestration models.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-18T13:24:22.007Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-18T13:27:24.137Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-18T13:12:25.643Z",
+        "reclassificationReason": "The lowercase versus uppercase change.field wire value is a client-visible contract conflict that must be resolved before coding to avoid shipping the wrong API shape.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 4,
+        "severity": "MEDIUM",
+        "description": "Slice S1 is oversized at 14 touched classes and mixes request DTO changes, orchestration branching, response transport reshaping, configuration validation, and multiple test layers. That breaks the slice-feasibility rule and increases the chance that the coder will redesign mid-implementation or hand off evidence that cannot be reviewed slice-by-slice.",
+        "suggestedFix": "Split S1 into smaller deliverable slices with clear boundaries, for example one slice for request/defaulting/config contract work and one slice for enrichment/response mapping, each with its own focused tests and no cross-slice file sprawl.",
+        "planRefs": [
+          "S1"
+        ],
+        "connectedAreas": [
+          "C6"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-18T13:11:36.460Z",
+        "responseNote": "The plan is split into S1 boundary contract isolation and S2 parallel enrichment so the coder can deliver and verify each concern separately.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-18T13:24:22.134Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-18T13:27:24.261Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-18T13:12:26.191Z",
+        "reclassificationReason": "The slice is too broad for controlled delivery and evidence quality, but this is a plan-structure issue rather than a fundamental architecture blocker.",
+        "previousSeverity": "UNCLASSIFIED"
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 1,
+    "findings": []
+  },
+  "events": [
+    {
+      "id": 1,
+      "type": "redCard",
+      "by": "TL",
+      "reason": "karate smoke failed: issues-search.feature expected change.field='label' but received 'LABEL' on POST /api/issues/search audit response",
+      "target": "JavaCoder",
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-18T13:44:49.051Z"
+    },
+    {
+      "id": 2,
+      "type": "redCard",
+      "by": "TL",
+      "reason": "second red card: karate smoke still fails issues-search.feature line 77 with expected change.field='label' and actual 'LABEL' after retry; implementation path is not converging",
+      "target": "JavaCoder",
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-18T13:54:22.642Z"
+    }
+  ]
+}

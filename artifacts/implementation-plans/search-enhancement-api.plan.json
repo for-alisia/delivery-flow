@@ -1,0 +1,1318 @@
+{
+  "schemaVersion": "3.0",
+  "feature": "search-enhancement-api",
+  "revision": 4,
+  "status": "draft",
+  "requirementLock": {
+    "requestSource": "artifacts/user-prompts/search-enhancement-api.md",
+    "storyPath": "artifacts/user-stories/search-enhancement-api.story.md",
+    "locked": true,
+    "endpoint": "POST /api/issues/search",
+    "nonNegotiables": [
+      "Support only audit value label for this story and reject unsupported values with a validation error.",
+      "Treat missing, null, and empty audit lists identically and make no extra GitLab calls in that case.",
+      "Run base search first, then fetch label events per returned issue in parallel via AsyncComposer.",
+      "Extend orchestration Issue with optional changeSets while keeping label-event models reused and transport-only DTO decisions at the REST boundary.",
+      "Enforce default perPage 20 and maximum perPage 40 with full failure if any enrichment call fails."
+    ]
+  },
+  "scope": {
+    "purpose": "Extend only POST /api/issues/search so clients can request label-audit enrichment while create, delete, and get-single contracts stay unchanged.",
+    "inScope": [
+      "Add filters.audit to the search request and map it to an orchestration enum list ready for future audit types.",
+      "Extend orchestration Issue with nullable changeSets reused from the existing label-event models.",
+      "Introduce a search-only response item DTO so search maps change.field to the literal transport value label without changing create/delete or get-single DTO contracts.",
+      "Run label-event enrichment after search returns by using AsyncComposer for fail-fast per-issue parallel fan-out.",
+      "Lock the shipped page-size contract to default 20 and maximum 40 at startup and in request handling.",
+      "Update search-focused unit, integration, component, HTTP, and Karate coverage for valid, invalid, and full-failure paths."
+    ],
+    "outOfScope": [
+      "Any endpoint other than POST /api/issues/search.",
+      "New audit types beyond label.",
+      "Changing the existing get-single label-event transport contract.",
+      "Partial-success enrichment or background processing when one label-event call fails.",
+      "New shared infrastructure extraction or new capability packages."
+    ],
+    "constraints": [
+      "Follow constitution boundary rules: orchestration decides composition, integration stays single-call-per-method, and REST DTOs remain transport-only.",
+      "Reuse AsyncComposer, IssuesPort.getLabelEvents(long issueId), GitLabIssuesAdapter, GitLabLabelEventMapper, ChangeSet, Change, LabelChangeSet, LabelChange, ChangedBy, and ChangeField rather than duplicating orchestration audit models.",
+      "Keep IssueDto unchanged so create and delete transport contracts remain byte-for-byte compatible with current behavior.",
+      "Keep the change inside the existing issues capability; no new ArchUnit rule is needed because packages and dependencies stay within already enforced boundaries.",
+      "Documentation and tests must stay aligned with the official GitLab endpoints GET /projects/:id/issues and GET /projects/:id/issues/:issue_iid/resource_label_events."
+    ]
+  },
+  "validationBoundaryDecision": {
+    "decision": "REST request models own audit sanitization and supported-value validation, configuration owns fixed 20/40 startup validation, IssuesResponseMapper owns the search-only literal label transport mapping, and IssuesService owns downstream branching plus full-failure enforcement.",
+    "details": [
+      "IssueFiltersRequest drops null audit entries before validation so [\"label\", null] becomes [\"label\"].",
+      "IssueFiltersRequest rejects every non-null audit value other than label before orchestration mapping runs.",
+      "IssuesRequestMapper defaults missing page to 1 and missing perPage to the fixed contract value 20.",
+      "IssuesApiProperties fails startup unless defaultPageSize == 20 and maxPageSize == 40, preventing profile drift.",
+      "IssuesResponseMapper maps orchestration ChangeField.LABEL to the literal string label for search responses instead of relying on enum serialization behavior.",
+      "IssuesService decides whether label-event calls run and propagates the first enrichment failure as a full request failure."
+    ]
+  },
+  "compositionStrategy": {
+    "mode": "dependent-then-parallel",
+    "sequentialDependency": "Label-event calls need project issue IIDs from the initial search response, so search executes first.",
+    "parallelWork": "After search completes and auditTypes contains LABEL, one AsyncComposer task per returned Issue.issueId() calls IssuesPort.getLabelEvents(issueId).",
+    "failureMode": "AsyncComposer joinFailFast cancels siblings on first failure and IssuesService returns no partial IssuePage."
+  },
+  "sharedInfrastructureImpact": {
+    "reused": [
+      "orchestration/common/async/AsyncComposer",
+      "orchestration/issues/IssuesPort.getLabelEvents(long issueId)",
+      "integration/gitlab/issues/GitLabIssuesAdapter",
+      "integration/gitlab/issues/mapper/GitLabLabelEventMapper",
+      "common/web/GlobalExceptionHandler"
+    ],
+    "newExtraction": "None"
+  },
+  "assumptions": [
+    "GitLab project issue search uses GET /projects/:id/issues and the existing adapter already maps pagination headers correctly.",
+    "GitLab resource label events use GET /projects/:id/issues/:issue_iid/resource_label_events, so enrichment must call the port with Issue.issueId() rather than Issue.id().",
+    "The existing get-single endpoint keeps its current transport contract; this feature only introduces the literal search transport value label at the search DTO boundary."
+  ],
+  "implementationFlow": [
+    {
+      "id": "F1",
+      "order": 1,
+      "slice": "S1",
+      "layer": "orchestration.rest",
+      "component": "IssueFiltersRequest + IssuesRequestMapper",
+      "responsibility": "Accept filters.audit, drop null entries, reject unsupported values, default page to 1 and perPage to 20, and map distinct audit strings to IssueAuditType.",
+      "constitutionReason": "Input validation and transport-to-orchestration mapping belong at the REST boundary.",
+      "outputs": [
+        "IssueQuery with immutable auditTypes"
+      ]
+    },
+    {
+      "id": "F2",
+      "order": 2,
+      "slice": "S1",
+      "layer": "config-and-rest-transport",
+      "component": "IssuesApiProperties + SearchIssueDto + SearchIssuesResponse + IssuesResponseMapper",
+      "responsibility": "Lock startup config to 20/40 and expose a search-only response item DTO whose change.field is mapped as the literal string label while create/delete keep IssueDto unchanged.",
+      "constitutionReason": "Configuration validation belongs in config and transport adaptations belong in the REST layer without leaking into orchestration models.",
+      "outputs": [
+        "Fixed page-size contract",
+        "Search-only transport contract isolated from other endpoints"
+      ]
+    },
+    {
+      "id": "F3",
+      "order": 3,
+      "slice": "S2",
+      "layer": "orchestration",
+      "component": "IssuesService.getIssues",
+      "responsibility": "Run the existing search first, reject perPage values above 40, and return the base IssuePage unchanged when auditTypes is empty or no issues are returned.",
+      "constitutionReason": "Only orchestration may decide whether additional downstream calls are necessary.",
+      "outputs": [
+        "Base IssuePage or enrichment worklist"
+      ]
+    },
+    {
+      "id": "F4",
+      "order": 4,
+      "slice": "S2",
+      "layer": "orchestration",
+      "component": "IssuesService + AsyncComposer",
+      "responsibility": "For auditTypes containing LABEL, fan out one getLabelEvents(issue.issueId()) call per returned issue, preserve result order, and rebuild each Issue with nullable-or-present changeSets.",
+      "constitutionReason": "Composition across independent port calls belongs in orchestration and must execute in parallel when the only dependency is the base search result.",
+      "outputs": [
+        "Enriched IssuePage with reused orchestration changeSets"
+      ]
+    },
+    {
+      "id": "F5",
+      "order": 5,
+      "slice": "S2",
+      "layer": "verification-and-docs",
+      "component": "IssuesControllerIT + component support + issues.http + issues-search.feature",
+      "responsibility": "Verify no-audit bypass, audit success, unsupported audit validation, perPage 41 rejection, and full-failure semantics while updating search HTTP and Karate artifacts so POST /api/issues/search asserts label and get-single keeps LABEL.",
+      "constitutionReason": "Changed API behavior must be provable with automated tests and aligned documentation.",
+      "outputs": [
+        "Updated automated coverage",
+        "Updated HTTP examples",
+        "Updated Karate smoke coverage"
+      ]
+    }
+  ],
+  "contractExamples": [
+    {
+      "id": "EX1",
+      "label": "Search request without audit",
+      "type": "request",
+      "body": {
+        "pagination": {
+          "page": 1,
+          "perPage": 20
+        },
+        "filters": {
+          "state": "opened"
+        }
+      }
+    },
+    {
+      "id": "EX2",
+      "label": "Search request with label audit",
+      "type": "request",
+      "body": {
+        "pagination": {
+          "page": 1,
+          "perPage": 20
+        },
+        "filters": {
+          "state": "opened",
+          "audit": [
+            "label"
+          ]
+        }
+      }
+    },
+    {
+      "id": "EX3",
+      "label": "Search success item with label audit changeSets",
+      "type": "success",
+      "body": {
+        "items": [
+          {
+            "id": 101,
+            "issueId": 17,
+            "title": "Deploy failure",
+            "description": "Step 3 failed",
+            "state": "opened",
+            "labels": [
+              "bug"
+            ],
+            "assignee": "john.doe",
+            "milestone": "M1",
+            "parent": null,
+            "changeSets": [
+              {
+                "changeType": "add",
+                "changedBy": {
+                  "id": 1,
+                  "username": "root",
+                  "name": "Administrator"
+                },
+                "change": {
+                  "field": "label",
+                  "id": 73,
+                  "name": "bug"
+                },
+                "changedAt": "2026-01-15T09:30:00Z"
+              }
+            ]
+          }
+        ],
+        "count": 1,
+        "page": 1
+      }
+    },
+    {
+      "id": "EX4",
+      "label": "Search success item without audit omits changeSets",
+      "type": "success",
+      "body": {
+        "items": [
+          {
+            "id": 101,
+            "issueId": 17,
+            "title": "Deploy failure",
+            "description": "Step 3 failed",
+            "state": "opened",
+            "labels": [
+              "bug"
+            ],
+            "assignee": "john.doe",
+            "milestone": "M1",
+            "parent": null
+          }
+        ],
+        "count": 1,
+        "page": 1
+      }
+    },
+    {
+      "id": "EX5",
+      "label": "Search validation failure for unsupported audit",
+      "type": "validation-error",
+      "body": {
+        "code": "VALIDATION_ERROR",
+        "message": "Request validation failed",
+        "details": [
+          "filters.audit[0] must be one of [label]"
+        ]
+      }
+    },
+    {
+      "id": "EX6",
+      "label": "Search enrichment integration failure",
+      "type": "error",
+      "body": {
+        "code": "INTEGRATION_FAILURE",
+        "message": "GitLab get label events operation failed",
+        "details": []
+      }
+    }
+  ],
+  "validationRules": [
+    {
+      "id": "VR1",
+      "rule": "IssueFiltersRequest.audit may be absent, null, empty, or contain null entries; null entries are removed before validation and the resulting list stays immutable.",
+      "owner": "IssueFiltersRequest",
+      "reason": "The request contract explicitly treats missing, null, empty, and null-only audit values as equivalent no-audit input.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "VR2",
+      "rule": "Every non-null audit value must equal label; unsupported values fail with a 400 validation response before IssuesService executes.",
+      "owner": "IssueFiltersRequest",
+      "reason": "Supported values are a boundary concern and require explicit client feedback.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "VR3",
+      "rule": "IssuesRequestMapper defaults page to 1, perPage to 20, and maps audit strings to a distinct immutable List<IssueAuditType> in request order.",
+      "owner": "IssuesRequestMapper",
+      "reason": "Transport defaulting and normalization belong at the REST-to-orchestration boundary.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "VR4",
+      "rule": "IssuesApiProperties must fail startup unless defaultPageSize == 20 and maxPageSize == 40.",
+      "owner": "IssuesApiProperties",
+      "reason": "The locked API contract cannot drift through profile or environment overrides.",
+      "appliesToSlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "VR5",
+      "rule": "IssuesService must make zero label-event calls when auditTypes is empty and must reject perPage values above 40.",
+      "owner": "IssuesService",
+      "reason": "The orchestration use case owns downstream branching and protects non-REST callers from oversized requests.",
+      "appliesToSlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "VR6",
+      "rule": "If any label-event call fails, the entire search request fails and no partially enriched IssuePage is returned.",
+      "owner": "IssuesService",
+      "reason": "The locked request explicitly rejects partial success for this story.",
+      "appliesToSlices": [
+        "S2"
+      ]
+    }
+  ],
+  "designDecisions": [
+    {
+      "id": "D1",
+      "title": "Keep the change inside the existing issues capability",
+      "decision": "Modify only the existing search path, request mapper, shared Issue model, search response transport, config, and search-focused tests inside the issues capability.",
+      "rationale": "The story is a direct extension of POST /api/issues/search and existing label-event plumbing already lives in the same capability.",
+      "alternatives": [
+        "Create a dedicated audit endpoint",
+        "Introduce a new capability package for audit history"
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "Search first, then enrich in parallel",
+      "decision": "Execute issuesPort.getIssues(query) first, then submit one issuesPort.getLabelEvents(issue.issueId()) task per returned issue through AsyncComposer and rebuild the page after all tasks succeed.",
+      "rationale": "Label-event calls depend on issue IIDs from the base search result, but once those IDs exist the calls are independent and should run in parallel for latency control.",
+      "alternatives": [
+        "Sequentially fetch label events for each issue",
+        "Teach the integration adapter to compose search and label events internally"
+      ]
+    },
+    {
+      "id": "D3",
+      "title": "Reuse orchestration Issue plus nullable changeSets",
+      "decision": "Extend orchestration Issue with @Nullable List<ChangeSet> changeSets and keep it null when audit is not requested; IssuePage continues to carry List<Issue>.",
+      "rationale": "The locked request explicitly requires extending the shared orchestration Issue model instead of creating a parallel enriched output model.",
+      "alternatives": [
+        "Introduce a search-only orchestration issue type",
+        "Keep changeSets outside Issue in a side-map"
+      ]
+    },
+    {
+      "id": "D4",
+      "title": "Isolate the search transport contract from other endpoints",
+      "decision": "Keep IssueDto unchanged for create/delete and switch search responses to SearchIssueDto, which owns optional changeSets and carries change.field as a plain transport string fixed to label by IssuesResponseMapper.",
+      "rationale": "This preserves the locked search response example, avoids leaking search-only null handling or wire values into unrelated endpoint contracts, and removes serializer-dependent ambiguity that already caused the implementation and Karate smoke paths to diverge.",
+      "alternatives": [
+        "Add changeSets directly to IssueDto with property-level null omission",
+        "Change the existing get-single DTO hierarchy to lowercase wire values",
+        "Keep a search-only enum and rely on Jackson enum serialization annotations"
+      ]
+    },
+    {
+      "id": "D5",
+      "title": "Treat 20 and 40 as fixed shipped API contract values",
+      "decision": "Set application defaults to default-page-size 20 and max-page-size 40 and make IssuesApiProperties reject any startup configuration that does not exactly match those two values.",
+      "rationale": "The locked client contract must remain stable across profiles and deployments, so both the default and the maximum need hard enforcement.",
+      "alternatives": [
+        "Hardcode 20 only in the mapper and leave configuration drift possible",
+        "Allow wider maxPageSize through environment overrides"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "M1",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType",
+      "kind": "enum",
+      "status": "new",
+      "purpose": "Extensible orchestration discriminator for requested audit enrichments; currently only LABEL is supported.",
+      "placementJustification": "Audit type selection is business meaning for the search use case, so the enum belongs in orchestration rather than REST transport.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "enumValues": [
+        {
+          "name": "LABEL",
+          "wireValue": "label"
+        }
+      ],
+      "methods": [
+        "String value()",
+        "static IssueAuditType fromValue(String value)"
+      ]
+    },
+    {
+      "id": "M2",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery",
+      "kind": "record",
+      "status": "modified",
+      "purpose": "Search use-case input carrying pagination, existing filters, and requested audit types.",
+      "placementJustification": "IssueQuery is the provider-agnostic orchestration input for issue search and must own normalized audit intent.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "page",
+          "type": "int",
+          "nullable": false
+        },
+        {
+          "name": "perPage",
+          "type": "int",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "IssueState",
+          "nullable": true
+        },
+        {
+          "name": "label",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "assignee",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "milestone",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "auditTypes",
+          "type": "List<IssueAuditType>",
+          "nullable": false,
+          "defensiveCopy": "null becomes List.of(); otherwise List.copyOf"
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.Issue",
+      "kind": "record",
+      "status": "modified",
+      "purpose": "Unified orchestration output for search and create, now optionally carrying changeSets when search audit enrichment runs.",
+      "placementJustification": "The locked request explicitly requires extending the shared orchestration Issue model instead of introducing a parallel enriched output type.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "issueId",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "defensiveCopy": "null becomes List.of(); otherwise List.copyOf"
+        },
+        {
+          "name": "assignee",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "milestone",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "parent",
+          "type": "Long",
+          "nullable": true
+        },
+        {
+          "name": "changeSets",
+          "type": "List<ChangeSet>",
+          "nullable": true,
+          "defensiveCopy": "null stays null; otherwise List.copyOf"
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest",
+      "kind": "record",
+      "status": "modified",
+      "purpose": "Transport carrier for search filters, including audit values that are sanitized and validated before mapping to orchestration enums.",
+      "placementJustification": "This is an HTTP boundary DTO and should carry raw client values plus declarative validation, not business behavior.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": true,
+          "validation": "@Pattern(opened|closed|all)"
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "validation": "@Size(max=1)",
+          "defensiveCopy": "sanitize nulls, then List.copyOf"
+        },
+        {
+          "name": "assignee",
+          "type": "List<String>",
+          "nullable": false,
+          "validation": "@Size(max=1)",
+          "defensiveCopy": "sanitize nulls, then List.copyOf"
+        },
+        {
+          "name": "milestone",
+          "type": "List<String>",
+          "nullable": false,
+          "validation": "@Size(max=1)",
+          "defensiveCopy": "sanitize nulls, then List.copyOf"
+        },
+        {
+          "name": "audit",
+          "type": "List<String>",
+          "nullable": false,
+          "validation": "sanitize nulls first, then each non-null element must equal label",
+          "defensiveCopy": "null becomes List.of(); otherwise List.copyOf(filtered values)"
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Search-only issue response payload that keeps create/delete transport unchanged while optionally carrying audit changeSets.",
+      "placementJustification": "A dedicated REST DTO is allowed by the locked request and is the safest way to isolate search-only transport concerns from other endpoints.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "issueId",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "labels",
+          "type": "List<String>",
+          "nullable": false,
+          "defensiveCopy": "null becomes List.of(); otherwise List.copyOf"
+        },
+        {
+          "name": "assignee",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "milestone",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "parent",
+          "type": "Long",
+          "nullable": true
+        },
+        {
+          "name": "changeSets",
+          "type": "List<SearchIssueDto.ChangeSetDto>",
+          "nullable": true,
+          "serialization": "omit when null via property-level NON_NULL inclusion",
+          "defensiveCopy": "null stays null; otherwise List.copyOf"
+        }
+      ]
+    },
+    {
+      "id": "M6",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto.ChangeSetDto",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Search transport change-set payload for label audit entries.",
+      "placementJustification": "This structure is transport-only and exists to keep the search wire contract independent from get-single DTO reuse.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "changeType",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "changedBy",
+          "type": "SearchIssueDto.ChangedByDto",
+          "nullable": false
+        },
+        {
+          "name": "change",
+          "type": "SearchIssueDto.LabelChangeDto",
+          "nullable": false
+        },
+        {
+          "name": "changedAt",
+          "type": "OffsetDateTime",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M7",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto.ChangedByDto",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Search transport actor payload for changeSets.",
+      "placementJustification": "Actor details are reused from orchestration but adapted as a REST transport record inside the search-only DTO file.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M9",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssueDto.LabelChangeDto",
+      "kind": "record",
+      "status": "new",
+      "purpose": "Search transport payload for the changed label inside each search changeSet.",
+      "placementJustification": "This REST record exists only to map shared orchestration label changes to the locked lowercase search contract without introducing a second enum contract at the HTTP boundary.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "field",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M10",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet",
+      "kind": "interface",
+      "status": "existing",
+      "purpose": "Reusable issue-history contract for changeSet payloads.",
+      "placementJustification": "This interface already carries provider-agnostic audit semantics in orchestration and is the mandated reuse target.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "methods": [
+        "String changeType()",
+        "ChangedBy changedBy()",
+        "Change change()",
+        "OffsetDateTime changedAt()"
+      ]
+    },
+    {
+      "id": "M11",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.Change",
+      "kind": "interface",
+      "status": "existing",
+      "purpose": "Reusable issue-history contract for the changed field payload.",
+      "placementJustification": "The orchestration layer owns the business meaning of what changed, so this shared interface stays unchanged.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "methods": [
+        "ChangeField field()",
+        "long id()",
+        "String name()"
+      ]
+    },
+    {
+      "id": "M12",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Label-event implementation of ChangeSet reused by get-single and search audit responses.",
+      "placementJustification": "The label-event mapping already exists in orchestration and must be reused rather than duplicated.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "changeType",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "changedBy",
+          "type": "ChangedBy",
+          "nullable": false
+        },
+        {
+          "name": "change",
+          "type": "LabelChange",
+          "nullable": false
+        },
+        {
+          "name": "changedAt",
+          "type": "OffsetDateTime",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M13",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChange",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Label-specific Change implementation reused by get-single and search audit responses.",
+      "placementJustification": "The change payload is already an orchestration model and must remain the single source of label-change semantics.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false
+        }
+      ],
+      "methods": [
+        "ChangeField field() -> ChangeField.LABEL"
+      ]
+    },
+    {
+      "id": "M14",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.ChangedBy",
+      "kind": "record",
+      "status": "existing",
+      "purpose": "Reusable actor metadata for issue audit entries.",
+      "placementJustification": "Actor metadata is already part of the shared orchestration audit model and should remain unchanged.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "builder": true,
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "username",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M15",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField",
+      "kind": "enum",
+      "status": "existing",
+      "purpose": "Shared orchestration discriminator for audit change types.",
+      "placementJustification": "The business-level change-field enum stays in orchestration and must not be repurposed for endpoint-specific wire formatting.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "enumValues": [
+        {
+          "name": "LABEL"
+        }
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "id": "C1",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueAuditType.java",
+      "status": "new",
+      "role": "New orchestration audit enum with wire-value lookup.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C2",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/IssueQuery.java",
+      "status": "modified",
+      "role": "Search input model gains immutable auditTypes.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C3",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/Issue.java",
+      "status": "modified",
+      "role": "Shared issue output gains nullable changeSets with null-preserving defensive copy.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C4",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueFiltersRequest.java",
+      "status": "modified",
+      "role": "Search filter DTO gains audit transport field, null sanitization, and supported-value validation.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C5",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapper.java",
+      "status": "modified",
+      "role": "Maps audit strings to IssueAuditType values and defaults perPage to 20.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C6",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "status": "modified",
+      "role": "Search orchestration branches on auditTypes, runs fail-fast parallel enrichment, and preserves no-audit behavior.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C7",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssueDto.java",
+      "status": "new",
+      "role": "Search-only response DTO file containing the item payload, nested change-set records, and the plain-string search change.field contract.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C8",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssuesResponse.java",
+      "status": "modified",
+      "role": "Search wrapper switches items from IssueDto to SearchIssueDto.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C9",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiProperties.java",
+      "status": "modified",
+      "role": "Startup validation enforces defaultPageSize 20 and maxPageSize 40 exactly.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C10",
+      "path": "flow-orchestrator/src/main/resources/application.yml",
+      "status": "modified",
+      "role": "Default issues API configuration moves to 20/40 to match the locked contract.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C11",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "status": "modified",
+      "role": "Maps IssuePage items to SearchIssueDto and converts ChangeField.LABEL to the literal search transport string label.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C12",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "status": "modified",
+      "role": "Unit coverage for no-audit bypass, parallel enrichment, order preservation, and full-failure propagation.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C13",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/IssueFiltersRequestTest.java",
+      "status": "modified",
+      "role": "Unit coverage for audit null sanitization, immutability, null-only audit, and unsupported values.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C14",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapperTest.java",
+      "status": "modified",
+      "role": "Unit coverage for default perPage 20, audit enum mapping, and duplicate label audit normalization.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C15",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/SearchIssuesResponseTest.java",
+      "status": "modified",
+      "role": "Unit coverage for SearchIssuesResponse wrapper with SearchIssueDto items and null changeSets omission serialization.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C16",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "status": "modified",
+      "role": "Unit coverage for lowercase label transport mapping and search item omission when changeSets is null.",
+      "ownedBySlices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "C17",
+      "path": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/config/IssuesApiPropertiesTest.java",
+      "status": "new",
+      "role": "Unit coverage proving startup config rejects anything other than 20/40.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C18",
+      "path": "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "status": "modified",
+      "role": "Integration coverage for audit validation, fixed default perPage 20, lowercase search response field, and perPage 41 rejection.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C19",
+      "path": "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "status": "modified",
+      "role": "Component coverage for search audit success, no-audit no-call behavior, and full request failure when one label-event call fails.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C20",
+      "path": "flow-orchestrator/http/issues.http",
+      "status": "modified",
+      "role": "HTTP examples add search-with-audit, empty-audit, unsupported-audit, and perPage 41 requests with the search-only response shape.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C21",
+      "path": "flow-orchestrator/src/test/karate/resources/issues/issues-search.feature",
+      "status": "modified",
+      "role": "Karate smoke scenarios cover no-audit search, label-audit search, and validation failure for unsupported audit or perPage > 40.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C22",
+      "path": "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabIssuesStubSupport.java",
+      "status": "modified",
+      "role": "Component stub support exposes search responses for no-audit and audit-enriched pages with perPage 20 defaults.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C23",
+      "path": "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabLabelEventsStubSupport.java",
+      "status": "modified",
+      "role": "Component stub support adds multi-issue label-event success and one-call failure scenarios for fail-fast verification.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S1",
+      "title": "Boundary Contract Isolation",
+      "goal": "Add audit input, fixed 20/40 boundary enforcement, and a search-only transport contract that leaves create/delete unchanged.",
+      "dependsOn": [],
+      "flowSteps": [
+        "F1",
+        "F2"
+      ],
+      "covers": {
+        "models": [
+          "M1",
+          "M2",
+          "M4",
+          "M5",
+          "M6",
+          "M7",
+          "M9"
+        ],
+        "classes": [
+          "C1",
+          "C2",
+          "C4",
+          "C5",
+          "C7",
+          "C8",
+          "C9",
+          "C10",
+          "C11",
+          "C13",
+          "C14",
+          "C15",
+          "C16",
+          "C17"
+        ],
+        "validationRules": [
+          "VR1",
+          "VR2",
+          "VR3",
+          "VR4"
+        ],
+        "examples": [
+          "EX1",
+          "EX2",
+          "EX3",
+          "EX4",
+          "EX5"
+        ],
+        "decisions": [
+          "D1",
+          "D4",
+          "D5"
+        ]
+      },
+      "implementationTasks": [
+        "Add IssueAuditType and extend IssueQuery with immutable auditTypes.",
+        "Extend IssueFiltersRequest and IssuesRequestMapper to sanitize audit input, reject unsupported values, and default perPage to 20.",
+        "Tighten IssuesApiProperties and application.yml so startup rejects any page-size contract drift away from 20/40.",
+        "Introduce SearchIssueDto and update SearchIssuesResponse plus IssuesResponseMapper so search uses a dedicated DTO with nullable changeSets and change.field fixed to the literal string label.",
+        "Add focused unit tests for request DTO validation, mapper defaulting, search DTO serialization, response mapping, and property validation."
+      ],
+      "tests": {
+        "unit": [
+          "IssuesRequestMapperTest",
+          "IssueFiltersRequestTest",
+          "SearchIssuesResponseTest",
+          "IssuesResponseMapperTest",
+          "IssuesApiPropertiesTest"
+        ],
+        "integration": [
+          "IssuesControllerIT validation and response-shape assertions for the search endpoint"
+        ],
+        "component": []
+      },
+      "logging": {
+        "info": [
+          "None - this slice changes validation and transport mapping only; no new log lines are required."
+        ],
+        "warn": [
+          "None"
+        ],
+        "error": [
+          "None"
+        ]
+      },
+      "doneWhen": [
+        "Search request binding accepts absent/null/empty audit and rejects unsupported values before service execution.",
+        "SearchIssueDto exposes change.field as the literal lowercase label value and omits changeSets when null.",
+        "IssueDto remains unchanged so create/delete transport contract does not gain search-only fields.",
+        "Startup validation fails for any defaultPageSize/maxPageSize pair other than 20/40."
+      ],
+      "flags": {
+        "contractChanges": true,
+        "validationSensitive": true
+      }
+    },
+    {
+      "id": "S2",
+      "title": "Parallel Audit Enrichment",
+      "goal": "Reuse the shared Issue model and existing label-event models to enrich search results only when auditTypes contains LABEL, with fail-fast parallel execution and search-focused verification.",
+      "dependsOn": [
+        "S1"
+      ],
+      "flowSteps": [
+        "F3",
+        "F4",
+        "F5"
+      ],
+      "covers": {
+        "models": [
+          "M2",
+          "M3",
+          "M5",
+          "M6",
+          "M7",
+          "M9",
+          "M10",
+          "M11",
+          "M12",
+          "M13",
+          "M14",
+          "M15"
+        ],
+        "classes": [
+          "C2",
+          "C3",
+          "C6",
+          "C7",
+          "C11",
+          "C12",
+          "C16",
+          "C18",
+          "C19",
+          "C20",
+          "C21",
+          "C22",
+          "C23"
+        ],
+        "validationRules": [
+          "VR5",
+          "VR6"
+        ],
+        "examples": [
+          "EX2",
+          "EX3",
+          "EX4",
+          "EX6"
+        ],
+        "decisions": [
+          "D2",
+          "D3",
+          "D4"
+        ]
+      },
+      "implementationTasks": [
+        "Extend Issue with nullable changeSets and update IssuesService.getIssues to branch on auditTypes after validating perPage.",
+        "Return the base IssuePage unchanged when auditTypes is empty or the search result page is empty.",
+        "When auditTypes contains LABEL, call getLabelEvents(issue.issueId()) in parallel via AsyncComposer, preserve item order, and rebuild each Issue with reused orchestration changeSets.",
+        "Propagate the first enrichment failure as a full search failure without partial results or fallback payloads.",
+        "Expand integration, component, HTTP, and Karate search verification for no-audit, label-audit, unsupported-audit, perPage 41, and enrichment-failure paths, with explicit assertions that search returns label while get-single remains LABEL."
+      ],
+      "tests": {
+        "unit": [
+          "IssuesServiceTest",
+          "IssuesResponseMapperTest"
+        ],
+        "integration": [
+          "IssuesControllerIT search success, validation failure, and error propagation assertions"
+        ],
+        "component": [
+          "IssuesApiComponentTest with GitLabIssuesStubSupport and GitLabLabelEventsStubSupport"
+        ]
+      },
+      "logging": {
+        "info": [
+          "IssuesService.getIssues logs page, perPage, auditTypes, itemCount, enrichmentApplied, and durationMs for enriched requests."
+        ],
+        "warn": [
+          "None"
+        ],
+        "error": [
+          "None - downstream failures continue through the existing exception mapping path without duplicate error logging."
+        ]
+      },
+      "doneWhen": [
+        "Search executes before any label-event fetch and no label-event calls run when auditTypes is empty.",
+        "Label-event enrichment runs one call per returned issue IID through AsyncComposer and preserves search item order.",
+        "Any enrichment failure aborts the whole request and returns the sanitized integration error contract.",
+        "Search-focused integration, component, HTTP, and Karate artifacts prove valid, invalid, and failure paths, and no search artifact keeps the stale uppercase LABEL expectation."
+      ],
+      "flags": {
+        "contractChanges": true,
+        "validationSensitive": true
+      }
+    }
+  ],
+  "verification": {
+    "slices": [
+      {
+        "slice": "S1",
+        "checks": [
+          "Unit coverage for audit sanitization, mapper defaulting, explicit search change.field mapping to label, response-shape omission behavior, and property validation.",
+          "Integration coverage for unsupported audit rejection, default perPage 20, and POST /api/issues/search returning change.field == label."
+        ],
+        "evidence": "IssueFiltersRequestTest, IssuesRequestMapperTest, SearchIssuesResponseTest, IssuesResponseMapperTest, IssuesApiPropertiesTest, and IssuesControllerIT"
+      },
+      {
+        "slice": "S2",
+        "checks": [
+          "Unit coverage for no-audit bypass, parallel enrichment, order preservation, and full-failure propagation.",
+          "Integration coverage for search success, perPage 41 rejection, and sanitized failure mapping.",
+          "Component coverage for multi-issue audit enrichment, no-audit no-call behavior, one-label-event-call failure aborting the whole request, and search change.field == label on the running app.",
+          "Karate smoke coverage for no-audit search, label-audit search with change.field == label, and invalid search requests, while get-single smoke keeps its existing LABEL assertion."
+        ],
+        "evidence": "IssuesServiceTest, IssuesControllerIT, IssuesApiComponentTest, flow-orchestrator/http/issues.http, and issues-search.feature"
+      }
+    ],
+    "finalGates": [
+      {
+        "gate": "verifyQuick",
+        "owner": "Java Coder",
+        "required": true,
+        "evidence": "scripts/verify-quick.sh"
+      },
+      {
+        "gate": "finalCheck",
+        "owner": "Java Coder",
+        "required": true,
+        "evidence": "scripts/final-check.sh"
+      },
+      {
+        "gate": "karate",
+        "owner": "Team Lead",
+        "required": true,
+        "evidence": "scripts/karate-test.sh (required because final-check does not execute issues-search.feature)"
+      },
+      {
+        "gate": "search-http-docs",
+        "owner": "Java Coder",
+        "required": true,
+        "evidence": "flow-orchestrator/http/issues.http updated for no-audit, audit, unsupported-audit, and perPage 41 examples"
+      }
+    ]
+  },
+  "hash": "c565dacaf46a194224e34e973194ad40338bb82bace4fd1345f20984daf634e1"
+}

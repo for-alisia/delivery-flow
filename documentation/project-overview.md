@@ -3,85 +3,47 @@
 ## Purpose
 
 GitlabFlow builds a flow orchestration capability for enterprise Agile delivery teams.
-Its main objective is to help teams understand delivery state, identify bottlenecks, and improve release predictability.
+It helps teams understand delivery state, identify bottlenecks, and improve release predictability.
 
-For the MVP, GitLab is the primary external system. The long-term product direction is integration-agnostic orchestration that can support additional providers in the future.
+GitLab is the MVP integration provider. The architecture is integration-agnostic so additional providers can be added later.
 
 ## Product Components
 
-- `flow-orchestrator/`: Java Spring Boot application that owns orchestration logic and business behavior.
-- `mcp-server/`: TypeScript MCP server that acts as a thin consumer of `flow-orchestrator`.
+- `flow-orchestrator/`: Java Spring Boot application — orchestration logic and business behavior.
+- `mcp-server/`: TypeScript MCP server — thin consumer of `flow-orchestrator`, no business logic.
 
-## Problem We Solve
+## Core Business Concepts
 
-Enterprise teams often lack a single, reliable view of delivery flow health across work items and release cycles.
-Manual status checks are slow, inconsistent, and reactive. GitlabFlow provides structured insights and automation to improve visibility and decision making.
+- **Work item**: GitLab issue (MVP).
+- **Delivery cycle**: GitLab milestone (MVP).
+- **Workflow state source**: GitLab status labels (MVP).
+- **Default phases**: planning, development, done.
 
-## Target Users and Stakeholders
+## Capability Roadmap
 
-- Delivery managers and engineering managers who need flow visibility and bottleneck detection.
-- Agile teams who need clear aging and release-related insights.
-- Platform or enablement teams who need consistent, repeatable release intelligence.
+Current and planned capabilities, ordered by implementation priority.
+The Architect uses this to anticipate reuse opportunities across capabilities.
 
-## Product Goals
+| # | Capability | Status | GitLab Resources Used |
+|---|-----------|--------|----------------------|
+| 1 | **Issues** — search, create, delete, get-single, label-event history | Implemented | `issues`, `resource_label_events` |
+| 2 | **Milestones** — list, get-single, milestone-scoped issues | Planned | `milestones`, `issues?milestone=` |
+| 3 | **Aging and flow metrics** — age calculation, bottleneck detection, label-based phase tracking | Planned | `issues`, `resource_label_events`, `milestones` |
+| 4 | **Merge requests** — list, status, review state | Planned | `merge_requests` |
+| 5 | **Release notes** — generate from milestone + issues + MR data | Planned | `milestones`, `issues`, `merge_requests` |
+| 6 | **Pipelines** — status, failure tracking | Future | `pipelines`, `jobs` |
 
-- Provide reliable visibility into open and aging work items.
-- Highlight flow inefficiencies and probable bottlenecks.
-- Support release planning, release tracking, and release documentation generation.
-- Keep orchestration logic portable so additional integration providers can be added later.
+Each new capability follows the package structure in `code-guidance.md` and reuses shared GitLab infrastructure from `context-map.md` → "Shared Infrastructure".
 
-## Functional Scope
-
-### Current and Near-Term Capabilities
-
-- Return open work items to clients.
-- Calculate aging metrics and identify oldest work items.
-- Support age-based labeling recommendations or automation.
-- Generate flow insights and bottleneck indicators.
-- Build release notes from work items included in a release cycle.
-- Support release planning and progress updates.
-- Generate release documentation from release-cycle and work-item data.
-
-### Core Business Concepts
-
-- **Work item (MVP)**: GitLab issue.
-- **Delivery cycle item (MVP)**: GitLab milestone.
-- **Workflow state source (MVP)**: GitLab status labels.
-- **Default high-level phases**: planning, development, done.
-
-These choices are MVP defaults, not hard platform limits.
-
-## Product Constraints and Principles
+## Product Constraints
 
 - The orchestration application is the source of business truth.
-- The MCP server must stay thin and must not re-implement business orchestration.
-- Domain and orchestration must remain provider-agnostic over time.
-- Security, validation, error sanitization, and boundary mapping rules are mandatory.
-
-For non-negotiable architecture rules, see `documentation/constitution.md`.
-
-## Guidance for Product Manager Agent
-
-When creating a user story in `artifacts/user-stories/<feature-name>.story.md`:
-
-- Start from business outcome first, not implementation shape.
-- State the actor, problem, and measurable value clearly.
-- Write explicit acceptance criteria with observable outcomes.
-- Separate in-scope and out-of-scope behavior to avoid scope drift.
-- Flag assumptions and open questions instead of guessing.
-- Preserve integration-agnostic product intent even when GitLab-specific details are used for MVP examples.
-
-## Recommended User Story Quality Bar
-
-- Business goal is specific and tied to delivery-flow improvement.
-- Acceptance criteria are testable and unambiguous.
-- Success path and key validation/error outcomes are both covered.
-- Story language is understandable by both technical and non-technical stakeholders.
+- The MCP server must not re-implement business orchestration.
+- All other architectural constraints live in `constitution.md`.
 
 ## Related Documentation
 
-- `README.md` for run and module basics.
-- `documentation/constitution.md` for hard architecture and quality rules.
-- Official GitLab REST API docs for GitLab endpoint, parameter, and authentication details:
-  - `https://docs.gitlab.com/api/api_resources/`
-  - `https://docs.gitlab.com/api/rest/`
+- Architecture rules: `documentation/constitution.md`
+- Structural decisions: `documentation/architecture-guidance.md`
+- Coding standards: `documentation/code-guidance.md`
+- Codebase map: `documentation/context-map.md`

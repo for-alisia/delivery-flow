@@ -22,8 +22,8 @@ class IssuePageTest {
     @Test
     @DisplayName("defensively copies and detaches from mutable input list")
     void defensivelyCopiesAndDetachesFromMutableInputList() {
-        final List<Issue> items = new ArrayList<>();
-        items.add(new Issue(1L, 1L, "A", null, "opened", List.of("bug"), null, null, null));
+        final List<IssueSummary> items = new ArrayList<>();
+        items.add(new IssueSummary(1L, 1L, "A", null, "opened", List.of("bug"), null, null, null, null));
 
         final IssuePage page = new IssuePage(items, 1, 1);
         items.clear();

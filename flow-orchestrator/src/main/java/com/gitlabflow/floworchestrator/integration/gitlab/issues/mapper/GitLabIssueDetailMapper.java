@@ -1,9 +1,9 @@
 package com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper;
 
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabSingleIssueResponse;
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.AssigneeDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail.MilestoneDetail;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 public class GitLabIssueDetailMapper {
 
     public IssueDetail toIssueDetail(final GitLabSingleIssueResponse response) {
-        final List<AssigneeDetail> assignees = response.assignees().stream()
-                .map(a -> AssigneeDetail.builder()
+        final List<User> assignees = response.assignees().stream()
+                .map(a -> User.builder()
                         .id(a.id())
                         .username(a.username())
                         .name(a.name())
@@ -22,9 +22,9 @@ public class GitLabIssueDetailMapper {
                 .toList();
 
         final var rawMilestone = response.milestone();
-        final MilestoneDetail milestone = rawMilestone == null
+        final Milestone milestone = rawMilestone == null
                 ? null
-                : MilestoneDetail.builder()
+                : Milestone.builder()
                         .id(rawMilestone.id())
                         .milestoneId(rawMilestone.iid())
                         .title(rawMilestone.title())

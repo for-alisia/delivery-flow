@@ -3,11 +3,11 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest;
 import com.gitlabflow.floworchestrator.orchestration.issues.IssuesService;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
-import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDto;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueSummaryDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
@@ -52,15 +52,15 @@ public class IssuesController {
     }
 
     @PostMapping
-    public ResponseEntity<IssueDto> createIssue(@RequestBody @Valid final CreateIssueRequest request) {
+    public ResponseEntity<IssueSummaryDto> createIssue(@RequestBody @Valid final CreateIssueRequest request) {
         final List<String> labels = request.labels();
         log.info(
                 "Create issue request received descriptionPresent={} labelCount={}",
                 request.description() != null,
                 labels == null ? 0 : labels.size());
         final CreateIssueInput input = issuesRequestMapper.toCreateIssueInput(request);
-        final Issue issue = issuesService.createIssue(input);
-        final IssueDto response = issuesResponseMapper.toIssueDto(issue);
+        final IssueSummary issue = issuesService.createIssue(input);
+        final IssueSummaryDto response = issuesResponseMapper.toIssueSummaryDto(issue);
         log.info("Create issue response returned id={}", response.id());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

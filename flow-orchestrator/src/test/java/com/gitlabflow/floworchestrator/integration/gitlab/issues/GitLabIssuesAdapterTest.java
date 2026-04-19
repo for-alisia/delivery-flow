@@ -17,16 +17,17 @@ import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssuesMapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabLabelEventMapper;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeField;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.ChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 class GitLabIssuesAdapterTest {
@@ -47,7 +49,7 @@ class GitLabIssuesAdapterTest {
     private static final String GET_SINGLE_API_URL = API_URL + "/42";
     private static final String GET_LABEL_EVENTS_API_URL = GET_SINGLE_API_URL + "/resource_label_events";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
-    private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null);
+    private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null, List.of());
     private static final CreateIssueInput CREATE_INPUT =
             new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
 
@@ -71,7 +73,8 @@ class GitLabIssuesAdapterTest {
     void setUp() {
         final RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        final GitLabProjectLocator locator = new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted"));
+        final GitLabProjectLocator locator =
+                new GitLabProjectLocator(new GitLabProperties(PROJECT_URL, "redacted", 5, 30));
         adapter = createAdapter(builder, locator);
     }
 
@@ -87,7 +90,7 @@ class GitLabIssuesAdapterTest {
                         .contentType(APPLICATION_JSON)
                         .body("[]"));
 
-        final var result = adapter.getIssues(new IssueQuery(2, 20, IssueState.OPENED, "bug", "jane", "M1"));
+        final var result = adapter.getIssues(new IssueQuery(2, 20, IssueState.OPENED, "bug", "jane", "M1", List.of()));
 
         assertThat(result.count()).isZero();
         assertThat(result.page()).isEqualTo(2);
@@ -123,6 +126,19 @@ class GitLabIssuesAdapterTest {
     void mapsTransportFailuresToGenericIntegrationError() {
         server.expect(requestTo(API_URL + "?page=1&per_page=40")).andRespond(request -> {
             throw new IOException("connection reset");
+        });
+
+        assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+    }
+
+    @Test
+    @DisplayName("maps timeout transport failures to generic integration error")
+    void mapsTimeoutTransportFailuresToGenericIntegrationError() {
+        server.expect(requestTo(API_URL + "?page=1&per_page=40")).andRespond(request -> {
+            throw new ResourceAccessException("read timed out", new SocketTimeoutException("Read timed out"));
         });
 
         assertThatThrownBy(() -> adapter.getIssues(DEFAULT_QUERY))
@@ -208,7 +224,7 @@ class GitLabIssuesAdapterTest {
                                 }
                                 """));
 
-        final Issue issue = adapter.createIssue(CREATE_INPUT);
+        final IssueSummary issue = adapter.createIssue(CREATE_INPUT);
 
         assertThat(issue.id()).isEqualTo(700L);
         assertThat(issue.title()).isEqualTo("Deploy failure");
@@ -384,7 +400,7 @@ class GitLabIssuesAdapterTest {
                         ]
                         """));
 
-        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+        final List<ChangeSet<?>> result = adapter.getLabelEvents(42L);
 
         assertThat(result).singleElement().isInstanceOfSatisfying(LabelChangeSet.class, changeSet -> {
             assertThat(changeSet.changeType()).isEqualTo("add");
@@ -407,7 +423,7 @@ class GitLabIssuesAdapterTest {
                 .andRespond(
                         withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("[]"));
 
-        final List<ChangeSet> result = adapter.getLabelEvents(42L);
+        final List<ChangeSet<?>> result = adapter.getLabelEvents(42L);
 
         assertThat(result).isEmpty();
         server.verify();

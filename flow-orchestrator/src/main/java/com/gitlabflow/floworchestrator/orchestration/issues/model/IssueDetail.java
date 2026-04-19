@@ -1,5 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.model;
 
+import com.gitlabflow.floworchestrator.orchestration.common.model.User;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.Builder;
@@ -12,8 +14,8 @@ public record IssueDetail(
         @Nullable String description,
         String state,
         List<String> labels,
-        List<AssigneeDetail> assignees,
-        @Nullable MilestoneDetail milestone,
+        List<User> assignees,
+        @Nullable Milestone milestone,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         @Nullable OffsetDateTime closedAt) {
@@ -22,15 +24,4 @@ public record IssueDetail(
         labels = labels == null ? List.of() : List.copyOf(labels);
         assignees = assignees == null ? List.of() : List.copyOf(assignees);
     }
-
-    @Builder
-    public record AssigneeDetail(long id, String username, String name) {}
-
-    @Builder
-    public record MilestoneDetail(
-            long id,
-            long milestoneId,
-            String title,
-            String state,
-            @Nullable String dueDate) {}
 }

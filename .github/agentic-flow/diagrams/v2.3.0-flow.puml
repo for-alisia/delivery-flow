@@ -1,0 +1,61 @@
+@startuml
+title Agentic Flow v2.3.0 - Actual Run Flow (Run 4 — label-events-api)
+
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequenceMessageAlign center
+
+actor "Team Lead" as TL
+participant "Product Manager" as PM
+participant "Java Architect" as ARCH
+participant "Reviewer" as REV
+participant "Java Coder" as CODER
+
+note over TL,CODER #E2E8F0
+Green = passed gate
+Yellow = rejected / returned
+Red = red card
+end note
+
+group Planning Phase [14 min, 11% context]
+TL -> PM : Story request
+PM -[#22C55E]> TL : Story accepted\n(<1 sec, Haiku)
+TL -> ARCH : Create plan
+ARCH --> TL : Plan ready\n(3 slices, 6 min, Sonnet 4.6)
+TL -> REV : Phase 1 review\n(Sonnet 4.6)
+REV -[#22C55E]> TL : PASS\n(first attempt)
+end
+
+group Implementation Phase [1h 6min, 27% context]
+TL -> CODER : Batch 1 (slices 1-2)\n(Codex)
+CODER -[#22C55E]> TL : Batch 1 accepted\n(first clean handoff, 20 min)
+note right of CODER #D1FAE5
+First time Coder passed
+intermediate handoff cleanly
+in v2.3.0 history
+end note
+
+TL -> CODER : Batch 2 (slice 3)
+CODER -[#22C55E]> TL : Batch 2 accepted\n(17 min)
+end
+
+group Verification Phase [27% context]
+TL -> TL : final-check + karate\n(most context-hungry phase)
+end
+
+group Review Phase 2 [20 min, 38% context]
+TL -> REV : Phase 2 review\n(Sonnet 4.6)
+REV -[#F59E0B]> TL : FAIL\ncontext-map + report issues
+TL -> CODER : Fix documentation
+CODER --> TL : Doc fix applied\n(~5 min)
+TL -> REV : Phase 2 re-check
+REV -[#22C55E]> TL : PASS\n(scoped revalidation only)
+note right of REV #D1FAE5
+Sonnet 4.6 scoped down:
+only rechecked specific findings,
+not full checklist
+end note
+TL -[#22C55E]> TL : Final sign-off\n1h 20min, 38% context
+end
+
+@enduml

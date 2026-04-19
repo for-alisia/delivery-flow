@@ -1,0 +1,233 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "async-composer",
+  "createdAt": "2026-04-09T17:26:19.581Z",
+  "updatedAt": "2026-04-09T18:58:15.990Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-09T17:26:19.662Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/aasync-composer.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/async-composer.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-09T17:28:01.854Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-09T17:28:01.855Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/async-composer.plan.md",
+      "approved": true,
+      "approvedAt": "2026-04-09T17:34:27.729Z",
+      "approvedBy": "TL",
+      "lastVerifiedExistsAt": "2026-04-09T17:34:27.730Z"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PASS",
+      "reason": "All HIGH risks resolved. One new MEDIUM risk (risk-5) raised on changed joinFailFast contract section: CompletionException unwrapping must be explicit. Verdict PROCEED — advisory fix required before coder starts implementation.",
+      "updatedAt": "2026-04-09T17:46:36.114Z",
+      "updatedBy": "ArchitectureReviewer"
+    },
+    "codeReview": {
+      "status": "PASS",
+      "reason": "All findings resolved; reviewer pass confirmed and TL audit spot checks passed.",
+      "updatedAt": "2026-04-09T18:58:09.258Z",
+      "updatedBy": "TL"
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-09T18:45:51.175Z",
+      "updatedBy": "JavaCoder",
+      "command": "scripts/verify-quick.sh",
+      "reportPaths": []
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-09T18:50:29.550Z",
+      "updatedBy": "TL",
+      "command": "../scripts/final-check.sh",
+      "details": "BUILD SUCCESS",
+      "reportPaths": [
+        "flow-orchestrator/target/checkstyle-result.xml",
+        "flow-orchestrator/target/pmd.xml",
+        "flow-orchestrator/target/cpd.xml",
+        "flow-orchestrator/target/spotbugsXml.xml",
+        "flow-orchestrator/target/site/jacoco/jacoco.xml"
+      ]
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-09T18:51:07.653Z",
+      "updatedBy": "TL",
+      "command": "../scripts/karate-test.sh",
+      "details": "BUILD SUCCESS",
+      "reportPaths": [
+        "flow-orchestrator/target/karate-reports/karate-summary.html"
+      ]
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-09T17:26:19.581Z",
+    "completedAt": "2026-04-09T18:58:15.988Z",
+    "durationMinutes": 92
+  },
+  "batches": {
+    "current": null,
+    "total": 2,
+    "history": [
+      {
+        "batch": 1,
+        "slices": [
+          "Slice 1 - Shared Async Foundation And Issue-Detail Migration",
+          "Slice 2 - GitLab Timeout Wiring"
+        ],
+        "startedAt": "2026-04-09T17:50:41.591Z",
+        "completedAt": "2026-04-09T18:34:49.081Z",
+        "status": "complete",
+        "by": "TL"
+      },
+      {
+        "batch": 2,
+        "slices": [
+          "Code review finding 1 - broaden ArchUnit capability isolation rule"
+        ],
+        "startedAt": "2026-04-09T18:42:47.990Z",
+        "completedAt": "2026-04-09T18:51:07.729Z",
+        "status": "complete",
+        "by": "TL"
+      }
+    ]
+  },
+  "changes": {
+    "files": [
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/AsyncExecutionConfig.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/GitLabProperties.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabRestClientConfig.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/common/async/AsyncComposer.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/resources/application.yml",
+      "flow-orchestrator/src/test/architecture/java/com/gitlabflow/floworchestrator/architecture/FlowOrchestratorArchitectureTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabLabelEventsStubSupport.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabRestClientConfigIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabProjectLocatorTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabUriFactoryTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/common/async/AsyncComposerTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java"
+    ]
+  },
+  "architecturalRisks": {
+    "round": 3,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "HIGH",
+        "description": "joinFailFast method signature is underspecified in the Class Structure table. The table lists the method name but does not declare its return type or throws contract. The only signal that it throws on failure comes from test scenario descriptions ('rethrows the original runtime exception'), not from the class contract. If the coder implements joinFailFast as returning void-or-composite without throwing, IssuesService callers would reach the individual .join() calls on cancelled futures and receive CancellationException instead of the original IntegrationException, silently breaking exception propagation through the layer boundary.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T17:38:35.968Z",
+        "responseNote": "Specified AsyncComposer.joinFailFast as a void method that returns normally only on all-success and otherwise cancels siblings then rethrows the original unchecked failure or wraps checked causes in IllegalStateException.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T17:43:01.408Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T17:46:18.739Z"
+      },
+      {
+        "id": 2,
+        "severity": "MEDIUM",
+        "description": "IssuesServiceTest executor lifecycle is unspecified. The plan says 'construct IssuesService with a real AsyncComposer' but does not state how the ExecutorService is created or closed in the test. A virtual-thread executor created in @BeforeEach without shutdown in @AfterEach will leak daemon threads across tests. The plan should specify the construction pattern explicitly.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T17:38:42.718Z",
+        "responseNote": "Specified the IssuesServiceTest lifecycle explicitly: create a test-owned virtual-thread ExecutorService in @BeforeEach, pass it to AsyncComposer, and close it in @AfterEach to avoid leaked threads.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T17:43:01.761Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T17:46:18.824Z"
+      },
+      {
+        "id": 3,
+        "severity": "MEDIUM",
+        "description": "GitLabRestClientConfigIT scope is ambiguous. The plan describes it as proving 'the shared RestClient bean uses JdkClientHttpRequestFactory with the configured connect/read timeout values' but does not clarify whether the test makes a real network call or inspects the Spring bean directly. A wiring test must not require GitLab to be reachable. If the coder writes an IT that calls a GitLab endpoint to validate timeouts, the test will fail in CI without external access. The plan should explicitly state this is a bean-inspection test with no outbound network calls.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T17:38:51.065Z",
+        "responseNote": "Clarified GitLabRestClientConfigIT as a Spring-backed bean-inspection test with zero outbound network calls; it verifies the RestClient request factory type and configured timeout values directly.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T17:43:02.113Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T17:46:18.906Z"
+      },
+      {
+        "id": 4,
+        "severity": "LOW",
+        "description": "AsyncComposerTest cancellation assertion may be unreliable. The plan requires a test proving 'remaining tasks are canceled within a bounded time.' Virtual-thread-backed CompletableFutures respond to cancel(true) only if the Supplier checks Thread.interrupted(). A mock Supplier using Thread.sleep() or a tight loop without an interrupt check will not actually terminate before the assertion fires. The test must use a Supplier that cooperatively checks interruption — the plan does not specify this implementation constraint.",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T17:39:00.569Z",
+        "responseNote": "Specified that AsyncComposerTest must use a cooperatively interruptible supplier with latch coordination and Thread.currentThread().isInterrupted() polling for reliable bounded-time cancellation assertions.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T17:43:02.548Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T17:46:18.991Z"
+      },
+      {
+        "id": 5,
+        "severity": "MEDIUM",
+        "description": "joinFailFast contract does not specify CompletionException unwrapping. CompletableFuture wraps supplier exceptions in CompletionException before the future transitions to failed state. The plan states 'rethrows the original RuntimeException' but never says the implementation must call getCause() to unwrap CompletionException. A coder who iterates futures with anyOf or allOf and calls .join() without unwrapping will propagate CompletionException(cause=IntegrationException) instead of IntegrationException. Because the controller-layer error handler maps IntegrationException to 502, a naked CompletionException would escape the handler and produce a 500 for all integration failures — silently breaking the error contract. The test scenario name 'rethrows the original runtime exception' is the only hint; if the coder writes the assertion as assertThrows(RuntimeException.class, ...) the test passes even without unwrapping. The contract must explicitly state: 'on failure, unwrap CompletionException to obtain the cause, then rethrow or wrap'.",
+        "status": "RESOLVED",
+        "round": 2,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-09T17:46:29.388Z",
+        "responseNote": "Updated async-composer.plan.md to require joinFailFast to unwrap CompletionException via getCause() until a non-CompletionException root cause is reached before rethrow/wrap logic, and added exact-type test requirements so IntegrationException cannot regress to CompletionException.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-09T17:49:04.061Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-09T17:50:19.718Z"
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 2,
+    "findings": [
+      {
+        "id": 1,
+        "severity": "MEDIUM",
+        "description": "orchestration_common_should_not_depend_on_capability_packages ArchUnit rule lists only '..orchestration.issues..' as prohibited. When a second capability (e.g. orchestration.projects) is added, orchestration.common could accidentally import from it without ArchUnit catching it. The story AC requires the test to fail if any such dependency is later introduced — the current rule does not satisfy that for future capabilities. Suggest broadening to exclude all sub-packages of orchestration.common from depending on any sibling capability package.",
+        "file": "flow-orchestrator/src/test/architecture/java/com/gitlabflow/floworchestrator/architecture/FlowOrchestratorArchitectureTest.java",
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-09T18:41:14.988Z",
+        "responseNote": "Broadened orchestration.common ArchUnit dependency predicate to forbid dependencies on any orchestration package outside orchestration.common.",
+        "respondedBy": "JavaCoder",
+        "respondedAt": "2026-04-09T18:45:50.751Z",
+        "resolvedBy": "CodeReviewer",
+        "resolvedAt": "2026-04-09T18:56:45.383Z"
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 1,
+      "type": "note",
+      "by": "TL",
+      "reason": "Implementation paused pending resolution of open architecture risk #5 on CompletionException unwrapping despite PASS gate.",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-09T17:47:28.177Z"
+    }
+  ]
+}

@@ -4,6 +4,35 @@
 ### Default search request (no body)
 POST {{baseUrl}}/api/issues/search
 
+### Search request without audit (changeSets omitted)
+POST {{baseUrl}}/api/issues/search
+Content-Type: application/json
+
+{
+	"pagination": {
+		"page": 1,
+		"perPage": 20
+	},
+	"filters": {
+		"state": "opened"
+	}
+}
+
+### Search request with label audit (change.field is lowercase "label")
+POST {{baseUrl}}/api/issues/search
+Content-Type: application/json
+
+{
+	"pagination": {
+		"page": 1,
+		"perPage": 20
+	},
+	"filters": {
+		"state": "opened",
+		"audit": ["label"]
+	}
+}
+
 ### Filtered search request
 POST {{baseUrl}}/api/issues/search
 Content-Type: application/json
@@ -28,6 +57,27 @@ Content-Type: application/json
 {
 	"filters": {
 		"labels": ["bug", "infra"]
+	}
+}
+
+### Invalid search request (unsupported audit value)
+POST {{baseUrl}}/api/issues/search
+Content-Type: application/json
+
+{
+	"filters": {
+		"audit": ["milestone"]
+	}
+}
+
+### Invalid search request (perPage above max)
+POST {{baseUrl}}/api/issues/search
+Content-Type: application/json
+
+{
+	"pagination": {
+		"page": 1,
+		"perPage": 41
 	}
 }
 
@@ -60,7 +110,7 @@ Content-Type: application/json
 ### Delete issue request (existing issue)
 DELETE {{baseUrl}}/api/issues/26
 
-### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field=LABEL], changedAt)
+### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field=LABEL (uppercase enum)], changedAt — distinct from search which emits change.field='label' lowercase)
 GET {{baseUrl}}/api/issues/{{issueId}}
 
 

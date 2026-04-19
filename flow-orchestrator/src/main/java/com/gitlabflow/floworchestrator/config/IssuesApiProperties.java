@@ -10,11 +10,18 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.issues-api")
 public record IssuesApiProperties(
-        @Min(1) int defaultPageSize, @Min(1) @Max(100) int maxPageSize) {
+        @Min(1) int defaultPageSize, @Min(1) @Max(40) int maxPageSize) {
+
+    private static final int DEFAULT_PAGE_SIZE_CONTRACT = 20;
+    private static final int MAX_PAGE_SIZE_CONTRACT = 40;
+
     public IssuesApiProperties {
-        if (defaultPageSize > maxPageSize) {
-            throw new IllegalArgumentException(
-                    "app.issues-api.default-page-size must be <= app.issues-api.max-page-size");
+        if (defaultPageSize != DEFAULT_PAGE_SIZE_CONTRACT) {
+            throw new IllegalArgumentException("app.issues-api.default-page-size must be 20");
+        }
+
+        if (maxPageSize != MAX_PAGE_SIZE_CONTRACT) {
+            throw new IllegalArgumentException("app.issues-api.max-page-size must be 40");
         }
     }
 }

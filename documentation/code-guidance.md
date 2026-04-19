@@ -11,6 +11,8 @@ Every non-trivial change must be validated against these rules in both:
 Each applicable gate must be marked `PASS`, `FAIL`, `BLOCKED`, or `Approved deviation`.
 A gate is not passed by assertion alone. It needs code evidence, test evidence, or executed-command evidence.
 
+For structural and architectural decisions (model hierarchy, shared infrastructure extraction, composition patterns, performance), see [architecture-guidance.md](architecture-guidance.md).
+
 ## Code Standards Gate
 
 - Fields are `final` unless mutation is required.
@@ -26,8 +28,10 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - Lombok is used only when it reduces boilerplate without hiding important behavior.
 - `@RequiredArgsConstructor` is required for constructor injection when Lombok is on the classpath. Do not write explicit constructors for injection-only classes.
 - `@Slf4j` is used for structured logging when Lombok is used.
-- Records and classes should use `@Builder` unless there are clear limitations to use it.
+- All records and classes use `@Builder`. No exceptions unless Lombok cannot generate a valid builder (e.g., conflicting compact constructor behavior).
 - Prefer builder-style object construction over direct `new Class(...)`.
+- Do not mix manual `throw ValidationException` with annotation-based validation (`@Positive`, `@NotBlank`) for the same category of constraint within a controller. Pick one approach.
+- Do not use `Objects.requireNonNull` on compile-time constants, framework-provided non-null values, or methods that structurally cannot return null.
 
 ## Naming And Suffix Conventions Gate
 
@@ -68,11 +72,26 @@ A gate is not passed by assertion alone. It needs code evidence, test evidence, 
 - For issue flows, prefer `Issue` as the orchestration output model for both search and create operations.
 - Use neutral input names like `<Action><Entity>Input` when there is no command bus or CQRS infrastructure.
 
+## Interface Contract Gate
+
+- Every interface with multiple implementations must declare all common accessor methods. No empty marker interfaces.
+- Type discriminator fields use an enum, not a magic string.
+- When the domain model defines a sealed interface hierarchy, the corresponding DTO hierarchy mirrors the same contract shape.
+
+## Logging Gate
+
+- Orchestration service methods: log operation start with business context, log operation completion with result summary.
+- Adapter methods: log before the external call (intent) and after (outcome).
+- Log filter and parameter values directly when not sensitive. Do not log booleans indicating presence when the actual value is diagnostic.
+- Composition methods that call multiple sources: log a single completion line with combined result summary and duration.
+
 ## DTO Consistency Gate
 
 - Keep one primary response DTO per entity when endpoint responses represent the same entity shape.
 - Search/list wrappers may still use operation-specific container DTOs (for example `SearchIssuesResponse`) while item payloads use a single entity DTO (for example `IssueDto`).
 - Create endpoints should return the same entity DTO used by retrieval endpoints unless a documented contract requirement demands a different shape.
+- DTOs may add transport wrappers (pagination, response envelopes) that have no domain equivalent.
+- DTOs must not invent business fields absent from the domain model or carry a weaker contract than the corresponding domain interface.
 
 ## Null Handling Gate
 
@@ -118,7 +137,7 @@ Reviewer must treat violations as `FAIL` unless an approved deviation is recorde
 
 ## Local Static Analysis Gate
 
-For `flow-orchestrator`, the local static-analysis gate is required before Reviewer Phase 2 can pass.
+For `flow-orchestrator`, the local static-analysis gate is required before code review can pass.
 
 See `.github/instructions/local-quality-rules.instructions.md` for the shared verification workflow, command order, and required report outputs.
 
@@ -137,6 +156,6 @@ See `.github/instructions/local-quality-rules.instructions.md` for the shared ve
 - The required verification workflow passes and produces current local quality reports.
 - The repository-supported startup command starts without errors and logs expected startup messages.
 - If an API is added or changed, the corresponding `<api-name>.http` file is created or updated in `/flow-orchestrator/http`.
-- API-facing changes are smoke-tested with `curl` by verifying the API returns expected responses for valid and invalid requests.
-- If no API contract was changed directly, the existing API endpoints most likely affected by the change were identified and verified with `curl`, with commands and observed responses recorded.
+- API-facing changes are smoke-tested via `scripts/karate-test.sh` by verifying the API returns expected responses for valid and invalid requests.
+- If no API contract was changed directly, the existing API endpoints most likely affected by the change were verified via Karate smoke tests.
 - Team Lead sign-off is blocked while Reviewer reports any applicable `FAIL` or `BLOCKED` item.

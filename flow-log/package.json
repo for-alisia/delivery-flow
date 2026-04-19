@@ -1,0 +1,16 @@
+{
+  "name": "flow-log",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal workflow state CLI for feature delivery logs",
+  "bin": {
+    "flow-log": "./flow-log.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

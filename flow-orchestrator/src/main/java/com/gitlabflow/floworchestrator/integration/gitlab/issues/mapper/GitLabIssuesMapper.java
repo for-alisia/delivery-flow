@@ -3,7 +3,7 @@ package com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabCreateIssueRequest;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
-import com.gitlabflow.floworchestrator.orchestration.issues.model.Issue;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class GitLabIssuesMapper {
 
-    public Issue toIssue(final GitLabIssueResponse issueResponse) {
+    public IssueSummary toIssue(final GitLabIssueResponse issueResponse) {
         final String assignee = mapAssignee(issueResponse);
         final String milestone = Optional.ofNullable(issueResponse.milestone())
                 .map(GitLabIssueResponse.GitLabMilestone::title)
@@ -33,7 +33,7 @@ public class GitLabIssuesMapper {
                 milestone != null,
                 parent != null);
 
-        return Issue.builder()
+        return IssueSummary.builder()
                 .id(issueResponse.id())
                 .issueId(issueResponse.iid())
                 .title(issueResponse.title())

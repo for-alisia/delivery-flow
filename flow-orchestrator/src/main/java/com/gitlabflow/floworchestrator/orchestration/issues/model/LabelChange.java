@@ -1,5 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.model;
 
+import com.gitlabflow.floworchestrator.orchestration.common.model.Change;
+import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
 import lombok.Builder;
 
 @Builder

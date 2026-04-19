@@ -31,7 +31,7 @@ If one issue required multiple actions, list them in the same cell as separate b
 | | | |
 | | | |
 
-## Flow Setup Diagram
+## Flow Setup
 
 Use this section to show the intended flow design for the version captured in this log.
 The goal is to make the orchestration path and quality gates visible before the run notes start.
@@ -49,10 +49,10 @@ Suggested content:
 │                        INTENDED FLOW                                 │
 │                                                                      │
 │   1:TL ──────► 2:PM ──────► 3:TL ──────► 4:ARCH ──────► 5:TL      │
-│    chkpt+req    story.md     story.md      plan.md       story+plan  │
+│    create+lock   story.md     register     plan.json      register   │
 │                                                                      │
-│   5:TL ──────────────────────────► 6:REV1 ──────────────► 7:TL     │
-│    story + plan + chkpt             review.json (Phase 1)            │
+│   5:TL ──► 6:ARCH-REV ◄──► 4:ARCH (loop) ──► 7:TL                 │
+│    increment     risks (UNCLASSIFIED)          arch-gate PASS        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,53 +62,72 @@ Suggested content:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                                                                      │
 │   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
-│    approved slices               report.json                         │
+│    start-batch (max 2 slices)   set-check + add-change               │
 │                                                                      │
-│   9:TL ──────────────────────► 10:REV2 ─────────────────► 11:TL    │
-│    brief + impl evidence          review.json              sign-off  │
+│   9:TL ──► 10:CODE-REV ◄──► 8:CODER (loop) ──► 11:TL              │
+│    increment   findings         code-review-gate PASS    sign-off    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Flow Step Clarification
 
-- **1:TL** — Requirement lock, writes checkpoint; hands off `chkpt + locked request` to PM
+- **1:TL** — Requirement lock; `create` + `lock-requirements` with request source path
 - **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria
-- **3:TL** — Story gate; hands off `story.md` to Architect
-- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.md`; plan must include slices, payloads, validation boundaries, logging, and tests
-- **5:TL** — Plan gate; hands off `story + plan + chkpt` to Reviewer Phase 1
-- **6:REV1** — Produces `artifacts/review-reports/<feature>.review.json`; no `FAIL` or `BLOCKED` items allowed
-- **7:TL** — Phase 1 gate; hands off approved slices to Coder
-- **8:CODER** — Produces `artifacts/implementation-reports/<feature>.report.json`; evidence must be complete and recheckable
-- **9:TL** — Coder gate, independent verification; hands off `brief + impl evidence` to Reviewer Phase 2
-- **10:REV2** — Produces `artifacts/review-reports/<feature>.review.json`; no unresolved verification gaps
-- **11:TL** — Final audit gate; produces `artifacts/implementation-signoffs/<feature>.signoff.json`
+- **3:TL** — Story gate; `register-artifact story` + `approve-artifact story`
+- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via v3 draft lifecycle; plan must include slices, payloads, validation boundaries, logging, and tests
+- **5:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
+- **6:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
+- **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slices to Coder
+- **8:CODER** — Implements slices; records checks via `set-check` and files via `add-change`; runs `coder-handoff-check.sh`
+- **9:TL** — Coder gate; independent `final-check.sh` + `karate-test.sh`; records checks; `increment-code-review-round` and invokes Code Reviewer
+- **10:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
+- **11:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
 
 ---
 
-## Run Notes (manually populated by user)
+## Runs
 
-Use this section as a chronological list of observations from the run.
+Each run is a separate delivery attempt within this version.
+Record one expandable section per run. Copy the run template below for each new run.
+Between runs, apply fixes and document them in the "Fixes Applied After This Run" subsection.
+
+<!-- ────────────── RUN TEMPLATE (copy for each run) ────────────── -->
+
+<details>
+<summary><strong>Run N — YYYY-MM-DD — short label</strong></summary>
+
+### Run Configuration
+
+- **Feature:** feature-name or description
+- **Environment:** IDE / CLI
+- **Flow-log state:** `artifacts/flow-logs/<feature-name>.json` (if used)
+- **Models:**
+  - Team Lead: model-name
+  - Product Manager: model-name
+  - Architect: model-name
+  - Coder: model-name
+  - Reviewer: model-name
+
+### Run Notes
+
+Chronological observations from the run. Write freely — timestamps, context %, and key moments.
 
 - 
 - 
 - 
 
-## Post Run Checks (manually populated by user)
+### Post Run Checks
 
-Use short status markers such as `PASS`, `FAIL`, `PARTIAL`, `NOT VERIFIED`.
+- Application started without errors:
+- Tests are green:
+- Code-quality check passed:
+- API is verified:
+- Main story functionality is delivered:
+- Run took (time):
+- Run used context (%):
+- Run took premium requests (optional):
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Application has started without errors |  |  |
-| Tests are green |  |  |
-| Code-quality check passed |  |  |
-| API is verified |  |  |
-| Main story functionality is delivered |  |  |
-| Run took (time) |  |  |
-| Run used context (%) |  |  |
-| Run took premium requests (optional) |  |  |
-
-## Code Observations (manually populated by user)
+### Code Observations
 
 Capture code quality, structure, naming, readability, test quality, architecture, and maintainability observations.
 
@@ -116,17 +135,30 @@ Capture code quality, structure, naming, readability, test quality, architecture
 - 
 - 
 
-## Bugs Identified (manually populated by user)
+### Bugs Identified
 
-Describe confirmed bugs, missing behavior, requirement mismatches, or suspicious areas that still need verification.
+Describe confirmed bugs, missing behavior, requirement mismatches, or suspicious areas.
 
 - 
 - 
 - 
+
+### Fixes Applied After This Run
+
+List prompt, workflow, code, or tooling fixes applied before the next run. Leave empty if this is the last run.
+
+- 
+- 
+- 
+
+</details>
+
+<!-- ────────────── END RUN TEMPLATE ────────────── -->
 
 ## User Suggestions (manually populated by user)
 
 Use this section for improvement ideas for the next version of the flow, tooling, prompts, agent setup, verification, or coding standards.
+Applies to the version as a whole, not a single run.
 
 - 
 - 
@@ -233,10 +265,11 @@ Capture deviations such as:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        ACTUAL FLOW — vX.Y.Z                          │
 │                                                                      │
-│   1:TL ── 2:PM ── 3:TL ── 4:ARCH ── 5:TL ── 6:REV1 ── 7:TL        │
-│   chkpt   story   story    plan      story    review.j               │
+│   1:TL ── 2:PM ── 3:TL ── 4:ARCH ── 5:TL ── 6:ARCH-REV ── 7:TL   │
+│   create   story   register  plan    register  risks                 │
 │                                                                      │
-│  (annotate retries inline, e.g.: 2:PM×2 if PM was re-invoked)       │
+│  (annotate retries inline, e.g.: 4:ARCH×2 if Architect was          │
+│   re-invoked after architecture review risks)                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -245,11 +278,11 @@ Capture deviations such as:
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                                                                          │
-│   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✗─ 8:CODER×4 ─✓─ 9:TL     │
-│   <reason>      <reason>        <reason>        report.json              │
+│   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✓─ 9:TL                    │
+│   <reason>      <reason>        set-check+add-change                     │
 │                                                                          │
-│   9:TL ── 10:REV2×1 ─✗─ 10:REV2×2 ─✗─  BLOCKED / DONE               │
-│   brief    <reason>      <reason>                                        │
+│   9:TL ── 10:CODE-REV×1 ─✗─ 10:CODE-REV×2 ─✓─  11:TL / BLOCKED      │
+│   final-check  <reason>          findings resolved    sign-off           │
 │                                                                          │
 │  CTX   ████  ██  ████  ██  ███  ██  ████████████  ██  ▓▓▓▓  ░░░░      │
 │                                            ↑                  ↑         │
@@ -260,9 +293,9 @@ Capture deviations such as:
 ##### Actual Flow Deviations
 
 Describe what deviated from the intended flow and the cost of each deviation:
-- **Planning deviations** (PM retries, Architect re-invocations, Phase 1 rejections):
+- **Planning deviations** (PM retries, Architect re-invocations, architecture review rounds):
 - **Coder loops** (count, root cause per loop, false positives):
-- **Reviewer reruns** (count, root cause, context state at time of failure):
+- **Code Reviewer reruns** (count, root cause, context state at time of failure):
 - **Biggest single cost or quality impact:**
 
 ### 4. Cost And Context Efficiency
