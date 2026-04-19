@@ -94,7 +94,8 @@ export function createCheckEntry() {
     updatedBy: null,
     command: null,
     details: null,
-    reportPaths: []
+    reportPaths: [],
+    sourceFingerprint: null
   };
 }
 

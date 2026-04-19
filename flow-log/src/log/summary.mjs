@@ -1,6 +1,6 @@
 import { artifactExists } from "./artifacts.mjs";
 import { summarizeBatches } from "./batches.mjs";
-import { summarizeChecks } from "./checks.mjs";
+import { computeSourceFingerprint, isCheckStale, summarizeChecks } from "./checks.mjs";
 import { summarizeEventCounts } from "./events.mjs";
 import { buildCodeReviewGate, summarizeFindings } from "./findings.mjs";
 import {
@@ -40,6 +40,7 @@ export function buildSummary(state, cwd, statePath) {
 export function buildStatus(state, cwd, statePath) {
   const readiness = buildSignoffReadiness(state, cwd);
   const gate = buildArchitectureGate(state);
+  const currentFingerprint = computeSourceFingerprint(cwd);
 
   return {
     feature: state.feature,
@@ -55,8 +56,12 @@ export function buildStatus(state, cwd, statePath) {
     codeReview: state.reviews.codeReview.status,
     codeReviewGate: buildCodeReviewGate(state).gate,
     codeReviewRound: state.codeFindings?.round ?? 0,
+    verifyQuick: state.checks.verifyQuick.status,
+    verifyQuickStale: isCheckStale(state.checks.verifyQuick, currentFingerprint),
     finalCheck: state.checks.finalCheck.status,
+    finalCheckStale: isCheckStale(state.checks.finalCheck, currentFingerprint),
     karate: state.checks.karate.status,
+    karateStale: isCheckStale(state.checks.karate, currentFingerprint),
     currentBatch: state.batches?.current?.batch ?? null,
     totalBatches: state.batches?.total ?? 0,
     readyForSignoff: readiness.ready,

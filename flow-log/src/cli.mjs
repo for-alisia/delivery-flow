@@ -10,15 +10,12 @@ export function runCli(argv, io) {
     const result = dispatch(parsed, io.cwd);
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
-    io.stderr.write(
-      `${JSON.stringify(
-        {
-          error: error.message
-        },
-        null,
-        2
-      )}\n`
-    );
+    const hint = resolveErrorHint(error.message);
+    const payload = { error: error.message };
+    if (hint) {
+      payload.hint = hint;
+    }
+    io.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);
     process.exitCode = 1;
   }
 }
@@ -54,4 +51,26 @@ function helpResult() {
       ...PLAN_COMMAND_HELP
     ]
   };
+}
+
+function resolveErrorHint(message) {
+  if (message.includes("repository root")) {
+    return "Change to the repository root before running flow-log.";
+  }
+  if (message.startsWith("State file does not exist")) {
+    return 'Did you run `create --feature <name>` first?';
+  }
+  if (message.startsWith("Feature mismatch")) {
+    return "Check the --feature flag matches the feature name in the state file.";
+  }
+  if (message.includes("Unexpected token") || message.includes("JSON")) {
+    return "State file may be corrupted. Check file contents at the path shown.";
+  }
+  if (message.startsWith("Unknown command")) {
+    return "Run `node flow-log/flow-log.mjs help` for available commands.";
+  }
+  if (message.startsWith("Missing required flag")) {
+    return "Run `node flow-log/flow-log.mjs help` for command syntax.";
+  }
+  return undefined;
 }

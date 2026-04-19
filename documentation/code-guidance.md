@@ -72,6 +72,13 @@ For structural and architectural decisions (model hierarchy, shared infrastructu
 - For issue flows, prefer `Issue` as the orchestration output model for both search and create operations.
 - Use neutral input names like `<Action><Entity>Input` when there is no command bus or CQRS infrastructure.
 
+## Model Structure Gate
+
+- DTOs in the same capability must not duplicate more than 5 identical fields. Extract common fields to a shared record and use composition or a shared base type.
+- Models used by multiple capabilities belong in `orchestration/common/models/`, not in a single capability package.
+- When adding a field to a base concept (Issue, Milestone), verify all transport DTOs that mirror it are updated — or better, share the common type.
+- When a plan introduces a transport DTO field that maps from an enum, specify the exact wire value. The Coder implements the wire contract as specified (e.g., `label` not `LABEL`).
+
 ## Interface Contract Gate
 
 - Every interface with multiple implementations must declare all common accessor methods. No empty marker interfaces.

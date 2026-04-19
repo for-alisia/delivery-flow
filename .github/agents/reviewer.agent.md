@@ -72,7 +72,8 @@ Validate evidence before reviewing code quality.
 
 - Query `flow-log summary` for check statuses and events.
 - Confirm that `finalCheck` and `karate` checks are recorded as `PASS` in flow-log.
-- If `finalCheck` status is `NOT_RUN` or suspect, re-run `scripts/final-check.sh` and record the result.
+- Check `flow-log status` for `*Stale` fields — if `finalCheckStale` or `karateStale` is `true`, the source changed after the check passed. Mark the stale check as suspect.
+- If `finalCheck` status is `NOT_RUN` or suspect (including stale), re-run via `node flow-log/flow-log.mjs run-check --feature <feature-name> --name finalCheck --by CodeReviewer`.
 - Never re-run startup or Karate tests.
 - If startup or Karate evidence is missing (check status is `NOT_RUN`), mark `BLOCKED`.
 
@@ -121,6 +122,10 @@ Focus re-review on OPEN and REOPENED findings. Do not re-scan resolved items. Ne
 - independent port calls in orchestration services execute in parallel unless a documented data dependency requires sequential
 - logging follows start/completion pattern in services and before/after pattern in adapters
 - shared infrastructure is reused, not duplicated across capabilities
+- **DTO field duplication** — check for field overlap across DTO types in the same capability. If two DTOs share more than 5 identical fields, flag for extraction to a shared base record or composition type
+- **manual builder-copy anti-pattern** — flag methods that copy every field of a record/DTO into a new builder just to add or change one field. These break silently when fields are added. Prefer `toBuilder()` or wither patterns
+- **idiomatic collection patterns** — flag `IntStream.range(0, list.size()).mapToObj(i -> list.get(i)...)` when a simpler stream, `zip`, or indexed loop would be clearer
+- **null-safety in mapping** — flag mapping code that passes potentially null values without null-checks or `Optional` wrappers when the target field is non-nullable
 
 Every material finding must reference file and line.
 Mark `FAIL` when a finding materially affects maintainability or correctness.

@@ -37,7 +37,9 @@ Do not write production code. You write Karate `.feature` files directly when th
 - Define required verification and testing levels so coder and reviewer do not guess.
 - Include documentation updates when endpoint behavior changes, including `.http` examples.
 - Cover success path, edge cases, failure paths, configuration concerns, and integration risks.
-- Keep the plan concise: target <= 200 lines, excluding payload examples.
+- Keep the plan compact but complete. Never sacrifice clarity or required detail for size. Every decision that affects Coder behavior must be explicit. Cut filler, repeated rationale, and verbose examples — but do not omit field definitions, validation rules, or wire-format specs. For the v3 JSON format, typical features land at 400-800 lines; exceeding 1000 lines signals over-scoping or unnecessary existing-model re-listing.
+- When a plan introduces a transport DTO field that maps from an enum or domain type, specify the exact wire value (e.g., `"label"` not `"LABEL"`). The Coder implements the wire contract as specified — ambiguity here causes red cards.
+- For existing models that are reused unchanged, reference them by `qualifiedName` with `"status": "existing"` and list only the methods or fields the Coder needs to call. Do not re-list all fields of unchanged models — it inflates the plan without adding implementation value.
 - Use official GitLab docs for GitLab API assumptions.
 - Record assumptions explicitly when external behavior cannot be verified.
 
@@ -80,7 +82,7 @@ Coder does not write or modify Karate tests.
 5. Read only the source files in the packages identified in step 3. Do not read files in unrelated packages.
 6. If the feature involves a GitLab API, verify endpoint details with Context7 or official docs.
 7. Choose the smallest clear structure that fits existing codebase patterns.
-8. Write the plan. Do not exceed 200 lines excluding payload examples.
+8. Write the plan. Keep it compact — cut filler, but preserve all required detail. Reference unchanged existing models minimally.
 9. Register the plan structure using `flow-log` commands (see **Plan Structure Registration** below).
 
 ## Plan Structure Registration

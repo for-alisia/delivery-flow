@@ -17,6 +17,28 @@ description: "Local verification commands, execution order, expected reports, an
 
 Prefer these scripts over raw Maven commands. Use raw `mvn` only for focused debugging.
 
+## Agent Verification Via flow-log
+
+Agents must use `flow-log run-check` instead of running scripts directly. This executes the script and records the result in one atomic step:
+
+```bash
+node flow-log/flow-log.mjs run-check --feature <name> --name verifyQuick --by <agent>
+node flow-log/flow-log.mjs run-check --feature <name> --name finalCheck --by <agent>
+node flow-log/flow-log.mjs run-check --feature <name> --name karate --by <agent>
+```
+
+Or run all three in sequence (stops on first failure):
+
+```bash
+node flow-log/flow-log.mjs verify-all --feature <name> --by <agent>
+```
+
+`run-check` maps each check name to the correct script automatically. On failure, the JSON output includes `outputTail` (last 80 lines) for diagnosis. Do not run scripts separately and then call `set-check` — that pattern is error-prone and deprecated for agent use.
+
+### Source Staleness Detection
+
+`run-check` and `verify-all` record a source fingerprint when a check passes. The `status` command exposes `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`) — these are `true` when source files changed after the check last passed. Agents should check staleness before trusting prior PASS results.
+
 ## Evidence Recording
 
 - Record the exact command, observed result, and generated report paths.

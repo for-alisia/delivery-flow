@@ -70,12 +70,15 @@ If a framework or external API behavior is uncertain, verify it with official do
 
 Follow `.github/instructions/local-quality-rules.instructions.md` for command choice and evidence recording.
 
-Run and record these checks:
+Run and record all checks via flow-log (from repo root):
 
-1. `scripts/verify-quick.sh`
-2. `scripts/final-check.sh`
-3. Run `scripts/karate-test.sh`
-   - Prefer the script over manual startup. It reuses a healthy local app when available or starts one automatically for local `BASE_URL`s.
+```bash
+node flow-log/flow-log.mjs verify-all --feature <feature-name> --by Refactorer
+```
+
+Use the review slug as `<feature-name>` (e.g., `v2.4.0-refactor`). If no flow-log state file exists yet, create one first: `node flow-log/flow-log.mjs create --feature <feature-name>`.
+
+This runs `verifyQuick` → `finalCheck` → `karate` in sequence, stopping on first failure.
 
 Minimum API runtime verification expectation:
 
@@ -121,8 +124,7 @@ Do not finish until all of the following are true, or explicitly marked `BLOCKED
 - implemented refactoring is aligned with the code review and current code reality
 - constitution and code-guidance gates are satisfied
 - tests were updated where needed
-- `scripts/verify-quick.sh` passed
-- `scripts/final-check.sh` passed
+- `verify-all` passed (verifyQuick + finalCheck + karate)
 - main affected API endpoints were smoke-tested and returned expected responses
 
 ## Final Response Format
