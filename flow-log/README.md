@@ -38,6 +38,13 @@ node flow-log/flow-log.mjs register-artifact plan --feature my-feature --path ar
 node flow-log/flow-log.mjs approve-artifact plan --feature my-feature --by TL
 ```
 
+Or use the convenience shortcut that combines `init-plan` + `plan-create-draft`:
+
+```bash
+node flow-log/flow-log.mjs plan-init-draft --feature my-feature
+# edit draft, then validate and accept as above
+```
+
 ### 4) Reviews, Checks, Queries
 
 ```bash
@@ -78,7 +85,7 @@ node flow-log/flow-log.mjs run-check --feature my-feature --name verifyQuick --c
 node flow-log/flow-log.mjs run-check --feature my-feature --name karate --timeout 600000
 ```
 
-**Output:** Structured JSON with `ok`, `status` (PASS/FAIL), `exitCode`, `outputTail` (last 80 lines), `durationMs`, `timedOut`, `sourceFingerprint` (16-char hex hash on PASS, `null` on FAIL).
+**Output:** Structured JSON with `ok`, `status` (PASS/FAIL), `exitCode`, `outputTail` (last 5 lines on PASS, last 80 lines on FAIL), `durationMs`, `timedOut`, `sourceFingerprint` (16-char hex hash on PASS, `null` on FAIL).
 
 **Default script mapping:**
 | Check name | Script |
@@ -100,6 +107,20 @@ node flow-log/flow-log.mjs verify-all --feature my-feature --timeout 600000
 ```
 
 **Output:** Structured JSON with `ok`, `results` (array of `{check, status, durationMs}`). On failure, includes `stoppedAt` (check name) and `failedCheck` (full result with `outputTail`).
+
+### batch-verify
+
+Runs `verifyQuick` → `finalCheck` in sequence (no Karate), stopping on the first failure. Designed for mid-batch verification during coding — faster feedback without Karate startup overhead.
+
+```bash
+# Run compile + test checks only:
+node flow-log/flow-log.mjs batch-verify --feature my-feature --by JavaCoder
+
+# Custom timeout (applies to each check):
+node flow-log/flow-log.mjs batch-verify --feature my-feature --timeout 600000
+```
+
+**Output:** Same structure as `verify-all` but with 2 results max.
 
 ### Source Fingerprinting And Staleness
 

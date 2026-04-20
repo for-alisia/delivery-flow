@@ -15,10 +15,10 @@ export function validatePlanShape(plan) {
     return { valid: false, issues };
   }
 
-  validateContractExamples(plan.contractExamples, issues);
+  validateContractExamples(plan.contractExamples ?? [], issues);
   validateValidationRules(plan.validationRules, issues);
   validateDesignDecisions(plan.designDecisions, issues);
-  validateImplementationFlow(plan.implementationFlow, issues);
+  validateImplementationFlow(plan.implementationFlow ?? [], issues);
   validateModels(plan.models, issues);
   validateClasses(plan.classes, issues);
   validateSlices(plan.slices, issues);
@@ -46,8 +46,6 @@ function validateTopLevel(plan, issues) {
     "revision",
     "status",
     "scope",
-    "implementationFlow",
-    "contractExamples",
     "validationRules",
     "designDecisions",
     "models",
@@ -87,13 +85,18 @@ function validateTopLevel(plan, issues) {
     requireStringArray(plan.scope, "constraints", "scope", issues, false);
   }
 
-  requireArray(plan, "implementationFlow", "plan", issues);
-  requireArray(plan, "contractExamples", "plan", issues);
   requireArray(plan, "validationRules", "plan", issues);
   requireArray(plan, "designDecisions", "plan", issues);
   requireArray(plan, "models", "plan", issues);
   requireArray(plan, "classes", "plan", issues);
   requireArray(plan, "slices", "plan", issues);
+
+  if ("implementationFlow" in plan) {
+    requireArray(plan, "implementationFlow", "plan", issues);
+  }
+  if ("contractExamples" in plan) {
+    requireArray(plan, "contractExamples", "plan", issues);
+  }
 
   if (!isObject(plan.verification)) {
     issues.push("verification must be an object.");
@@ -166,6 +169,7 @@ function validateImplementationFlow(steps, issues) {
 
 function validateModels(models, issues) {
   const seen = new Set();
+  const EXISTING_FIELD_LIMIT = 3;
 
   models.forEach((model, index) => {
     const context = `models[${index}]`;
@@ -177,6 +181,24 @@ function validateModels(models, issues) {
     requireString(model, "purpose", context, issues, true);
     requireString(model, "placementJustification", context, issues, true);
     requireStringArray(model, "ownedBySlices", context, issues, true);
+
+    if (model.status === "existing") {
+      const fieldCount = Array.isArray(model.fields) ? model.fields.length : 0;
+      const methodCount = Array.isArray(model.methods) ? model.methods.length : 0;
+      if (fieldCount > EXISTING_FIELD_LIMIT) {
+        issues.push(
+          `${context} ('${model.qualifiedName}') has status 'existing' but lists ${fieldCount} fields. ` +
+          `Existing models should list only the fields the Coder needs to call (max ${EXISTING_FIELD_LIMIT}), or omit fields entirely. ` +
+          `Use 'usedMethods' for call-site references instead of re-listing the full model.`
+        );
+      }
+      if (methodCount > EXISTING_FIELD_LIMIT) {
+        issues.push(
+          `${context} ('${model.qualifiedName}') has status 'existing' but lists ${methodCount} methods. ` +
+          `Existing models should list only the methods the Coder needs to call (max ${EXISTING_FIELD_LIMIT}).`
+        );
+      }
+    }
   });
 }
 
@@ -294,7 +316,7 @@ function validateCrossReferences(plan, ids, issues) {
 function validateFlowOrderAndCoverage(plan, ids, issues) {
   const orders = [];
 
-  for (const step of plan.implementationFlow) {
+  for (const step of plan.implementationFlow ?? []) {
     if (Number.isInteger(step.order) && step.order > 0) {
       orders.push(step.order);
     }
@@ -320,8 +342,9 @@ function validateFlowOrderAndCoverage(plan, ids, issues) {
     }
   }
 
+  const hasFlow = Array.isArray(plan.implementationFlow) && plan.implementationFlow.length > 0;
   for (const slice of plan.slices) {
-    if ((slice.flowSteps ?? []).length === 0) {
+    if (hasFlow && (slice.flowSteps ?? []).length === 0) {
       issues.push(`Slice '${slice.id}' must reference at least one flow step.`);
     }
   }
@@ -329,7 +352,7 @@ function validateFlowOrderAndCoverage(plan, ids, issues) {
   const flowOwnershipCounts = new Map();
   const flowById = new Map();
 
-  for (const step of plan.implementationFlow) {
+  for (const step of plan.implementationFlow ?? []) {
     flowById.set(step.id, step);
   }
 

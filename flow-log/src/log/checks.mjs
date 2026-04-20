@@ -120,6 +120,9 @@ export function runAndRecordCheck(state, name, cwd, options = {}) {
     sourceFingerprint: fingerprint
   });
 
+  const PASS_OUTPUT_TAIL_LINES = 5;
+  const returnTail = status === "PASS" ? tailLines(combined, PASS_OUTPUT_TAIL_LINES) : outputTail;
+
   return {
     check: name,
     status,
@@ -127,7 +130,7 @@ export function runAndRecordCheck(state, name, cwd, options = {}) {
     signal: result.signal ?? null,
     durationMs,
     timedOut: timedOut || false,
-    outputTail,
+    outputTail: returnTail,
     command: scriptRelPath,
     sourceFingerprint: fingerprint
   };

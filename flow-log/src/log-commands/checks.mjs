@@ -116,3 +116,39 @@ export function handleVerifyAll(parsed, cwd) {
     results
   };
 }
+
+export function handleBatchVerify(parsed, cwd) {
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const by = optionalFlag(parsed, "by") ?? "flow-log";
+  const timeoutRaw = optionalFlag(parsed, "timeout");
+  const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
+
+  const sequence = ["verifyQuick", "finalCheck"];
+  const results = [];
+
+  for (const name of sequence) {
+    const result = runAndRecordCheck(state, name, cwd, { timeout, by });
+    saveState(statePath, state);
+    results.push({ check: name, status: result.status, durationMs: result.durationMs });
+
+    if (result.status !== "PASS") {
+      return {
+        ok: false,
+        command: "batch-verify",
+        feature,
+        statePath,
+        stoppedAt: name,
+        results,
+        failedCheck: result
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    command: "batch-verify",
+    feature,
+    statePath,
+    results
+  };
+}

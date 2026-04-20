@@ -14,11 +14,11 @@ export function buildPlanSummary(plan, cwd, feature, explicitStatePath, canonica
     schemaVersion: plan.schemaVersion,
     hash: currentHash,
     sectionCounts: {
-      implementationFlow: plan.implementationFlow.length,
+      implementationFlow: (plan.implementationFlow ?? []).length,
       slices: plan.slices.length,
       models: plan.models.length,
       classes: plan.classes.length,
-      contractExamples: plan.contractExamples.length,
+      contractExamples: (plan.contractExamples ?? []).length,
       validationRules: plan.validationRules.length,
       designDecisions: plan.designDecisions.length,
       verificationSlices: (plan.verification?.slices ?? []).length,

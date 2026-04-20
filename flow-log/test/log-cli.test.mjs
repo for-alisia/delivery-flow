@@ -1041,3 +1041,81 @@ test("flow-log verify-all stops on first failure and reports which check failed"
   assert.equal(status.status.finalCheck, "FAIL");
   assert.equal(status.status.karate, "NOT_RUN");
 });
+
+// --- batch-verify tests ---
+
+test("flow-log batch-verify runs verifyQuick and finalCheck only", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  const scriptsDir = path.join(tempRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  for (const name of ["verify-quick.sh", "final-check.sh", "karate-test.sh"]) {
+    fs.writeFileSync(path.join(scriptsDir, name), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+  }
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "batch-verify", "--feature", "demo", "--state-path", statePath, "--by", "JavaCoder"
+  ]);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.command, "batch-verify");
+  assert.equal(result.results.length, 2);
+  assert.equal(result.results[0].check, "verifyQuick");
+  assert.equal(result.results[0].status, "PASS");
+  assert.equal(result.results[1].check, "finalCheck");
+  assert.equal(result.results[1].status, "PASS");
+
+  // karate should remain NOT_RUN
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.verifyQuick, "PASS");
+  assert.equal(status.status.finalCheck, "PASS");
+  assert.equal(status.status.karate, "NOT_RUN");
+});
+
+test("flow-log batch-verify stops on first failure", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  const scriptsDir = path.join(tempRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  fs.writeFileSync(path.join(scriptsDir, "verify-quick.sh"), "#!/usr/bin/env bash\necho 'compile error'\nexit 1\n", { mode: 0o755 });
+  fs.writeFileSync(path.join(scriptsDir, "final-check.sh"), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const raw = runCliRaw(tempRoot, [
+    "batch-verify", "--feature", "demo", "--state-path", statePath
+  ]);
+  const result = JSON.parse(raw.stdout);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.stoppedAt, "verifyQuick");
+  assert.equal(result.results.length, 1);
+  assert.equal(result.results[0].status, "FAIL");
+  assert.ok(result.failedCheck.outputTail.some(line => line.includes("compile error")));
+});
+
+// --- run-check PASS output trimming ---
+
+test("flow-log run-check PASS trims outputTail to 5 lines max", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  const scriptsDir = path.join(tempRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  // Generate a script that outputs 20 lines, then exits 0
+  const lines = Array.from({ length: 20 }, (_, i) => `echo "line ${i + 1}"`).join("\n");
+  fs.writeFileSync(path.join(scriptsDir, "verify-quick.sh"), `#!/usr/bin/env bash\n${lines}\nexit 0\n`, { mode: 0o755 });
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath, "--name", "verifyQuick", "--by", "JavaCoder"
+  ]);
+
+  assert.equal(result.status, "PASS");
+  assert.ok(result.outputTail.length <= 5, `Expected at most 5 lines, got ${result.outputTail.length}`);
+});

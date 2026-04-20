@@ -1,10 +1,10 @@
 export function collectPlanIds(plan) {
   return {
-    flow: collectIds(plan.implementationFlow),
+    flow: collectIds(plan.implementationFlow ?? []),
     slice: collectIds(plan.slices),
     model: collectIds(plan.models),
     class: collectIds(plan.classes),
-    example: collectIds(plan.contractExamples),
+    example: collectIds(plan.contractExamples ?? []),
     validationRule: collectIds(plan.validationRules),
     decision: collectIds(plan.designDecisions)
   };
