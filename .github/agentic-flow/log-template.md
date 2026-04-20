@@ -62,7 +62,7 @@ Suggested content:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                                                                      │
 │   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
-│    start-batch (max 2 slices)   set-check + add-change               │
+│    start-batch (max 2 slices)   run-check + add-change               │
 │                                                                      │
 │   9:TL ──► 10:CODE-REV ◄──► 8:CODER (loop) ──► 11:TL              │
 │    increment   findings         code-review-gate PASS    sign-off    │
@@ -78,8 +78,8 @@ Suggested content:
 - **5:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
 - **6:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
 - **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slices to Coder
-- **8:CODER** — Implements slices; records checks via `set-check` and files via `add-change`; runs `coder-handoff-check.sh`
-- **9:TL** — Coder gate; independent `final-check.sh` + `karate-test.sh`; records checks; `increment-code-review-round` and invokes Code Reviewer
+- **8:CODER** — Implements slices; records checks via `run-check` and files via `add-change`; runs `verify-all` before handoff; runs `coder-handoff-check.sh`
+- **9:TL** — Coder gate; checks `*Stale` fields in `flow-log status`; independent `run-check --name finalCheck` + `run-check --name karate`; `increment-code-review-round` and invokes Code Reviewer
 - **10:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
 - **11:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
 

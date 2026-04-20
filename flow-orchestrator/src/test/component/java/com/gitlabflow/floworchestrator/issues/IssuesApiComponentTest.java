@@ -11,6 +11,7 @@ import com.gitlabflow.floworchestrator.issues.support.GitLabDeleteIssueStubSuppo
 import com.gitlabflow.floworchestrator.issues.support.GitLabIssuesStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabLabelEventsStubSupport;
 import com.gitlabflow.floworchestrator.issues.support.GitLabSingleIssueStubSupport;
+import com.gitlabflow.floworchestrator.issues.support.GitLabUpdateIssueStubSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -32,9 +33,11 @@ import org.springframework.test.context.DynamicPropertySource;
 class IssuesApiComponentTest {
 
     private static final long ISSUE_ID = 42L;
+    private static final long UPDATE_ISSUE_ID = 12L;
     private static final long SEARCH_ISSUE_ID = 7L;
     private static final long SEARCH_ISSUE_ID_SECOND = 8L;
     private static final String ISSUE_DETAIL_PATH = "/api/issues/" + ISSUE_ID;
+    private static final String UPDATE_ISSUE_PATH = "/api/issues/" + UPDATE_ISSUE_ID;
     private static final int GITLAB_CONNECT_TIMEOUT_SECONDS = 2;
     private static final int GITLAB_READ_TIMEOUT_SECONDS = 1;
     private static final int LABEL_EVENTS_DELAY_MILLIS = 3_000;
@@ -249,6 +252,123 @@ class IssuesApiComponentTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         final JsonNode json = objectMapper.readTree(response.getBody());
         assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_AUTHENTICATION_FAILED");
+    }
+
+    @Test
+    @DisplayName("updates issue and returns mapped patch response")
+    void updatesIssueAndReturnsMappedPatchResponse() throws Exception {
+        wireMockServer.resetAll();
+        GitLabUpdateIssueStubSupport.stubUpdateIssueSuccess(wireMockServer, UPDATE_ISSUE_ID);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+            {
+              "title": "Updated from component",
+              "description": "Updated description",
+              "addLabels": ["backend"],
+              "removeLabels": ["bug"]
+            }
+            """, headers);
+
+        final ResponseEntity<String> response =
+                restTemplate.exchange(UPDATE_ISSUE_PATH, HttpMethod.PATCH, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("id").asLong()).isEqualTo(700L);
+        assertThat(json.path("issueId").asLong()).isEqualTo(UPDATE_ISSUE_ID);
+        assertThat(json.path("title").asText()).isEqualTo("Updated from component");
+        assertThat(json.path("description").asText()).isEqualTo("Updated description");
+        assertThat(json.path("labels").get(0).asText()).isEqualTo("backend");
+
+        GitLabUpdateIssueStubSupport.verifyUpdateIssueRequest(wireMockServer, UPDATE_ISSUE_ID);
+    }
+
+    @Test
+    @DisplayName("clears description when patch request sends empty description string")
+    void clearsDescriptionWhenPatchRequestSendsEmptyDescriptionString() throws Exception {
+        wireMockServer.resetAll();
+        GitLabUpdateIssueStubSupport.stubClearDescriptionSuccess(wireMockServer, UPDATE_ISSUE_ID);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+            {
+              "description": ""
+            }
+            """, headers);
+
+        final ResponseEntity<String> response =
+                restTemplate.exchange(UPDATE_ISSUE_PATH, HttpMethod.PATCH, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("description").asText()).isEmpty();
+
+        GitLabUpdateIssueStubSupport.verifyClearDescriptionRequest(wireMockServer, UPDATE_ISSUE_ID);
+    }
+
+    @Test
+    @DisplayName("maps patch not-found response from GitLab to 404")
+    void mapsPatchNotFoundResponseFromGitLabTo404() throws Exception {
+        wireMockServer.resetAll();
+        GitLabUpdateIssueStubSupport.stubUpdateIssueNotFound(wireMockServer, UPDATE_ISSUE_ID);
+        useJdkRequestFactory();
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("{\"title\":\"Updated title\"}", headers);
+
+        final ResponseEntity<String> response =
+                restTemplate.exchange(UPDATE_ISSUE_PATH, HttpMethod.PATCH, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("RESOURCE_NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("maps patch server error response from GitLab to bad gateway")
+    void mapsPatchServerErrorResponseFromGitLabToBadGateway() throws Exception {
+        wireMockServer.resetAll();
+        GitLabUpdateIssueStubSupport.stubUpdateIssueServerError(wireMockServer, UPDATE_ISSUE_ID);
+        useJdkRequestFactory();
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("{\"title\":\"Updated title\"}", headers);
+
+        final ResponseEntity<String> response =
+                restTemplate.exchange(UPDATE_ISSUE_PATH, HttpMethod.PATCH, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_FAILURE");
+    }
+
+    @Test
+    @DisplayName("rejects overlapping add and remove labels before calling GitLab update")
+    void rejectsOverlappingAddAndRemoveLabelsBeforeCallingGitLabUpdate() throws Exception {
+        wireMockServer.resetAll();
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+            {
+              "addLabels": ["bug"],
+              "removeLabels": ["bug"]
+            }
+            """, headers);
+
+        final ResponseEntity<String> response =
+                restTemplate.exchange(UPDATE_ISSUE_PATH, HttpMethod.PATCH, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("VALIDATION_ERROR");
+
+        GitLabUpdateIssueStubSupport.verifyUpdateIssueNotCalled(wireMockServer, UPDATE_ISSUE_ID);
     }
 
     private void useJdkRequestFactory() {

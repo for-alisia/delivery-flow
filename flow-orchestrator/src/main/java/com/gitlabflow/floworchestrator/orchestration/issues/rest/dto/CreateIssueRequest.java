@@ -1,19 +1,18 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import lombok.Builder;
 import org.springframework.lang.Nullable;
 
 @Builder
 public record CreateIssueRequest(
-        @NotBlank String title,
+        @Nullable String title,
         @Nullable String description,
-        @Nullable List<@NotBlank String> labels) {
+        @Nullable List<String> labels) {
+
     public CreateIssueRequest {
-        labels = labels == null
-                ? null
-                : List.copyOf(labels.stream().filter(Objects::nonNull).toList());
+        labels = labels == null ? null : Collections.unmodifiableList(new ArrayList<>(labels));
     }
 }

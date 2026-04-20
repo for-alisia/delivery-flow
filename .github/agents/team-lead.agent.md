@@ -108,9 +108,10 @@ Max 2 slices per invocation.
 
 1. `start-batch --slice <s1> [--slice <s2>]`
 2. Invoke `Java Coder`
-3. After return: run `scripts/final-check.sh`, record via `set-check --name finalCheck`
-4. After final batch: run `scripts/karate-test.sh`, record via `set-check --name karate`
-5. `complete-batch --status complete`
+3. After return: check `flow-log status` for `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If any check is stale (source changed since it last passed), re-run via `run-check` or `verify-all`.
+4. Independent recheck: `run-check --feature <feature-name> --name finalCheck --by TeamLead`
+5. After final batch: `run-check --feature <feature-name> --name karate --by TeamLead`
+6. `complete-batch --status complete`
 
 **Red cards:** TL recheck fails while coder claims PASS → `reset-checks`. First red card: return evidence to coder. Second red card on same feature: stop coder retries, route to `Java Architect` for plan revision. Count via `flow-log history` (filter `redCard` events).
 

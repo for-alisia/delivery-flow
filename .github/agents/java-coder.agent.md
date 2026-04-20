@@ -31,7 +31,10 @@ Implement approved plan slices for the `flow-orchestrator` Spring Boot module.
 - Do not run custom bash pipelines to parse command output.
 - Do not hide failures or weak evidence.
 - Do not write or modify Karate `.feature` files.
-- Do not run `scripts/karate-test.sh`.
+
+## Flow-log pre-flight
+
+Before running any `flow-log` command, verify you are in the repository root directory (contains `artifacts/` and `flow-log/` directories). If you are in `flow-orchestrator/` or any subdirectory, `cd` to the repo root first. Flow-log commands must always run from repo root.
 
 ## Terminal stall recovery
 
@@ -77,9 +80,8 @@ For each slice:
 
 1. implement production code for the current slice
 2. add required tests
-3. run `scripts/verify-quick.sh` and fix failures before moving on
-4. record the check via `set-check --name verifyQuick --status PASS --by JavaCoder`
-5. record changed files via `add-change --file <path> [--file <path>]...`
+3. run `node flow-log/flow-log.mjs run-check --feature <feature-name> --name verifyQuick --by JavaCoder` and fix failures before moving on
+4. record changed files via `add-change --file <path> [--file <path>]...`
 
 ### When fixing code review findings
 
@@ -89,24 +91,24 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 2. For each finding:
    - If you agree and can fix it → fix the code, then respond `FIXED` via `respond-finding`
    - If the finding is wrong or already covered → respond `DISPUTED` via `respond-finding`
-3. After all findings are addressed, run `scripts/verify-quick.sh` and record the check.
+3. After all findings are addressed, run `node flow-log/flow-log.mjs run-check --feature <feature-name> --name verifyQuick --by JavaCoder` and fix any failures.
 
 ### Before handoff
 
 1. verify plan compliance
 2. verify acceptance criteria
-3. run `scripts/final-check.sh` and fix all findings
-4. record the check via `set-check --name finalCheck --status PASS --by JavaCoder`
-5. run `scripts/coder-handoff-check.sh <feature-name>` — fix any failures before returning
+3. run all verification checks via flow-log (from repo root):
+   ```bash
+   node flow-log/flow-log.mjs verify-all --feature <feature-name> --by JavaCoder
+   ```
+   This runs `verifyQuick` → `finalCheck` → `karate` in sequence, stopping on the first failure.
+   Fix any failures and re-run until all pass.
+4. run `scripts/coder-handoff-check.sh <feature-name>` — fix any failures before returning
 
 ## Evidence rule
 
-After each verification script, report:
-
-- `PASS`, or
-- `FAIL` + last 10 terminal lines
-
-Do not build custom parsing pipelines.
+After each `run-check`, report the JSON result. On failure, use the `outputTail` field to diagnose.
+Do not build custom parsing pipelines or run scripts separately from `run-check`.
 
 ## Required handoff
 

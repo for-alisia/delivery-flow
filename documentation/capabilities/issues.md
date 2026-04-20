@@ -1,8 +1,8 @@
 # Capability: issues
 
-Search, create, delete, and get-single GitLab issues through a provider-agnostic orchestration layer.
+Search, create, update, delete, and get-single GitLab issues through a provider-agnostic orchestration layer.
 
-Endpoints: POST /api/issues/search, POST /api/issues, DELETE /api/issues/{issueId}, GET /api/issues/{issueId}
+Endpoints: POST /api/issues/search, POST /api/issues, PATCH /api/issues/{issueId}, DELETE /api/issues/{issueId}, GET /api/issues/{issueId}
 
 All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/ unless marked otherwise.
 
@@ -12,7 +12,7 @@ All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworc
 
 | File | Role |
 |------|------|
-| orchestration/issues/IssuesService.java | Service that coordinates issue search/create/delete and parallel issue-detail composition |
+| orchestration/issues/IssuesService.java | Service that coordinates issue search/create/update/delete flows and parallel issue-detail composition |
 | orchestration/issues/IssuesPort.java | Provider-agnostic port implemented by integration adapters |
 
 ## Orchestration Models (orchestration/issues/model/)
@@ -29,6 +29,7 @@ All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworc
 | IssueState.java | Enum: opened, closed, all |
 | IssueAuditType.java | Enum for enrichment types (currently LABEL) |
 | CreateIssueInput.java | Input model for issue creation |
+| UpdateIssueInput.java | Input model for issue update operations |
 
 Shared model dependencies used by issues:
 - orchestration/common/model/User.java
@@ -53,6 +54,7 @@ Shared model dependencies used by issues:
 | SearchIssuesResponse.java | Search response wrapper (items, count, page) |
 | IssueSummaryDto.java | Unified item DTO for search and create responses |
 | CreateIssueRequest.java | Request body for create |
+| UpdateIssueRequest.java | Request body for patch update |
 | IssueDetailDto.java | Get-single response DTO |
 | IssueFiltersRequest.java | Search filter fields |
 | PaginationRequest.java | Search pagination fields |
@@ -69,12 +71,13 @@ Shared DTO dependencies used by issues:
 
 | File | Role |
 |------|------|
-| integration/gitlab/issues/GitLabIssuesAdapter.java | IssuesPort adapter using RestClient for search/create/delete/get-single/label-events |
-| integration/gitlab/issues/mapper/GitLabIssuesMapper.java | Maps GitLab list/create responses to IssueSummary |
+| integration/gitlab/issues/GitLabIssuesAdapter.java | IssuesPort adapter using RestClient for search/create/update/delete/get-single/label-events |
+| integration/gitlab/issues/mapper/GitLabIssuesMapper.java | Maps GitLab list/create/update payloads and responses |
 | integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java | Maps GitLab single issue response to IssueDetail |
 | integration/gitlab/issues/mapper/GitLabLabelEventMapper.java | Maps GitLab label events to List<ChangeSet<?>> |
 | integration/gitlab/issues/dto/GitLabIssueResponse.java | GitLab list/create response DTO |
 | integration/gitlab/issues/dto/GitLabCreateIssueRequest.java | GitLab create request DTO |
+| integration/gitlab/issues/dto/GitLabUpdateIssueRequest.java | GitLab update request DTO |
 | integration/gitlab/issues/dto/GitLabSingleIssueResponse.java | GitLab get-single response DTO |
 | integration/gitlab/issues/dto/GitLabLabelEventResponse.java | GitLab label-events response DTO |
 
@@ -98,12 +101,13 @@ Paths are relative to flow-orchestrator/src/test/.
 - java/.../integration/gitlab/issues/mapper/GitLabLabelEventMapperTest.java
 - integration/java/.../orchestration/issues/rest/IssuesControllerIT.java
 - component/java/.../issues/IssuesApiComponentTest.java
+- component/java/.../issues/support/GitLabUpdateIssueStubSupport.java
 - karate/resources/issues/*.feature
 
 ## Design Notes
 
-- IssueSummary is the orchestration output for both search and create.
-- IssueSummaryDto is the shared transport DTO for search items and create responses.
+- IssueSummary is the orchestration output for search, create, and update.
+- IssueSummaryDto is the shared transport DTO for search items and create/update responses.
 - IssueDetail remains a separate full-detail model and is mapped to IssueDetailDto.
-- Search and get-single change-set payloads both serialize change.field as lowercase label.
+- Request validation for create and update is centralized in IssuesRequestValidator with shared limits from app.issues-api.validation.*.
 - IssuesService performs parallel composition for get-single and audit enrichment using AsyncComposer.

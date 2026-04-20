@@ -6,10 +6,12 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInp
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueAuditType;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.UpdateIssueRequest;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -105,5 +107,58 @@ class IssuesRequestMapperTest {
         assertThat(input.title()).isEqualTo("Reporting bug");
         assertThat(input.description()).isNull();
         assertThat(input.labels()).containsExactly("bug", "backend");
+    }
+
+    @Test
+    @DisplayName("maps create issue request with deduplicated labels")
+    void mapsCreateIssueRequestWithDeduplicatedLabels() {
+        final CreateIssueRequest request =
+                new CreateIssueRequest("Reporting bug", null, List.of("bug", "bug", "backend"));
+
+        final CreateIssueInput input = mapper.toCreateIssueInput(request);
+
+        assertThat(input.labels()).containsExactly("bug", "backend");
+    }
+
+    @Test
+    @DisplayName("maps update issue request and preserves empty description")
+    void mapsUpdateIssueRequestAndPreservesEmptyDescription() {
+        final UpdateIssueRequest request = new UpdateIssueRequest("Retitle", "", null, null);
+
+        final UpdateIssueInput input = mapper.toUpdateIssueInput(77L, request);
+
+        assertThat(input.issueId()).isEqualTo(77L);
+        assertThat(input.title()).isEqualTo("Retitle");
+        assertThat(input.description()).isEmpty();
+        assertThat(input.addLabels()).isEmpty();
+        assertThat(input.removeLabels()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("maps update issue request labels without mutation")
+    void mapsUpdateIssueRequestLabelsWithoutMutation() {
+        final UpdateIssueRequest request =
+                new UpdateIssueRequest(null, null, List.of("backend", "infra"), List.of("legacy"));
+
+        final UpdateIssueInput input = mapper.toUpdateIssueInput(78L, request);
+
+        assertThat(input.issueId()).isEqualTo(78L);
+        assertThat(input.title()).isNull();
+        assertThat(input.description()).isNull();
+        assertThat(input.addLabels()).containsExactly("backend", "infra");
+        assertThat(input.removeLabels()).containsExactly("legacy");
+    }
+
+    @Test
+    @DisplayName("maps update issue request labels with deduplication")
+    void mapsUpdateIssueRequestLabelsWithDeduplication() {
+        final UpdateIssueRequest request =
+                new UpdateIssueRequest(null, null, List.of("backend", "backend", "infra"), List.of("bug", "bug"));
+
+        final UpdateIssueInput input = mapper.toUpdateIssueInput(79L, request);
+
+        assertThat(input.issueId()).isEqualTo(79L);
+        assertThat(input.addLabels()).containsExactly("backend", "infra");
+        assertThat(input.removeLabels()).containsExactly("bug");
     }
 }

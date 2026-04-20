@@ -8,7 +8,30 @@ export function resolveStatePath(cwd, feature, explicitStatePath) {
     return path.resolve(cwd, explicitStatePath);
   }
 
+  const artifactsDir = path.resolve(cwd, "artifacts");
+  if (!fs.existsSync(artifactsDir)) {
+    const suggested = findRepoRoot(cwd);
+    const hint = suggested ? ` Try: cd ${suggested}` : "";
+    throw new Error(
+      `flow-log must be run from the repository root directory. ` +
+      `Current directory: ${cwd} does not contain artifacts/.${hint}`
+    );
+  }
+
   return path.resolve(cwd, "artifacts", "flow-logs", `${feature}.json`);
+}
+
+function findRepoRoot(startDir, maxLevels = 3) {
+  let dir = startDir;
+  for (let i = 0; i <= maxLevels; i++) {
+    if (fs.existsSync(path.join(dir, "artifacts")) && fs.existsSync(path.join(dir, "flow-log"))) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
 }
 
 export function loadState(statePath) {

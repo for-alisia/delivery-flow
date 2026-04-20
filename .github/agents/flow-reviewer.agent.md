@@ -24,9 +24,8 @@ Your job is to review the workflow design, prompts, agents, logs, and linked imp
 
 Read these in this order:
 
-1. `.github/prompts/agentic-orchestration.prompt.md`
-2. `.github/agentic-flow/agentic-flow-overview.md`
-3. `.github/copilot-instructions.md`
+1. `.github/agentic-flow/agentic-flow-overview.md`
+2. `.github/copilot-instructions.md`
 4. The current run log in `.github/agentic-flow/logs/`
 5. The previous run log referenced by the current log's `Compared to:` header; if that is missing, use the next lower semver log in the same folder
 6. On demand: relevant files in `.github/agents/`, `.github/instructions/`, `documentation/`, `scripts/`, and any other repository files cited by the logs
@@ -43,7 +42,6 @@ Read these in this order:
 
 At minimum inspect:
 
-- `.github/prompts/agentic-orchestration.prompt.md`
 - `.github/agentic-flow/agentic-flow-overview.md`
 - `.github/agentic-flow/log-template.md`
 - The current and previous log files in `.github/agentic-flow/logs/`

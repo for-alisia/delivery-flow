@@ -2,8 +2,10 @@ package com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper;
 
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabCreateIssueRequest;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabIssueResponse;
+import com.gitlabflow.floworchestrator.integration.gitlab.issues.dto.GitLabUpdateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,7 +49,7 @@ public class GitLabIssuesMapper {
     }
 
     public GitLabCreateIssueRequest toCreateRequest(final CreateIssueInput input) {
-        final String labels = input.labels().isEmpty() ? null : String.join(",", input.labels());
+        final String labels = toCommaSeparatedLabels(input.labels());
 
         log.debug(
                 "Mapped create issue request descriptionPresent={} labelCount={}",
@@ -59,6 +61,29 @@ public class GitLabIssuesMapper {
                 .description(input.description())
                 .labels(labels)
                 .build();
+    }
+
+    public GitLabUpdateIssueRequest toUpdateRequest(final UpdateIssueInput input) {
+        final String addLabels = toCommaSeparatedLabels(input.addLabels());
+        final String removeLabels = toCommaSeparatedLabels(input.removeLabels());
+
+        log.debug(
+                "Mapped update issue request issueId={} descriptionPresent={} addLabelCount={} removeLabelCount={}",
+                input.issueId(),
+                input.description() != null,
+                input.addLabels().size(),
+                input.removeLabels().size());
+
+        return GitLabUpdateIssueRequest.builder()
+                .title(input.title())
+                .description(input.description())
+                .addLabels(addLabels)
+                .removeLabels(removeLabels)
+                .build();
+    }
+
+    private String toCommaSeparatedLabels(final List<String> labels) {
+        return labels.isEmpty() ? null : String.join(",", labels);
     }
 
     private String mapAssignee(final GitLabIssueResponse issueResponse) {

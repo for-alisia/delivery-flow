@@ -2,11 +2,14 @@ package com.gitlabflow.floworchestrator.orchestration.issues.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +20,8 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
 import com.gitlabflow.floworchestrator.common.web.GlobalExceptionHandler;
+import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
+import com.gitlabflow.floworchestrator.config.IssuesApiValidationProperties;
 import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeField;
 import com.gitlabflow.floworchestrator.orchestration.common.model.User;
 import com.gitlabflow.floworchestrator.orchestration.common.rest.dto.LabelChangeDto;
@@ -31,6 +36,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueFiltersRequest;
@@ -38,6 +44,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueSummar
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.PaginationRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.UpdateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesResponseMapper;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
@@ -48,18 +55,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = IssuesController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, IssuesRequestValidator.class, IssuesControllerIT.IssuesValidationTestConfig.class
+})
 class IssuesControllerIT {
 
     private static final String SEARCH_ENDPOINT = "/api/issues/search";
     private static final String CREATE_ENDPOINT = "/api/issues";
+    private static final String PATCH_ENDPOINT = "/api/issues/{issueId}";
     private static final String DELETE_ENDPOINT = "/api/issues/{issueId}";
     private static final String GET_SINGLE_ENDPOINT = "/api/issues/{issueId}";
     private static final String CODE_PATH = "$.code";
@@ -83,6 +94,15 @@ class IssuesControllerIT {
 
     @MockBean
     private IssuesResponseMapper issuesResponseMapper;
+
+    @TestConfiguration
+    static class IssuesValidationTestConfig {
+
+        @Bean
+        IssuesApiProperties issuesApiProperties() {
+            return new IssuesApiProperties(20, 40, new IssuesApiValidationProperties(3, 255, 1_000_000, 10));
+        }
+    }
 
     @Test
     @DisplayName("accepts missing body and returns 200")
@@ -362,6 +382,15 @@ class IssuesControllerIT {
     }
 
     @Test
+    @DisplayName("rejects create request when title is shorter than configured minimum")
+    void rejectsCreateRequestWhenTitleIsShorterThanConfiguredMinimum() throws Exception {
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("{\"title\":\"ab\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value("title length must be between 3 and 255"));
+    }
+
+    @Test
     @DisplayName("rejects create request with blank title")
     void rejectsCreateRequestWithBlankTitle() throws Exception {
         mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
@@ -386,8 +415,116 @@ class IssuesControllerIT {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
-                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("labels"))))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("labels[1]"))))
                 .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not be blank"))));
+    }
+
+    @Test
+    @DisplayName("rejects create request with null label element")
+    void rejectsCreateRequestWithNullLabelElement() throws Exception {
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "title": "Deploy failure",
+                                                                                                                                        "labels": ["bug", null]
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("labels[1]"))))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not be null"))));
+    }
+
+    @Test
+    @DisplayName("updates issue and returns 200")
+    void updatesIssueAndReturns200() throws Exception {
+        final UpdateIssueRequest request = new UpdateIssueRequest("Updated title", "", List.of("backend"), List.of());
+        final UpdateIssueInput input = new UpdateIssueInput(84L, "Updated title", "", List.of("backend"), List.of());
+        final IssueSummary issue =
+                new IssueSummary(84L, 10L, "Updated title", "", OPENED, List.of("backend"), null, null, null, null);
+        final IssueSummaryDto response =
+                new IssueSummaryDto(84L, 10L, "Updated title", "", OPENED, List.of("backend"), null, null, null, null);
+
+        when(issuesRequestMapper.toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class)))
+                .thenReturn(input);
+        when(issuesService.updateIssue(input)).thenReturn(issue);
+        when(issuesResponseMapper.toIssueSummaryDto(issue)).thenReturn(response);
+
+        mockMvc.perform(patch(PATCH_ENDPOINT, 84L)
+                        .contentType(APPLICATION_JSON)
+                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(84L))
+                .andExpect(jsonPath("$.issueId").value(10L))
+                .andExpect(jsonPath("$.title").value("Updated title"))
+                .andExpect(jsonPath("$.description").value(""))
+                .andExpect(jsonPath("$.state").value(OPENED))
+                .andExpect(jsonPath("$.labels[0]").value("backend"));
+
+        verify(issuesService).updateIssue(input);
+    }
+
+    @Test
+    @DisplayName("rejects patch request with no effective update fields")
+    void rejectsPatchRequestWithNoEffectiveUpdateFields() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, 84L).contentType(APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(
+                        jsonPath("$.details[0]")
+                                .value(
+                                        "request must include at least one update field: title, description, addLabels, or removeLabels"));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
+    }
+
+    @Test
+    @DisplayName("rejects patch request when add and remove labels overlap")
+    void rejectsPatchRequestWhenAddAndRemoveLabelsOverlap() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, 84L).contentType(APPLICATION_JSON).content("""
+                                {
+                                  "addLabels": ["bug"],
+                                  "removeLabels": ["bug"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not overlap"))));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
+    }
+
+    @Test
+    @DisplayName("rejects patch request when issue id is zero")
+    void rejectsPatchRequestWhenIssueIdIsZero() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, 0L).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "description": "update"
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
+    }
+
+    @Test
+    @DisplayName("rejects patch request when issue id is negative")
+    void rejectsPatchRequestWhenIssueIdIsNegative() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, -1L).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "description": "update"
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
     }
 
     @Test

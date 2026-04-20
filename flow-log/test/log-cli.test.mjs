@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { createTempRoot, runCli } from "./test-helpers.mjs";
+import { createTempRoot, runCli, runCliRaw } from "./test-helpers.mjs";
 
 test("flow-log records minimal workflow facts and reports signoff readiness", () => {
   const tempRoot = createTempRoot();
@@ -740,4 +740,304 @@ test("flow-log code findings disputed path", () => {
 
   const gate = runCli(tempRoot, ["code-review-gate", "--feature", "demo", "--state-path", statePath]);
   assert.equal(gate.gate, "PASS");
+});
+
+test("flow-log path resilience: refuses to run from wrong directory without --state-path", () => {
+  const wrongDir = createTempRoot("flow-log-wrong-dir-");
+  const result = runCliRaw(wrongDir, ["summary", "--feature", "demo"]);
+  assert.notEqual(result.status, 0);
+  const stderr = JSON.parse(result.stderr);
+  assert.match(stderr.error, /repository root/);
+  assert.match(stderr.hint, /repository root/);
+});
+
+test("flow-log friendly errors: state file not found includes hint", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "nonexistent.json");
+  const result = runCliRaw(tempRoot, [
+    "summary", "--feature", "demo", "--state-path", statePath
+  ]);
+  assert.notEqual(result.status, 0);
+  const stderr = JSON.parse(result.stderr);
+  assert.match(stderr.error, /State file does not exist/);
+  assert.match(stderr.hint, /create --feature/);
+});
+
+test("flow-log friendly errors: unknown command includes hint", () => {
+  const tempRoot = createTempRoot();
+  const result = runCliRaw(tempRoot, ["nonexistent-command"]);
+  assert.notEqual(result.status, 0);
+  const stderr = JSON.parse(result.stderr);
+  assert.match(stderr.error, /Unknown command/);
+  assert.match(stderr.hint, /help/);
+});
+
+test("flow-log friendly errors: missing required flag includes hint", () => {
+  const tempRoot = createTempRoot();
+  const result = runCliRaw(tempRoot, ["create"]);
+  assert.notEqual(result.status, 0);
+  const stderr = JSON.parse(result.stderr);
+  assert.match(stderr.error, /Missing required flag/);
+  assert.match(stderr.hint, /help/);
+});
+
+test("flow-log run-check executes script and records PASS on exit 0", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "pass-script.sh");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\necho 'All checks passed'\nexit 0\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "finalCheck", "--command", scriptPath, "--by", "JavaCoder"
+  ]);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "PASS");
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.check, "finalCheck");
+  assert.ok(result.durationMs >= 0);
+  assert.ok(Array.isArray(result.outputTail));
+  assert.ok(result.outputTail.some(line => line.includes("All checks passed")));
+
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.finalCheck, "PASS");
+});
+
+test("flow-log run-check records FAIL on non-zero exit", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "fail-script.sh");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\necho 'Test failed: 3 errors'\nexit 1\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "verifyQuick", "--command", scriptPath
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "FAIL");
+  assert.equal(result.exitCode, 1);
+  assert.ok(result.outputTail.some(line => line.includes("3 errors")));
+
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.verifyQuick, "FAIL");
+});
+
+test("flow-log run-check records FAIL on timeout", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "slow-script.sh");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\necho 'starting'\nsleep 30\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "karate", "--command", scriptPath, "--timeout", "500"
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "FAIL");
+  assert.equal(result.timedOut, true);
+
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.karate, "FAIL");
+});
+
+test("flow-log run-check uses default script when --command not provided", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  // Default script won't exist in temp dir, so it should fail — but the command path should be correct
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "finalCheck"
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "FAIL");
+  assert.equal(result.command, "scripts/final-check.sh");
+});
+
+// --- Source fingerprint and staleness tests ---
+
+test("flow-log run-check stores sourceFingerprint on PASS", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "pass.sh");
+
+  // Create a fake flow-orchestrator/src tree so fingerprint is non-null
+  const srcDir = path.join(tempRoot, "flow-orchestrator", "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+  fs.writeFileSync(path.join(srcDir, "Main.java"), "class Main {}");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "verifyQuick", "--command", scriptPath
+  ]);
+
+  assert.equal(result.status, "PASS");
+  assert.ok(typeof result.sourceFingerprint === "string");
+  assert.equal(result.sourceFingerprint.length, 16);
+
+  // Fingerprint persisted in state
+  const raw = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  assert.equal(raw.checks.verifyQuick.sourceFingerprint, result.sourceFingerprint);
+});
+
+test("flow-log run-check does not store sourceFingerprint on FAIL", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "fail.sh");
+
+  const srcDir = path.join(tempRoot, "flow-orchestrator", "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+  fs.writeFileSync(path.join(srcDir, "Main.java"), "class Main {}");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\nexit 1\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "verifyQuick", "--command", scriptPath
+  ]);
+
+  assert.equal(result.status, "FAIL");
+  assert.equal(result.sourceFingerprint, null);
+});
+
+test("flow-log status detects stale checks after source file changes", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const scriptPath = path.join(tempRoot, "pass.sh");
+
+  const srcDir = path.join(tempRoot, "flow-orchestrator", "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+  const javaFile = path.join(srcDir, "Main.java");
+  fs.writeFileSync(javaFile, "class Main {}");
+
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "finalCheck", "--command", scriptPath
+  ]);
+
+  // Status right after PASS — should NOT be stale
+  const freshStatus = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(freshStatus.status.finalCheck, "PASS");
+  assert.equal(freshStatus.status.finalCheckStale, false);
+
+  // Modify a source file to change the fingerprint
+  // Need a small delay to ensure mtime changes (filesystem resolution)
+  const originalMtime = fs.statSync(javaFile).mtimeMs;
+  fs.writeFileSync(javaFile, "class Main { void changed() {} }");
+  // Force different mtime if filesystem has low resolution
+  const newMtime = fs.statSync(javaFile).mtimeMs;
+  if (newMtime === originalMtime) {
+    const futureTime = originalMtime + 1000;
+    fs.utimesSync(javaFile, futureTime / 1000, futureTime / 1000);
+  }
+
+  // Status after change — should be stale
+  const staleStatus = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(staleStatus.status.finalCheck, "PASS");
+  assert.equal(staleStatus.status.finalCheckStale, true);
+});
+
+test("flow-log status shows stale=false for NOT_RUN and FAIL checks", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  const srcDir = path.join(tempRoot, "flow-orchestrator", "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+  fs.writeFileSync(path.join(srcDir, "Main.java"), "class Main {}");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  // NOT_RUN checks should never be stale
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.verifyQuickStale, false);
+  assert.equal(status.status.finalCheckStale, false);
+  assert.equal(status.status.karateStale, false);
+});
+
+// --- verify-all tests ---
+
+test("flow-log verify-all runs all checks and reports combined PASS", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  // Create pass scripts for all 3 checks
+  const scriptsDir = path.join(tempRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  for (const name of ["verify-quick.sh", "final-check.sh", "karate-test.sh"]) {
+    fs.writeFileSync(path.join(scriptsDir, name), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+  }
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "verify-all", "--feature", "demo", "--state-path", statePath, "--by", "JavaCoder"
+  ]);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.command, "verify-all");
+  assert.equal(result.results.length, 3);
+  assert.equal(result.results[0].check, "verifyQuick");
+  assert.equal(result.results[0].status, "PASS");
+  assert.equal(result.results[1].check, "finalCheck");
+  assert.equal(result.results[1].status, "PASS");
+  assert.equal(result.results[2].check, "karate");
+  assert.equal(result.results[2].status, "PASS");
+
+  // All checks should be PASS in state
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.verifyQuick, "PASS");
+  assert.equal(status.status.finalCheck, "PASS");
+  assert.equal(status.status.karate, "PASS");
+});
+
+test("flow-log verify-all stops on first failure and reports which check failed", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  // verify-quick passes, final-check fails
+  const scriptsDir = path.join(tempRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  fs.writeFileSync(path.join(scriptsDir, "verify-quick.sh"), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+  fs.writeFileSync(path.join(scriptsDir, "final-check.sh"), "#!/usr/bin/env bash\necho 'format error'\nexit 1\n", { mode: 0o755 });
+  fs.writeFileSync(path.join(scriptsDir, "karate-test.sh"), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCli(tempRoot, [
+    "verify-all", "--feature", "demo", "--state-path", statePath
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.stoppedAt, "finalCheck");
+  assert.equal(result.results.length, 2);
+  assert.equal(result.results[0].check, "verifyQuick");
+  assert.equal(result.results[0].status, "PASS");
+  assert.equal(result.results[1].check, "finalCheck");
+  assert.equal(result.results[1].status, "FAIL");
+  assert.ok(result.failedCheck.outputTail.some(line => line.includes("format error")));
+
+  // karate should still be NOT_RUN since we stopped early
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.verifyQuick, "PASS");
+  assert.equal(status.status.finalCheck, "FAIL");
+  assert.equal(status.status.karate, "NOT_RUN");
 });

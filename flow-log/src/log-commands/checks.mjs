@@ -2,6 +2,7 @@ import {
   CHECK_NAMES,
   CHECK_STATUSES,
   appendChangedFiles,
+  runAndRecordCheck,
   saveState,
   setCheck,
   validateValue
@@ -52,5 +53,66 @@ export function handleAddChange(parsed, cwd) {
     feature,
     statePath,
     changedFiles: state.changes.files
+  };
+}
+
+export function handleRunCheck(parsed, cwd) {
+  const name = requiredFlag(parsed, "name");
+  validateValue(name, CHECK_NAMES, "check name");
+
+  const { feature, state, statePath } = openState(parsed, cwd);
+
+  const timeoutRaw = optionalFlag(parsed, "timeout");
+  const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
+
+  const result = runAndRecordCheck(state, name, cwd, {
+    command: optionalFlag(parsed, "command"),
+    timeout,
+    by: optionalFlag(parsed, "by")
+  });
+  saveState(statePath, state);
+
+  return {
+    ok: result.status === "PASS",
+    command: "run-check",
+    feature,
+    statePath,
+    ...result
+  };
+}
+
+export function handleVerifyAll(parsed, cwd) {
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const by = optionalFlag(parsed, "by") ?? "flow-log";
+  const timeoutRaw = optionalFlag(parsed, "timeout");
+  const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
+
+  const sequence = ["verifyQuick", "finalCheck", "karate"];
+  const results = [];
+
+  for (const name of sequence) {
+    const result = runAndRecordCheck(state, name, cwd, { timeout, by });
+    saveState(statePath, state);
+    results.push({ check: name, status: result.status, durationMs: result.durationMs });
+
+    if (result.status !== "PASS") {
+      return {
+        ok: false,
+        command: "verify-all",
+        feature,
+        statePath,
+        stoppedAt: name,
+        results,
+        failedCheck: result
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    command: "verify-all",
+    feature,
+    statePath,
+    results
   };
 }

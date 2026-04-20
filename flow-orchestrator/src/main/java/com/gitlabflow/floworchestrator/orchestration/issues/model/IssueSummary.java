@@ -5,7 +5,7 @@ import java.util.List;
 import lombok.Builder;
 import org.springframework.lang.Nullable;
 
-@Builder
+@Builder(toBuilder = true)
 public record IssueSummary(
         long id,
         long issueId,

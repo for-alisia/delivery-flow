@@ -8,15 +8,17 @@
 
 ## Build And Verify
 
-Run from `flow-orchestrator/`:
+Raw Maven commands — run from `flow-orchestrator/`:
 - Compile: `mvn -q -DskipTests compile`
 - Test: `mvn test`
+- Start: `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
+
+Shared scripts — run from repo root (scripts self-correct their cwd):
 - Quick verify: `scripts/verify-quick.sh`
 - Final verify: `scripts/final-check.sh`
 - Karate smoke: `scripts/karate-test.sh`
-- Start: `SPRING_PROFILES_ACTIVE=local mvn spring-boot:run`
 
-When recording verification evidence, prefer shared scripts over raw Maven commands.
+When recording verification evidence, prefer shared scripts over raw Maven commands. Agents should use `flow-log run-check` or `verify-all` which call these scripts automatically.
 
 For local Karate smoke verification, prefer `scripts/karate-test.sh` over a separate manual startup flow. The script reuses a healthy local app when available or starts it automatically.
 

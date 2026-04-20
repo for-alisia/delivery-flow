@@ -1,6 +1,6 @@
 import { handleRegisterArtifact, handleApproveArtifact } from "./artifacts.mjs";
 import { handleCompleteBatch, handleResetChecks, handleStartBatch } from "./batches.mjs";
-import { handleAddChange, handleSetCheck } from "./checks.mjs";
+import { handleAddChange, handleRunCheck, handleSetCheck, handleVerifyAll } from "./checks.mjs";
 import { handleAddEvent } from "./events.mjs";
 import {
   handleAddFinding,
@@ -30,6 +30,8 @@ export const LOG_COMMAND_HELP = [
   "approve-artifact <story|plan> --feature <name> --by <actor> [--state-path <path>]",
   "set-review --feature <name> --name <architectureReview|codeReview> --status <PENDING|PASS|FAIL|BLOCKED> [--by <actor>] [--reason <text>] [--state-path <path>]",
   "set-check --feature <name> --name <verifyQuick|finalCheck|karate> --status <NOT_RUN|PASS|FAIL|BLOCKED> [--by <actor>] [--command <cmd>] [--details <text>] [--report-path <path>]... [--state-path <path>]",
+  "run-check --feature <name> --name <verifyQuick|finalCheck|karate> [--command <script-path>] [--timeout <ms>] [--by <actor>] [--state-path <path>]",
+  "verify-all --feature <name> [--timeout <ms>] [--by <actor>] [--state-path <path>]",
   "add-change --feature <name> --file <path> [--file <path>]... [--state-path <path>]",
   "add-event --feature <name> --type <redCard|rejection|reroute|note|batchStart|batchEnd|archEscalationDecision> --reason <text> [--decision <PROCEED_TO_CODING|FINAL_ADJUSTMENT|ESCALATE_TO_USER>] [--by <actor>] [--target <agent>] [--related-check <name>] [--related-review <name>] [--state-path <path>]",
   "start-batch --feature <name> [--slice <name>]... [--by <actor>] [--state-path <path>]",
@@ -70,6 +72,10 @@ export function dispatchLogCommand(command, subcommand, parsed, cwd) {
       return handleSetReview(parsed, cwd);
     case "set-check":
       return handleSetCheck(parsed, cwd);
+    case "run-check":
+      return handleRunCheck(parsed, cwd);
+    case "verify-all":
+      return handleVerifyAll(parsed, cwd);
     case "add-change":
       return handleAddChange(parsed, cwd);
     case "add-event":

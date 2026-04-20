@@ -1,0 +1,299 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "update-issue-api",
+  "createdAt": "2026-04-19T20:15:44.199Z",
+  "updatedAt": "2026-04-19T21:53:59.855Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-19T20:15:44.324Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/update-issue-api.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/update-issue-api.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-19T20:18:19.430Z",
+      "approvedBy": "TL",
+      "approvedRevision": null,
+      "approvedHash": null,
+      "lastVerifiedExistsAt": "2026-04-19T20:18:19.432Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/update-issue-api.plan.json",
+      "approved": true,
+      "approvedAt": "2026-04-19T21:02:38.820Z",
+      "approvedBy": "Java Architect",
+      "approvedRevision": 4,
+      "approvedHash": "8c3e26b6c7890549c87bf3ba78befda4044e8fb5f9dc5897a4db56779e2c8d7a",
+      "lastVerifiedExistsAt": "2026-04-19T21:02:38.821Z"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-19T21:06:35.548Z",
+      "updatedBy": "TL"
+    },
+    "codeReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-19T21:53:34.984Z",
+      "updatedBy": "TL"
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-19T21:48:13.715Z",
+      "updatedBy": "TeamLead",
+      "command": "scripts/verify-quick.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "104cac25d3b03884"
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-19T21:46:00.541Z",
+      "updatedBy": "architect",
+      "command": "scripts/final-check.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "104cac25d3b03884"
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-19T21:46:48.759Z",
+      "updatedBy": "architect",
+      "command": "scripts/karate-test.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "104cac25d3b03884"
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-19T20:15:44.199Z",
+    "completedAt": "2026-04-19T21:53:59.853Z",
+    "durationMinutes": 98
+  },
+  "batches": {
+    "current": null,
+    "total": 2,
+    "history": [
+      {
+        "batch": 1,
+        "slices": [
+          "S1",
+          "S2"
+        ],
+        "startedAt": "2026-04-19T21:06:49.477Z",
+        "completedAt": "2026-04-19T21:26:10.537Z",
+        "status": "complete",
+        "by": "TL"
+      },
+      {
+        "batch": 2,
+        "slices": [
+          "S3",
+          "S4"
+        ],
+        "startedAt": "2026-04-19T21:26:10.664Z",
+        "completedAt": "2026-04-19T21:48:13.859Z",
+        "status": "complete",
+        "by": "TL"
+      }
+    ]
+  },
+  "changes": {
+    "files": [
+      "documentation/capabilities/issues.md",
+      "flow-orchestrator/http/issues.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiProperties.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/config/IssuesApiValidationProperties.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabUpdateIssueRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/model/UpdateIssueInput.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidator.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/CreateIssueRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/UpdateIssueRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapper.java",
+      "flow-orchestrator/src/main/resources/application.yml",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/support/GitLabUpdateIssueStubSupport.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/config/IssuesApiPropertiesTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssuesMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/IssuesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidatorTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/dto/CreateIssueRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesRequestMapperTest.java"
+    ]
+  },
+  "architecturalRisks": {
+    "round": 2,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "HIGH",
+        "description": "The plan violates architecture-guidance model-structure ownership by redefining reused IssueSummary and IssueSummaryDto with incomplete field inventories. M8 and M9 omit assignee, milestone, parent, and changeSets even though PATCH is required to reuse the existing shared response contracts unchanged. If this is not fixed, the coder is forced to guess the actual reused contract during implementation, which risks mapper drift or accidental response-shape regressions in a shared entity DTO.",
+        "suggestedFix": "Amend plan models M8 and M9 to list the full current field set, types, nullability, and changeSets/null-inclusion behavior for the reused IssueSummary and IssueSummaryDto contracts instead of documenting only a partial subset.",
+        "planRefs": [
+          "M8",
+          "M9"
+        ],
+        "connectedAreas": [
+          "S2"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-19T20:37:37.917Z",
+        "responseNote": "M8 and M9 now document the full unchanged IssueSummary and IssueSummaryDto contracts, including assignee, milestone, parent, and nullable changeSets, and the accepted plan explicitly reuses both models unchanged for PATCH responses.",
+        "respondedBy": "Java Architect",
+        "respondedAt": "2026-04-19T21:02:19.372Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-19T21:05:45.220Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-19T20:38:49.659Z",
+        "reclassificationReason": "The plan misstates the live shared IssueSummary and IssueSummaryDto contract, which can drive mapper or response regressions on a reused DTO and forces coder guesswork in a shared path.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 2,
+        "severity": "HIGH",
+        "description": "The plan violates the round-1 slice-feasibility rule because S1 and S2 are too large to be implemented and verified as controlled slices. S1 spans config, REST, mapper, and integration-test updates across 12 classes, and S2 spans 21 classes across REST, orchestration, integration, docs, http examples, and three test levels. If this is not fixed, the coder will be forced into a large mixed patch where failures in one area block the whole slice, increasing redesign churn and false-positive red cards instead of enabling incremental delivery.",
+        "suggestedFix": "Reslice the plan into smaller increments of no more than 8-10 files each, for example: shared config/create-limit alignment, PATCH REST/orchestration contract, GitLab adapter/mapping, then docs/component coverage, with each slice independently testable.",
+        "planRefs": [
+          "S1",
+          "S2"
+        ],
+        "connectedAreas": [
+          "S1",
+          "S2"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-19T20:37:38.511Z",
+        "responseNote": "The accepted plan replaces the two oversized slices with four bounded slices: S1 shared config and create validation, S2 PATCH request boundary, S3 update service contract, and S4 GitLab adapter plus runtime verification. Each slice now has narrower scope, explicit file ownership, and focused verification.",
+        "respondedBy": "Java Architect",
+        "respondedAt": "2026-04-19T21:02:23.064Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-19T21:05:45.896Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-19T20:38:49.805Z",
+        "reclassificationReason": "The current slices are too large for controlled implementation and verification, which materially raises rework and red-card risk in this workflow.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 3,
+        "severity": "MEDIUM",
+        "description": "The plan introduces a new REST-boundary validation owner package via IssuesRequestValidator in orchestration/issues/rest/validation but explicitly rejects any ArchUnit addition in D6. This violates the test-instructions rule that new package boundaries or layer interactions introduced by the plan must be enforced by FlowOrchestratorArchitectureTest. If this is not fixed, the plan's main structural decision that request validation stays in the REST boundary remains convention-only, so future changes can move validation logic into services or adapters without any architecture test failing.",
+        "suggestedFix": "Add an ArchUnit rule to FlowOrchestratorArchitectureTest that covers the new rest.validation package, such as requiring validators to live under orchestration..rest..validation and preventing orchestration services and integration adapters from depending on that package.",
+        "planRefs": [
+          "D1",
+          "D6"
+        ],
+        "connectedAreas": [
+          "C4",
+          "S1"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-19T20:37:39.070Z",
+        "responseNote": "The revised plan no longer introduces an orchestration/issues/rest/validation package. C4 is now IssuesRequestValidator in the existing orchestration/issues/rest package, and D1 and D6 explicitly state that no new package boundary or ArchUnit rule is introduced.",
+        "respondedBy": "Java Architect",
+        "respondedAt": "2026-04-19T21:02:26.652Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-19T21:05:46.338Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-19T20:38:49.975Z",
+        "reclassificationReason": "The missing ArchUnit coverage weakens enforcement of the new validation-package boundary, but it is a structural quality gap rather than an immediate correctness blocker.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 4,
+        "severity": "MEDIUM",
+        "description": "The revised plan is internally inconsistent on create-label validation ownership. V3 says IssuesRequestValidator must reject create labels that are non-null and non-blank, but M3 and S1 explicitly preserve CreateIssueRequest behavior that filters null label elements out before validation. If this is not fixed, the coder cannot satisfy the documented validator contract without either silently accepting null create labels or breaking the existing DTO behavior, which will cause avoidable rework and inconsistent create/update validation semantics.",
+        "suggestedFix": "Make the create-label contract consistent in the plan: either change CreateIssueRequest so null label elements are preserved for validator visibility and add direct test coverage for that behavior, or narrow V3/S1 so create validation only promises the rules that remain observable after DTO sanitation.",
+        "planRefs": [
+          "V3",
+          "M3",
+          "S1"
+        ],
+        "connectedAreas": [
+          "S1",
+          "C5",
+          "C18"
+        ],
+        "status": "OPEN",
+        "round": 2,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-19T21:05:46.909Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null,
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-19T21:06:35.248Z",
+        "reclassificationReason": "This is a plan-consistency gap around existing create-label sanitation behavior, not a locked update-issue contract flaw or architectural boundary violation. It should remain visible, but it is not worth a third review loop before coding.",
+        "previousSeverity": "UNCLASSIFIED"
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 1,
+    "findings": [
+      {
+        "id": 1,
+        "severity": "MEDIUM",
+        "description": "IssuesControllerIT covers zero and negative issueId only for DELETE. PATCH uses the same @Positive constraint but has no IT test for patch(PATCH_ENDPOINT, 0L) or patch(PATCH_ENDPOINT, -1L). If the annotation were removed from the PATCH signature, no test would catch it.",
+        "file": "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-19T21:52:53.967Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      },
+      {
+        "id": 2,
+        "severity": "MEDIUM",
+        "description": "IssuesRequestValidatorTest covers update title too long (x.repeat(11) > max 10) but has no test for a non-blank update title below minimum length (e.g., 'ab' with min=3). validateOptionalTitle delegates to validateTitleLength which checks both bounds, but the lower bound is only tested indirectly via create-path tests. If the titleMinLength branch were accidentally removed for update, no update-specific test would fail.",
+        "file": "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesRequestValidatorTest.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-19T21:53:01.034Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 1,
+      "type": "note",
+      "by": "TL",
+      "reason": "Approved deviation: Java Coder introduced minimal IssuesService/IssuesPort update scaffolding in batch 1 to keep the PATCH boundary compilable before S3.",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-19T21:26:10.390Z"
+    }
+  ]
+}

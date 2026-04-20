@@ -5,11 +5,13 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.CreateIssueInp
 import com.gitlabflow.floworchestrator.orchestration.issues.model.EnrichedIssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.CreateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueDetailDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.IssueSummaryDto;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.SearchIssuesResponse;
+import com.gitlabflow.floworchestrator.orchestration.issues.rest.dto.UpdateIssueRequest;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesRequestMapper;
 import com.gitlabflow.floworchestrator.orchestration.issues.rest.mapper.IssuesResponseMapper;
 import jakarta.validation.Valid;
@@ -22,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,6 +43,7 @@ public class IssuesController {
     private final IssuesService issuesService;
     private final IssuesRequestMapper issuesRequestMapper;
     private final IssuesResponseMapper issuesResponseMapper;
+    private final IssuesRequestValidator issuesRequestValidator;
 
     @PostMapping("/search")
     public SearchIssuesResponse getIssues(@RequestBody(required = false) @Valid final SearchIssuesRequest request) {
@@ -53,6 +57,7 @@ public class IssuesController {
 
     @PostMapping
     public ResponseEntity<IssueSummaryDto> createIssue(@RequestBody @Valid final CreateIssueRequest request) {
+        issuesRequestValidator.validateCreateRequest(request);
         final List<String> labels = request.labels();
         log.info(
                 "Create issue request received descriptionPresent={} labelCount={}",
@@ -63,6 +68,29 @@ public class IssuesController {
         final IssueSummaryDto response = issuesResponseMapper.toIssueSummaryDto(issue);
         log.info("Create issue response returned id={}", response.id());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PatchMapping("/{issueId}")
+    public ResponseEntity<IssueSummaryDto> updateIssue(
+            @PathVariable @Positive(message = ISSUE_ID_POSITIVE_MESSAGE) final long issueId,
+            @RequestBody @Valid final UpdateIssueRequest request) {
+        final List<String> addLabels = request.addLabels();
+        final List<String> removeLabels = request.removeLabels();
+        log.info(
+                "Update issue request received issueId={} titlePresent={} descriptionProvided={} addLabelCount={} removeLabelCount={}",
+                issueId,
+                request.title() != null,
+                request.description() != null,
+                addLabels == null ? 0 : addLabels.size(),
+                removeLabels == null ? 0 : removeLabels.size());
+
+        issuesRequestValidator.validateUpdateRequest(request);
+
+        final UpdateIssueInput input = issuesRequestMapper.toUpdateIssueInput(issueId, request);
+        final IssueSummary issue = issuesService.updateIssue(input);
+        final IssueSummaryDto response = issuesResponseMapper.toIssueSummaryDto(issue);
+        log.info("Update issue response returned issueId={}", issueId);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{issueId}")

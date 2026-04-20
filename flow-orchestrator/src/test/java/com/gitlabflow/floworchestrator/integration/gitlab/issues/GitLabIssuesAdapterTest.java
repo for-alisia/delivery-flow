@@ -26,6 +26,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueState;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.LabelChangeSet;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.List;
@@ -46,12 +47,15 @@ class GitLabIssuesAdapterTest {
     private static final String PROJECT_URL = "https://gitlab.example.com/group/project";
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/issues";
     private static final String DELETE_API_URL = API_URL + "/12";
+    private static final String UPDATE_API_URL = API_URL + "/12";
     private static final String GET_SINGLE_API_URL = API_URL + "/42";
     private static final String GET_LABEL_EVENTS_API_URL = GET_SINGLE_API_URL + "/resource_label_events";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
     private static final IssueQuery DEFAULT_QUERY = new IssueQuery(1, 40, null, null, null, null, List.of());
     private static final CreateIssueInput CREATE_INPUT =
             new CreateIssueInput("Deploy failure", "Step 3 failed", List.of("bug", "deploy"));
+    private static final UpdateIssueInput UPDATE_INPUT =
+            new UpdateIssueInput(12L, "Deploy failure updated", "", List.of("backend", "triaged"), List.of("bug"));
 
     private MockRestServiceServer server;
     private GitLabIssuesAdapter adapter;
@@ -272,6 +276,67 @@ class GitLabIssuesAdapterTest {
     }
 
     @Test
+    @DisplayName("puts update payload and maps updated issue response")
+    void putsUpdatePayloadAndMapsUpdatedIssueResponse() {
+        server.expect(requestTo(UPDATE_API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.PUT)))
+                .andExpect(content().contentType(APPLICATION_JSON))
+                .andExpect(content().json("""
+                        {
+                          "title": "Deploy failure updated",
+                          "description": "",
+                          "add_labels": "backend,triaged",
+                          "remove_labels": "bug"
+                        }
+                        """))
+                .andRespond(
+                        withStatus(HttpStatus.OK).contentType(APPLICATION_JSON).body("""
+                                {
+                                  "id": 700,
+                                  "iid": 12,
+                                  "title": "Deploy failure updated",
+                                  "description": "",
+                                  "labels": ["backend", "triaged"],
+                                  "state": "opened"
+                                }
+                                """));
+
+        final IssueSummary issue = adapter.updateIssue(UPDATE_INPUT);
+
+        assertThat(issue.id()).isEqualTo(700L);
+        assertThat(issue.issueId()).isEqualTo(12L);
+        assertThat(issue.title()).isEqualTo("Deploy failure updated");
+        assertThat(issue.description()).isEmpty();
+        assertThat(issue.labels()).containsExactly("backend", "triaged");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("maps update issue 404 to not found integration error")
+    void mapsUpdateIssue404ToNotFoundIntegrationError() {
+        assertUpdateStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("maps update issue 500 to generic integration error")
+    void mapsUpdateIssue500ToGenericIntegrationError() {
+        assertUpdateStatusIsMappedToError(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTEGRATION_FAILURE);
+    }
+
+    @Test
+    @DisplayName("maps update issue transport failures to generic integration error")
+    void mapsUpdateIssueTransportFailuresToGenericIntegrationError() {
+        server.expect(requestTo(UPDATE_API_URL)).andRespond(request -> {
+            throw new IOException("connection reset");
+        });
+
+        assertThatThrownBy(() -> adapter.updateIssue(UPDATE_INPUT))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE));
+    }
+
+    @Test
     @DisplayName("deletes issue with expected endpoint and returns without error")
     void deletesIssueWithExpectedEndpointAndReturnsWithoutError() {
         server.expect(requestTo(DELETE_API_URL))
@@ -322,6 +387,15 @@ class GitLabIssuesAdapterTest {
         server.expect(requestTo(API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
 
         assertThatThrownBy(() -> adapter.createIssue(CREATE_INPUT))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
+    }
+
+    private void assertUpdateStatusIsMappedToError(final HttpStatus status, final ErrorCode expectedErrorCode) {
+        server.expect(requestTo(UPDATE_API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
+
+        assertThatThrownBy(() -> adapter.updateIssue(UPDATE_INPUT))
                 .isInstanceOfSatisfying(
                         IntegrationException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));

@@ -20,8 +20,8 @@ class CreateIssueRequestTest {
     }
 
     @Test
-    @DisplayName("filters null elements from labels list")
-    void filtersNullElementsFromLabelsList() {
+    @DisplayName("preserves null elements and defends labels list from mutation")
+    void preservesNullElementsAndDefendsLabelsListFromMutation() {
         final List<String> labels = new ArrayList<>(List.of("bug", "deploy"));
         labels.add(null);
 
@@ -29,7 +29,7 @@ class CreateIssueRequestTest {
         final List<String> sanitizedLabels = Objects.requireNonNull(request.labels());
         labels.clear();
 
-        assertThat(sanitizedLabels).containsExactly("bug", "deploy");
+        assertThat(sanitizedLabels).containsExactly("bug", "deploy", null);
         assertThatThrownBy(() -> sanitizedLabels.add("infra")).isInstanceOf(UnsupportedOperationException.class);
     }
 }

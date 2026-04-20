@@ -24,8 +24,8 @@
 - Workflow owner and final acceptance gate
 - Maintains requirement lock and flow-log state (`artifacts/flow-logs/<feature-name>.json`)
 - Verifies artifacts before every stage transition via `flow-log status`
-- Runs `final-check.sh` and Karate smoke tests (`karate-test.sh`) after coder batches; the Karate script reuses a healthy local app when available or starts it automatically
-- Records verification evidence via `flow-log set-check`
+- Runs verification checks after coder batches via `flow-log run-check`; the karate script reuses a healthy local app when available or starts it automatically
+- Records verification evidence via `flow-log run-check` (executes script and records result atomically)
 - Tracks batches via `flow-log start-batch` / `complete-batch`
 - Enforces coder batching, red cards (via `flow-log reset-checks`), and architect escalation
 
@@ -92,11 +92,11 @@
 
 - Implements the plan exactly, slice by slice
 - Reads context via `flow-log summary`
-- Adds required tests and runs verification (`verify-quick.sh` per slice, `final-check.sh` before handoff)
+- Adds required tests and runs verification via `flow-log run-check` (`verifyQuick` per slice, `verify-all` before handoff to run all three checks in sequence)
 - Runs `scripts/coder-handoff-check.sh <feature-name>` before returning to TL — fixes any failures first
-- Records checks via `flow-log set-check` and changed files via `flow-log add-change`
+- Records checks via `flow-log run-check` (runs script + records result) and changed files via `flow-log add-change`
 - When re-invoked to fix code review findings: reads OPEN/REOPENED findings from `flow-log summary`, responds via `flow-log respond-finding` (FIXED/DISPUTED with note)
-- Does NOT write Karate `.feature` files or run Karate tests — that belongs to Architect and Team Lead respectively
+- Does NOT write Karate `.feature` files — that belongs to Architect
 - Returns changed files, status, deviations, and blockers after every batch
 - Does not invent extra scope or self-certify weak evidence
 
@@ -121,9 +121,9 @@
 
 ## Verification Expectations
 
-- `Java Coder` runs `verify-quick.sh` per slice, `final-check.sh` before handoff, and `coder-handoff-check.sh` as pre-handoff gate; records results via `flow-log set-check`
-- `Team Lead` runs `final-check.sh` as independent recheck, runs `karate-test.sh`, and records results via `flow-log set-check`
-- `Code Reviewer` validates code quality, reviews flow-log evidence, and reruns checks only when evidence is suspect
+- `Java Coder` runs `run-check --name verifyQuick` per slice, then `verify-all` (runs `verifyQuick` → `finalCheck` → `karate` in sequence) before handoff, and `coder-handoff-check.sh` as pre-handoff gate
+- `Team Lead` checks `*Stale` fields in `flow-log status` (`verifyQuickStale`, `finalCheckStale`, `karateStale`) before accepting check results — if a check is stale, source changed since it last passed and the check should be re-run. Runs `run-check --name finalCheck` as independent recheck, `run-check --name karate`, and validates via `flow-log status`
+- `Code Reviewer` validates code quality, reviews flow-log evidence including staleness flags, and reruns checks only when evidence is suspect or stale
 - ArchUnit tests run as part of `mvn test` (verify-quick) — architecture boundary violations break the build deterministically without requiring manual review
 
 ## Source Files

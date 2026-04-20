@@ -33,13 +33,35 @@ STATUS_JSON=$(node flow-log/flow-log.mjs status --feature "${FEATURE}" 2>/dev/nu
   exit 1
 }
 
-FINAL_CHECK=$(echo "${STATUS_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).status; console.log(s.finalCheck ?? 'MISSING')})" 2>/dev/null) || FINAL_CHECK="MISSING"
+parse_check() {
+  local check_name="$1"
+  echo "${STATUS_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).status; console.log(s.${check_name} ?? 'MISSING')})" 2>/dev/null || echo "MISSING"
+}
+
+# verifyQuick
+VERIFY_QUICK=$(parse_check verifyQuick)
+if [[ "${VERIFY_QUICK}" == "PASS" ]]; then
+  echo "  PASS: verifyQuick recorded as PASS"
+else
+  echo "  FAIL: verifyQuick is '${VERIFY_QUICK}' — must be PASS"
+  ERRORS=$((ERRORS + 1))
+fi
 
 # finalCheck
+FINAL_CHECK=$(parse_check finalCheck)
 if [[ "${FINAL_CHECK}" == "PASS" ]]; then
   echo "  PASS: finalCheck recorded as PASS"
 else
   echo "  FAIL: finalCheck is '${FINAL_CHECK}' — must be PASS"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# karate
+KARATE_CHECK=$(parse_check karate)
+if [[ "${KARATE_CHECK}" == "PASS" ]]; then
+  echo "  PASS: karate recorded as PASS"
+else
+  echo "  FAIL: karate is '${KARATE_CHECK}' — must be PASS"
   ERRORS=$((ERRORS + 1))
 fi
 

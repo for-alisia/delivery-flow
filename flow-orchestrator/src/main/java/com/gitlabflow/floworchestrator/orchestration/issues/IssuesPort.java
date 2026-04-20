@@ -6,6 +6,7 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueDetail;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
+import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
 import java.util.List;
 
 public interface IssuesPort {
@@ -13,6 +14,8 @@ public interface IssuesPort {
     IssuePage getIssues(IssueQuery query);
 
     IssueSummary createIssue(CreateIssueInput input);
+
+    IssueSummary updateIssue(UpdateIssueInput input);
 
     void deleteIssue(long issueId);
 
