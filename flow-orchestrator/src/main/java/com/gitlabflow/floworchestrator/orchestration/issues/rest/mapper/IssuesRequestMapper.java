@@ -52,7 +52,7 @@ public class IssuesRequestMapper {
     }
 
     public CreateIssueInput toCreateIssueInput(final CreateIssueRequest request) {
-        final List<String> labels = request.labels() == null ? List.of() : request.labels();
+        final List<String> labels = deduplicateLabels(request.labels());
         return CreateIssueInput.builder()
                 .title(request.title())
                 .description(request.description())
@@ -61,8 +61,8 @@ public class IssuesRequestMapper {
     }
 
     public UpdateIssueInput toUpdateIssueInput(final long issueId, final UpdateIssueRequest request) {
-        final List<String> addLabels = request.addLabels() == null ? List.of() : request.addLabels();
-        final List<String> removeLabels = request.removeLabels() == null ? List.of() : request.removeLabels();
+        final List<String> addLabels = deduplicateLabels(request.addLabels());
+        final List<String> removeLabels = deduplicateLabels(request.removeLabels());
 
         return UpdateIssueInput.builder()
                 .issueId(issueId)
@@ -71,6 +71,10 @@ public class IssuesRequestMapper {
                 .addLabels(addLabels)
                 .removeLabels(removeLabels)
                 .build();
+    }
+
+    private List<String> deduplicateLabels(final List<String> labels) {
+        return labels == null ? List.of() : labels.stream().distinct().toList();
     }
 
     private String extractSingleValue(final List<String> values) {

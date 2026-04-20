@@ -1,7 +1,8 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import lombok.Builder;
 import org.springframework.lang.Nullable;
 
@@ -12,8 +13,6 @@ public record CreateIssueRequest(
         @Nullable List<String> labels) {
 
     public CreateIssueRequest {
-        labels = labels == null
-                ? null
-                : List.copyOf(labels.stream().filter(Objects::nonNull).toList());
+        labels = labels == null ? null : Collections.unmodifiableList(new ArrayList<>(labels));
     }
 }

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "v2.5.0-refactor",
+  "createdAt": "2026-04-20T07:17:11.020Z",
+  "updatedAt": "2026-04-20T07:21:27.588Z",
+  "requirements": {
+    "locked": false,
+    "lockedAt": null,
+    "lockedBy": null,
+    "requestSource": null
+  },
+  "artifacts": {
+    "story": {
+      "path": null,
+      "approved": false,
+      "approvedAt": null,
+      "approvedBy": null,
+      "approvedRevision": null,
+      "approvedHash": null,
+      "lastVerifiedExistsAt": null
+    },
+    "plan": {
+      "path": null,
+      "approved": false,
+      "approvedAt": null,
+      "approvedBy": null,
+      "approvedRevision": null,
+      "approvedHash": null,
+      "lastVerifiedExistsAt": null
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PENDING",
+      "reason": null,
+      "updatedAt": null,
+      "updatedBy": null
+    },
+    "codeReview": {
+      "status": "PENDING",
+      "reason": null,
+      "updatedAt": null,
+      "updatedBy": null
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T07:20:05.231Z",
+      "updatedBy": "Refactorer",
+      "command": "scripts/verify-quick.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "487d3169263a8be7"
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T07:21:03.199Z",
+      "updatedBy": "Refactorer",
+      "command": "scripts/final-check.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "64c3c4b0e450360a"
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T07:21:27.588Z",
+      "updatedBy": "Refactorer",
+      "command": "scripts/karate-test.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "64c3c4b0e450360a"
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-20T07:17:11.020Z",
+    "completedAt": null,
+    "durationMinutes": null
+  },
+  "batches": {
+    "current": null,
+    "total": 0,
+    "history": []
+  },
+  "changes": {
+    "files": []
+  },
+  "architecturalRisks": {
+    "round": 0,
+    "risks": []
+  },
+  "codeFindings": {
+    "round": 0,
+    "findings": []
+  },
+  "events": []
+}

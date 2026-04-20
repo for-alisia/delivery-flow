@@ -30,7 +30,7 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 
 | Capability | Endpoints | Detail |
 |-----------|-----------|--------|
-| **issues** — search, create, delete, get-single, label-event history | `POST /api/issues/search`, `POST /api/issues`, `DELETE /api/issues/{issueId}`, `GET /api/issues/{issueId}` | [capabilities/issues.md](capabilities/issues.md) |
+| **issues** — search, create, update, delete, get-single, label-event history | `POST /api/issues/search`, `POST /api/issues`, `PATCH /api/issues/{issueId}`, `DELETE /api/issues/{issueId}`, `GET /api/issues/{issueId}` | [capabilities/issues.md](capabilities/issues.md) |
 | **milestones** — shared model and DTO foundation (no endpoints yet) | N/A | [capabilities/milestones.md](capabilities/milestones.md) |
 
 ---

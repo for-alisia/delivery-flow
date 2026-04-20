@@ -420,6 +420,21 @@ class IssuesControllerIT {
     }
 
     @Test
+    @DisplayName("rejects create request with null label element")
+    void rejectsCreateRequestWithNullLabelElement() throws Exception {
+        mockMvc.perform(post(CREATE_ENDPOINT).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "title": "Deploy failure",
+                                                                                                                                        "labels": ["bug", null]
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("labels[1]"))))
+                .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not be null"))));
+    }
+
+    @Test
     @DisplayName("updates issue and returns 200")
     void updatesIssueAndReturns200() throws Exception {
         final UpdateIssueRequest request = new UpdateIssueRequest("Updated title", "", List.of("backend"), List.of());
@@ -475,6 +490,38 @@ class IssuesControllerIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
                 .andExpect(jsonPath("$.details[0]", Objects.requireNonNull(containsString("must not overlap"))));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
+    }
+
+    @Test
+    @DisplayName("rejects patch request when issue id is zero")
+    void rejectsPatchRequestWhenIssueIdIsZero() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, 0L).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "description": "update"
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
+
+        verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
+        verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));
+    }
+
+    @Test
+    @DisplayName("rejects patch request when issue id is negative")
+    void rejectsPatchRequestWhenIssueIdIsNegative() throws Exception {
+        mockMvc.perform(patch(PATCH_ENDPOINT, -1L).contentType(APPLICATION_JSON).content("""
+                                                                                                                                {
+                                                                                                                                        "description": "update"
+                                                                                                                                }
+                                                                                                                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(CODE_PATH).value(VALIDATION_CODE))
+                .andExpect(jsonPath("$.details[0]").value(ISSUE_ID_POSITIVE_MESSAGE));
 
         verify(issuesRequestMapper, never()).toUpdateIssueInput(anyLong(), any(UpdateIssueRequest.class));
         verify(issuesService, never()).updateIssue(any(UpdateIssueInput.class));

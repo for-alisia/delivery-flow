@@ -83,6 +83,17 @@ class IssuesRequestValidatorTest {
     }
 
     @Test
+    @DisplayName("rejects create request with null label values")
+    void rejectsCreateRequestWithNullLabelValues() {
+        final CreateIssueRequest request = new CreateIssueRequest("deploy", null, Arrays.asList("bug", null));
+
+        final ValidationException exception =
+                assertThrowsExactly(ValidationException.class, () -> validator.validateCreateRequest(request));
+
+        assertThat(exception.details()).containsExactly("labels[1] must not be null");
+    }
+
+    @Test
     @DisplayName("accepts update request with empty description as effective change")
     void acceptsUpdateRequestWithEmptyDescriptionAsEffectiveChange() {
         final UpdateIssueRequest request = new UpdateIssueRequest(null, "", null, null);

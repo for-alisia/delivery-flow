@@ -161,7 +161,7 @@ Content-Type: application/json
 ### Delete issue request (existing issue)
 DELETE {{baseUrl}}/api/issues/26
 
-### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field=LABEL (uppercase enum)], changedAt — distinct from search which emits change.field='label' lowercase)
+### Get single issue detail (changeSets is always an array; label-event entries use changeType, changedBy, change[field="label" lowercase wire value], changedAt — distinct from search only by response shape)
 GET {{baseUrl}}/api/issues/{{issueId}}
 
 

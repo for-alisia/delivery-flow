@@ -12,9 +12,9 @@ import com.gitlabflow.floworchestrator.orchestration.issues.model.IssuePage;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueQuery;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.IssueSummary;
 import com.gitlabflow.floworchestrator.orchestration.issues.model.UpdateIssueInput;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -137,12 +137,12 @@ public class IssuesService {
 
         asyncComposer.joinFailFast(changeSetFutures);
 
-        final List<IssueSummary> enrichedItems = IntStream.range(
-                        0, issuePage.items().size())
-                .mapToObj(index -> enrichIssue(
-                        issuePage.items().get(index),
-                        changeSetFutures.get(index).join()))
-                .toList();
+        final List<IssueSummary> enrichedItems =
+                new ArrayList<>(issuePage.items().size());
+        for (int index = 0; index < issuePage.items().size(); index++) {
+            enrichedItems.add(enrichIssue(
+                    issuePage.items().get(index), changeSetFutures.get(index).join()));
+        }
 
         return IssuePage.builder()
                 .items(enrichedItems)
@@ -152,18 +152,7 @@ public class IssuesService {
     }
 
     private IssueSummary enrichIssue(final IssueSummary issue, final List<ChangeSet<?>> changeSets) {
-        return IssueSummary.builder()
-                .id(issue.id())
-                .issueId(issue.issueId())
-                .title(issue.title())
-                .description(issue.description())
-                .state(issue.state())
-                .labels(issue.labels())
-                .assignee(issue.assignee())
-                .milestone(issue.milestone())
-                .parent(issue.parent())
-                .changeSets(changeSets)
-                .build();
+        return issue.toBuilder().changeSets(changeSets).build();
     }
 
     private long toDurationMs(final long startedAt) {

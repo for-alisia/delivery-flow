@@ -110,6 +110,17 @@ class IssuesRequestMapperTest {
     }
 
     @Test
+    @DisplayName("maps create issue request with deduplicated labels")
+    void mapsCreateIssueRequestWithDeduplicatedLabels() {
+        final CreateIssueRequest request =
+                new CreateIssueRequest("Reporting bug", null, List.of("bug", "bug", "backend"));
+
+        final CreateIssueInput input = mapper.toCreateIssueInput(request);
+
+        assertThat(input.labels()).containsExactly("bug", "backend");
+    }
+
+    @Test
     @DisplayName("maps update issue request and preserves empty description")
     void mapsUpdateIssueRequestAndPreservesEmptyDescription() {
         final UpdateIssueRequest request = new UpdateIssueRequest("Retitle", "", null, null);
@@ -136,5 +147,18 @@ class IssuesRequestMapperTest {
         assertThat(input.description()).isNull();
         assertThat(input.addLabels()).containsExactly("backend", "infra");
         assertThat(input.removeLabels()).containsExactly("legacy");
+    }
+
+    @Test
+    @DisplayName("maps update issue request labels with deduplication")
+    void mapsUpdateIssueRequestLabelsWithDeduplication() {
+        final UpdateIssueRequest request =
+                new UpdateIssueRequest(null, null, List.of("backend", "backend", "infra"), List.of("bug", "bug"));
+
+        final UpdateIssueInput input = mapper.toUpdateIssueInput(79L, request);
+
+        assertThat(input.issueId()).isEqualTo(79L);
+        assertThat(input.addLabels()).containsExactly("backend", "infra");
+        assertThat(input.removeLabels()).containsExactly("bug");
     }
 }
