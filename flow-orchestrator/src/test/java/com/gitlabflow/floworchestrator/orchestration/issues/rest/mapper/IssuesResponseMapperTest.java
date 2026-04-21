@@ -196,7 +196,7 @@ class IssuesResponseMapperTest {
     @DisplayName("toIssueDetailDto maps all fields")
     void toIssueDetailDtoMapsAllFields() {
         final var assignee = new User(10L, "john.doe", "John Doe");
-        final var milestone = new Milestone(5L, 3L, "Sprint 12", "active", "2026-04-30");
+        final var milestone = new Milestone(5L, 3L, "Sprint 12", "Cycle sprint", "2026-04-01", "2026-04-30", "active");
         final var createdAt = OffsetDateTime.parse("2026-01-04T15:31:51.081Z");
         final var updatedAt = OffsetDateTime.parse("2026-03-12T09:00:00.000Z");
         final var detail = new IssueDetail(
@@ -224,6 +224,9 @@ class IssuesResponseMapperTest {
         assertThat(dto.assignees().getFirst().username()).isEqualTo("john.doe");
         assertThat(dto.assignees().getFirst().name()).isEqualTo("John Doe");
         final var milestoneDto = Objects.requireNonNull(dto.milestone());
+        assertThat(milestoneDto.description()).isEqualTo("Cycle sprint");
+        assertThat(milestoneDto.startDate()).isEqualTo("2026-04-01");
+        assertThat(milestoneDto.dueDate()).isEqualTo("2026-04-30");
         assertThat(milestoneDto.milestoneId()).isEqualTo(3L);
         assertThat(dto.createdAt()).isEqualTo(createdAt);
         assertThat(dto.updatedAt()).isEqualTo(updatedAt);

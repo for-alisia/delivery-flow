@@ -23,7 +23,7 @@ description: "Test placement, naming, levels, coverage, and quality rules for wr
 - Use Karate tests for end-to-end API verification against a running application. Tag all smoke scenarios with `@smoke`.
 - Karate tests are isolated from unit and quality-gate runs — they only execute via `scripts/karate-test.sh` or the `-Pkarate` Maven profile. Do not add Karate runner classes to surefire or default failsafe includes.
 - For local smoke verification, prefer `scripts/karate-test.sh` over manual startup plus raw Maven. The script reuses a healthy local app when available or starts it automatically.
-- The Architect writes Karate `.feature` files directly as part of the implementation plan. The Team Lead executes them. The Coder does NOT write or modify Karate tests.
+- The Architect writes Karate `.feature` files directly as part of the implementation plan. The Team Lead executes them. The Coder may only adjust existing Karate tests for small payload or endpoint changes (field names, URL paths, status codes, request/response bodies) but does not add scenarios, remove scenarios, or change test logic.
 - Prefer the smallest test level that proves the change.
 - Do not duplicate the same scenario across unit, integration, and component tests unless each level proves something different.
 - Every non-trivial logic, validation, defaulting, mapping, or error translation change requires unit coverage.

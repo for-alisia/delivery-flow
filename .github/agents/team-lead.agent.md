@@ -87,8 +87,20 @@ Before every gate, run `flow-log status` and verify phase matches expectations. 
 | `MEDIUM` | Real issue but not blocking: naming, missing test edge case, logging spec. Fixing it would cost another full loop with marginal benefit |
 | `LOW` | Advisory: alternative exists but current approach is acceptable |
 
-4. `architecture-gate`: `PASS` → `set-review architectureReview PASS` → implementation. `FAIL` → route to Architect → back to Reviewer. `ESCALATE` → escalation decision (see below).
+4. `architecture-gate`: `PASS` → `set-review architectureReview PASS` → implementation. `FAIL` → classify revision scope and route to Architect. `ESCALATE` → escalation decision (see below).
 5. Do not self-assess Architect's responses.
+
+**Revision scope** — when routing to Architect after `FAIL`, classify the required revision scope based on risk `planRef` and `connectedArea` fields:
+
+| Scope | When to use | Architect constraint |
+|-------|-------------|---------------------|
+| `LOCAL_CORRECTION` | ≤3 specific items need fixing: wrong field types, missing enum values, incorrect wire formats. All risks point to the same narrow plan section. | Patches cited items only. No section rewrite. |
+| `SECTION_REWRITE` | A section's design is flawed: wrong composition strategy, incomplete model definition, missing validation rules. Risks cluster in 1-2 plan sections. | Rewrites affected sections via draft lifecycle. |
+| `FULL_REPLAN` | Fundamental approach is wrong, scope mismatch, or design direction conflict. Risks span ≥3 unrelated plan sections. | Rewrites entire plan from scratch. |
+
+Default: `SECTION_REWRITE`. Use `LOCAL_CORRECTION` for small targeted fixes. Use `FULL_REPLAN` only when the overall design direction is wrong.
+
+Include in the Architect handoff: `"Revision scope: <scope>. Address risk IDs: <id1>, <id2>. Primary plan sections: <planRef values>."` The `planRef` and `connectedArea` from each risk tell the Architect exactly which plan sections to revise.
 
 **Efficiency rule:** If the review loop hasn't converged after 2 rounds and findings are non-blocking, use `PROCEED_TO_CODING` or `FINAL_ADJUSTMENT` instead of burning a 3rd round.
 
@@ -108,7 +120,7 @@ Max 2 slices per invocation.
 
 1. `start-batch --slice <s1> [--slice <s2>]`
 2. Invoke `Java Coder`
-3. After return: check `flow-log status` for `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If any check is stale (source changed since it last passed), re-run via `run-check` or `verify-all`.
+3. After return: check `flow-log status` for `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If `finalCheckStale` or `karateStale` is true, re-run the stale check via `run-check`. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, the staleness is non-blocking — `finalCheck` already includes compilation and tests.
 4. Independent recheck: `run-check --feature <feature-name> --name finalCheck --by TeamLead`
 5. After final batch: `run-check --feature <feature-name> --name karate --by TeamLead`
 6. `complete-batch --status complete`

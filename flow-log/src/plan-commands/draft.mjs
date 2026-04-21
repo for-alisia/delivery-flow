@@ -24,6 +24,7 @@ import { ensureFeatureMatches, loadState, resolveStatePath } from "../log/store.
 export const DRAFT_PLAN_COMMAND_HELP = [
   "init-plan --feature <name> [--force]",
   "plan-create-draft --feature <name>",
+  "plan-init-draft --feature <name> [--force]",
   "plan-validate-draft --feature <name> [--state-path <path>]",
   "plan-accept-draft --feature <name> [--state-path <path>]",
   "plan-discard-draft --feature <name>",
@@ -36,6 +37,8 @@ export function dispatchDraftPlanCommand(command, parsed, cwd) {
       return handleInitPlan(parsed, cwd);
     case "plan-create-draft":
       return handlePlanCreateDraft(parsed, cwd);
+    case "plan-init-draft":
+      return handlePlanInitDraft(parsed, cwd);
     case "plan-validate-draft":
       return handlePlanValidateDraft(parsed, cwd);
     case "plan-accept-draft":
@@ -66,6 +69,34 @@ function handleInitPlan(parsed, cwd) {
     command: "init-plan",
     feature,
     planPath,
+    schemaVersion: plan.schemaVersion,
+    revision: plan.revision,
+    status: plan.status
+  };
+}
+
+function handlePlanInitDraft(parsed, cwd) {
+  const feature = requiredFlag(parsed, "feature");
+  const planPath = resolvePlanPath(cwd, feature);
+  const force = optionalFlag(parsed, "force") === true;
+
+  if (!force && planExists(planPath)) {
+    throw new Error(`Plan already exists: ${planPath}. Use --force to overwrite.`);
+  }
+
+  const plan = createInitialPlan(feature);
+  plan.hash = computePlanHash(plan);
+  savePlan(planPath, plan);
+
+  const created = createDraft(feature, plan);
+
+  return {
+    ok: true,
+    command: "plan-init-draft",
+    feature,
+    planPath,
+    draftPath: created.draftPath,
+    draftCreated: created.created,
     schemaVersion: plan.schemaVersion,
     revision: plan.revision,
     status: plan.status

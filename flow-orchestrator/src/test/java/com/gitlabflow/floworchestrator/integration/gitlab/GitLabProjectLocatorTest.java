@@ -42,20 +42,24 @@ class GitLabProjectLocatorTest {
     @Test
     @DisplayName("fails for invalid gitlab project url")
     void failsForInvalidProjectUrl() {
-        final GitLabProperties properties = new GitLabProperties("not-a-url", "redacted", 5, 30);
+        final String invalidUrl = "not-a-url";
+        final GitLabProperties properties = new GitLabProperties(invalidUrl, "redacted", 5, 30);
 
         assertThatThrownBy(() -> new GitLabProjectLocator(properties))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Invalid app.gitlab.url project URL");
+                .hasMessageContaining("Invalid app.gitlab.url project URL configuration")
+                .hasMessageNotContaining(invalidUrl);
     }
 
     @Test
     @DisplayName("fails when project url contains single path segment")
     void failsWhenProjectUrlContainsSinglePathSegment() {
-        final GitLabProperties properties = new GitLabProperties("https://gitlab.com/project", "redacted", 5, 30);
+        final String invalidUrl = "https://gitlab.com/project";
+        final GitLabProperties properties = new GitLabProperties(invalidUrl, "redacted", 5, 30);
 
         assertThatThrownBy(() -> new GitLabProjectLocator(properties))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Invalid app.gitlab.url project URL");
+                .hasMessageContaining("Invalid app.gitlab.url project URL configuration")
+                .hasMessageNotContaining(invalidUrl);
     }
 }

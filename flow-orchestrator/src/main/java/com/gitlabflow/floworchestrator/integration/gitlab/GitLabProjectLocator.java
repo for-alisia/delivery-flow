@@ -16,10 +16,7 @@ public final class GitLabProjectLocator {
     // Constructor is intentionally manual because project URL resolution runs during bean initialization.
     public GitLabProjectLocator(final GitLabProperties gitLabProperties) {
         this.projectReference = resolve(gitLabProperties.url());
-        log.info(
-                "Resolved GitLab project reference apiBaseUrl={} projectPath={}",
-                projectReference.apiBaseUrl(),
-                projectReference.projectPath());
+        log.info("Resolved GitLab project reference from configured app.gitlab.url");
     }
 
     public ProjectReference projectReference() {
@@ -30,7 +27,7 @@ public final class GitLabProjectLocator {
         try {
             final URI uri = URI.create(projectUrl);
             if (uri.getScheme() == null || uri.getHost() == null) {
-                throw invalidProjectUrl(projectUrl);
+                throw invalidProjectUrl();
             }
 
             final String[] segments = Arrays.stream(uri.getPath().split("/"))
@@ -38,7 +35,7 @@ public final class GitLabProjectLocator {
                     .toArray(String[]::new);
 
             if (segments.length < 2) {
-                throw invalidProjectUrl(projectUrl);
+                throw invalidProjectUrl();
             }
 
             final String projectPath = String.join("/", segments);
@@ -51,12 +48,13 @@ public final class GitLabProjectLocator {
                     .projectPath(projectPath)
                     .build();
         } catch (final IllegalArgumentException exception) {
-            throw invalidProjectUrl(projectUrl);
+            throw invalidProjectUrl();
         }
     }
 
-    private IllegalStateException invalidProjectUrl(final String projectUrl) {
-        return new IllegalStateException("Invalid app.gitlab.url project URL: " + projectUrl);
+    private IllegalStateException invalidProjectUrl() {
+        return new IllegalStateException("Invalid app.gitlab.url project URL configuration."
+                + " Expected an absolute URL with at least group/project path segments");
     }
 
     @Builder

@@ -1,0 +1,960 @@
+{
+  "schemaVersion": "3.0",
+  "feature": "milestones-search-api",
+  "revision": 3,
+  "status": "draft",
+  "scope": {
+    "purpose": "Add the first milestones API endpoint as a pass-through search over the single configured GitLab project, with optional filters, full upstream page aggregation, shared sanitized error handling, and automated coverage across unit, integration, component, and Karate smoke levels.",
+    "inScope": [
+      "POST /api/milestones/search with optional request body and optional filters object.",
+      "REST-boundary validation for state, titleSearch, and milestoneIds, including duplicate milestoneId rejection.",
+      "Provider-agnostic orchestration input and output contracts for milestone search.",
+      "GitLab project milestones integration using GET /projects/:id/milestones with per_page=100, page iteration, search, state, and iids[] filters.",
+      "Aggregation of all GitLab milestone pages into one API response with no client-facing pagination.",
+      "Extension of shared milestone model and DTO to include description and startDate for reuse by milestone APIs and existing issue detail mapping.",
+      "Shared GitLab operation execution extraction because this is the second GitLab capability adapter.",
+      "Documentation synchronization for the milestones capability, shared context map, and milestone HTTP examples in the same change set.",
+      "Automated tests at unit, integration, component, and Karate smoke levels."
+    ],
+    "outOfScope": [
+      "Group milestones.",
+      "Single-milestone retrieval.",
+      "Milestone create, update, delete, close, or activate operations.",
+      "Milestone issues, merge requests, burndown events, or release aggregation.",
+      "Client-facing pagination, sorting, or date-window filters.",
+      "Per-request project selection or multi-project routing."
+    ],
+    "constraints": [
+      "Requirement source of truth: artifacts/user-prompts/milestone-get-api.md and artifacts/user-stories/milestones-search-api.story.md.",
+      "Locked route: POST /api/milestones/search only; do not use POST /api/milestones for search.",
+      "The client must not pass project identifiers; the configured app.gitlab.url project is the only target project.",
+      "The feature remains pass-through MVP: validate request, call GitLab, map response, return sanitized errors.",
+      "Default behavior is active milestones only; state=all omits the upstream state query parameter.",
+      "titleSearch maps to GitLab search, milestoneIds maps to GitLab iids[], and all pages must be fetched with per_page=100."
+    ]
+  },
+  "implementationFlow": [],
+  "contractExamples": [
+    {
+      "id": "E1",
+      "label": "Filtered request",
+      "type": "request",
+      "method": "POST",
+      "path": "/api/milestones/search",
+      "description": "Sample filtered request; omitted body and omitted filters use the same defaults except this example shows the non-default all-state behavior.",
+      "body": {
+        "filters": {
+          "state": "all",
+          "titleSearch": "release",
+          "milestoneIds": [
+            1,
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "id": "E2",
+      "label": "Successful response",
+      "type": "success",
+      "status": 200,
+      "description": "Successful aggregated milestone response.",
+      "body": {
+        "milestones": [
+          {
+            "id": 12,
+            "milestoneId": 3,
+            "title": "Release 1.0",
+            "description": "Version",
+            "startDate": "2026-05-01",
+            "dueDate": "2026-05-15",
+            "state": "active"
+          }
+        ]
+      }
+    },
+    {
+      "id": "E3",
+      "label": "Validation error",
+      "type": "validation-error",
+      "status": 400,
+      "description": "Validation failure uses the existing shared error response shape.",
+      "body": {
+        "code": "VALIDATION_ERROR",
+        "message": "Request validation failed",
+        "details": [
+          "filters.state must be one of: active, closed, all",
+          "filters.milestoneIds must not contain duplicate values"
+        ]
+      }
+    },
+    {
+      "id": "E4",
+      "label": "Sanitized GitLab auth failure",
+      "type": "error",
+      "status": 401,
+      "description": "GitLab authentication failure remains sanitized through shared integration error handling.",
+      "body": {
+        "code": "INTEGRATION_AUTHENTICATION_FAILED",
+        "message": "GitLab milestones operation failed",
+        "details": []
+      }
+    }
+  ],
+  "validationRules": [
+    {
+      "id": "V1",
+      "rule": "MilestonesController accepts @RequestBody(required = false); a missing body or missing filters object maps to SearchMilestonesInput(state=ACTIVE, titleSearch=null, milestoneIds=[]).",
+      "location": "orchestration/milestones/rest/MilestonesController + orchestration/milestones/rest/mapper/MilestonesRequestMapper",
+      "owner": "MilestonesController",
+      "reason": "The locked contract requires an optional body and default active search behavior."
+    },
+    {
+      "id": "V2",
+      "rule": "MilestoneFiltersRequest.state is optional but, when present, must match exactly active, closed, or all using declarative bean validation with the wire-format message 'must be one of: active, closed, all'.",
+      "location": "orchestration/milestones/rest/dto/MilestoneFiltersRequest",
+      "owner": "MilestoneFiltersRequest",
+      "reason": "The allowed state vocabulary is explicit and should be rejected at the HTTP boundary before orchestration logic runs."
+    },
+    {
+      "id": "V3",
+      "rule": "MilestoneFiltersRequest.titleSearch is optional but, when present, must contain at least one non-whitespace character; MilestonesRequestMapper strips leading and trailing whitespace before building SearchMilestonesInput.",
+      "location": "orchestration/milestones/rest/dto/MilestoneFiltersRequest + orchestration/milestones/rest/mapper/MilestonesRequestMapper",
+      "owner": "MilestonesRequestMapper",
+      "reason": "The request must reject blank titleSearch values while still normalizing accepted input before it reaches orchestration and integration."
+    },
+    {
+      "id": "V4",
+      "rule": "MilestonesRequestValidator rejects milestoneIds that contain null, zero, negative, or duplicate values; duplicate rejection is explicit and not silently deduplicated.",
+      "location": "orchestration/milestones/rest/MilestonesRequestValidator",
+      "owner": "MilestonesRequestValidator",
+      "reason": "The locked request requires positive unique milestoneIds and clear validation errors instead of lossy normalization."
+    },
+    {
+      "id": "V5",
+      "rule": "Malformed JSON continues to flow through GlobalExceptionHandler and returns VALIDATION_ERROR with details ['Malformed JSON request body'].",
+      "location": "common/web/GlobalExceptionHandler",
+      "owner": "GlobalExceptionHandler",
+      "reason": "Malformed JSON handling is an existing shared boundary behavior that the new endpoint must preserve unchanged."
+    },
+    {
+      "id": "V6",
+      "rule": "No controller-level validation accepts or exposes project identifiers; the configured GitLab project from GitLabProjectLocator is the only project source used by the adapter.",
+      "location": "orchestration/milestones/rest/* + integration/gitlab/milestones/GitLabMilestonesAdapter",
+      "owner": "GitLabMilestonesAdapter",
+      "reason": "The request is explicitly single-project and the client must not choose the project per call."
+    }
+  ],
+  "designDecisions": [
+    {
+      "id": "D1",
+      "title": "Extend the shared milestone contract",
+      "decision": "Extend the shared orchestration milestone model and shared REST MilestoneDto with nullable description and startDate instead of creating a milestone-search-only item shape.",
+      "rationale": "The milestones capability already exists as shared foundation for reuse across capabilities. The requested search response needs description and startDate, and the same richer milestone payload is also valid for existing issue detail responses as an additive, backward-compatible expansion of the shared contract."
+    },
+    {
+      "id": "D2",
+      "title": "Split validation by boundary concern",
+      "decision": "Validation boundary decision: use bean validation for declarative scalar rules (state vocabulary and non-blank titleSearch), and a dedicated MilestonesRequestValidator for milestoneIds list rules that are not cleanly expressible without compromising immutable input DTO behavior (null elements, positive integers, duplicates).",
+      "rationale": "This preserves the repo's early-boundary validation rule, keeps controller logic thin, avoids mixing annotation and manual validation for the same constraint category, and preserves deterministic error messages for duplicate milestoneIds."
+    },
+    {
+      "id": "D3",
+      "title": "Extract shared GitLab operation execution",
+      "decision": "Introduce a shared integration/gitlab/GitLabOperationExecutor and reuse it in GitLabIssuesAdapter plus the shared GitLab pagination transport so every GitLab HTTP attempt follows one failure-mapping and logging path.",
+      "rationale": "Architecture guidance explicitly requires extracting the executeGitLabOperation pattern once a second GitLab adapter appears. Reusing the same executor in both direct adapter calls and shared page traversal keeps HTTP failure mapping, transport failure mapping, and WARN/ERROR logging consistent across capabilities instead of duplicating wrapper code."
+    },
+    {
+      "id": "D4",
+      "title": "Extract shared GitLab offset pagination transport",
+      "decision": "Introduce a shared integration/gitlab/GitLabOffsetPaginationLoader and make GitLabMilestonesAdapter delegate page traversal to it. The loader is the architecturally sanctioned shared transport exception to the single-call adapter shape: it owns repeated GET calls for one GitLab listing resource, executes each page through GitLabOperationExecutor, and returns one aggregated DTO list to the adapter for final mapping.",
+      "rationale": "The locked requirement still demands full page aggregation, but leaving that loop in a capability adapter conflicts with the documented one-call adapter shape and invites copy-paste pagination logic in future milestones, metrics, and release endpoints. A shared GitLab pagination transport keeps the repeated-call mechanics provider-local, preserves adapter focus on one resource contract, and stops on page-size exhaustion (< per_page) so the implementation does not depend on pagination headers that GitLab.com may omit."
+    },
+    {
+      "id": "D5",
+      "title": "Honor the exact GitLab query contract",
+      "decision": "Map SearchMilestonesInput.state=ALL to omission of the upstream state parameter; ACTIVE and CLOSED map directly to GitLab state values. Map titleSearch to search and milestoneIds to repeated iids[] query parameters.",
+      "rationale": "This exactly matches the locked request and the official GitLab project milestones API contract, avoids inventing stronger semantics than GitLab documents, and keeps the feature pass-through for MVP."
+    },
+    {
+      "id": "D6",
+      "title": "Reuse existing ArchUnit coverage",
+      "decision": "No new ArchUnit rule is added.",
+      "rationale": "The plan stays within existing top-level packages and suffix conventions already enforced by FlowOrchestratorArchitectureTest: controllers remain under orchestration..rest, the new port remains an orchestration interface, services stay in orchestration, adapters stay under integration and do not depend on rest DTOs, and no new package boundary type is introduced."
+    }
+  ],
+  "models": [
+    {
+      "id": "M1",
+      "name": "Milestone",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone",
+      "kind": "record",
+      "status": "modified",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.model",
+      "purpose": "Shared orchestration milestone concept reused by issue detail and the new milestones API.",
+      "justification": "Milestone is the shared orchestration milestone concept already reused by issue detail and explicitly intended for future milestone APIs in the milestones capability. Extending it here avoids a parallel milestone-search shape and keeps orchestration as the source of truth.",
+      "placementJustification": "The model belongs in orchestration/milestones/model because it expresses the business milestone shape crossing orchestration boundaries and is reused across capabilities.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "milestoneId",
+          "type": "long",
+          "nullable": false,
+          "notes": "GitLab iid, not database id."
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "startDate",
+          "type": "String",
+          "nullable": true,
+          "notes": "YYYY-MM-DD from GitLab start_date."
+        },
+        {
+          "name": "dueDate",
+          "type": "String",
+          "nullable": true,
+          "notes": "YYYY-MM-DD from GitLab due_date."
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false,
+          "notes": "Exact wire values remain GitLab vocabulary: active or closed."
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "MilestoneDto",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneDto",
+      "kind": "record",
+      "status": "modified",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto",
+      "purpose": "Shared REST milestone payload reused by issue detail and milestone APIs.",
+      "justification": "MilestoneDto is the shared REST milestone payload reused by issue detail and future milestone endpoints. Extending it with the same fields as Milestone keeps boundary mapping explicit and avoids DTO duplication across capabilities.",
+      "placementJustification": "The DTO belongs in orchestration/milestones/rest/dto because it is the transport adaptation of the shared Milestone model for this application's HTTP responses.",
+      "ownedBySlices": [
+        "S1"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "milestoneId",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "startDate",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "dueDate",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false,
+          "notes": "Exact wire values remain 'active' and 'closed'."
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "name": "MilestoneState",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState",
+      "kind": "enum",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.model",
+      "purpose": "Provider-neutral milestone search state filter with explicit wire values.",
+      "justification": "The search input needs a provider-neutral, validated state filter that still retains explicit wire values. Owning this enum in orchestration keeps REST strings and GitLab query wiring out of service logic.",
+      "placementJustification": "The enum belongs in orchestration/milestones/model because it is part of the orchestration input contract and not a REST-only or GitLab-only transport detail.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "fields": [
+        {
+          "name": "ACTIVE",
+          "type": "enum-constant",
+          "nullable": false,
+          "notes": "value() returns 'active'."
+        },
+        {
+          "name": "CLOSED",
+          "type": "enum-constant",
+          "nullable": false,
+          "notes": "value() returns 'closed'."
+        },
+        {
+          "name": "ALL",
+          "type": "enum-constant",
+          "nullable": false,
+          "notes": "value() returns 'all'; adapter omits upstream state when this constant is used."
+        },
+        {
+          "name": "value",
+          "type": "String",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "name": "SearchMilestonesInput",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput",
+      "kind": "record",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.model",
+      "purpose": "Provider-agnostic orchestration input for milestone search.",
+      "justification": "This is the provider-agnostic orchestration input contract for the milestone search use case. It belongs in orchestration because it expresses business intent independently of HTTP and GitLab transport mechanics.",
+      "placementJustification": "The record belongs in orchestration/milestones/model because it is the service and port contract for milestone search.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "fields": [
+        {
+          "name": "state",
+          "type": "MilestoneState",
+          "nullable": false,
+          "notes": "Defaults to ACTIVE when request body or filters are omitted."
+        },
+        {
+          "name": "titleSearch",
+          "type": "String",
+          "nullable": true,
+          "notes": "Already stripped in the request mapper."
+        },
+        {
+          "name": "milestoneIds",
+          "type": "List<Long>",
+          "nullable": false,
+          "notes": "Defensively copied to immutable list; empty list means no iid filter."
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "name": "SearchMilestonesRequest",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.SearchMilestonesRequest",
+      "kind": "record",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto",
+      "purpose": "HTTP request wrapper for POST /api/milestones/search.",
+      "justification": "This REST request wrapper belongs in orchestration/rest/dto because it is an HTTP-bound payload for POST /api/milestones/search and must remain isolated from orchestration input models.",
+      "placementJustification": "The wrapper belongs in orchestration/milestones/rest/dto because it represents the external API request envelope, not the orchestration use-case input.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "fields": [
+        {
+          "name": "filters",
+          "type": "MilestoneFiltersRequest",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "M6",
+      "name": "MilestoneFiltersRequest",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneFiltersRequest",
+      "kind": "record",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto",
+      "purpose": "Optional filter payload for milestone search requests.",
+      "justification": "The optional filters object is part of the public HTTP contract and therefore belongs in orchestration/rest/dto. It carries REST validation annotations and immutable list handling that should not leak into orchestration models.",
+      "placementJustification": "The filter DTO belongs in orchestration/milestones/rest/dto because it is a transport-bound contract owned by the REST boundary.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "fields": [
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": true,
+          "notes": "Bean-validated with exact allowed values active, closed, all."
+        },
+        {
+          "name": "titleSearch",
+          "type": "String",
+          "nullable": true,
+          "notes": "Bean-validated to reject whitespace-only values."
+        },
+        {
+          "name": "milestoneIds",
+          "type": "List<Long>",
+          "nullable": false,
+          "notes": "Compact constructor stores an immutable copy preserving null elements so MilestonesRequestValidator can report null, positive, and duplicate violations deterministically; null input becomes empty list."
+        }
+      ]
+    },
+    {
+      "id": "M7",
+      "name": "SearchMilestonesResponse",
+      "qualifiedName": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.SearchMilestonesResponse",
+      "kind": "record",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto",
+      "purpose": "HTTP response wrapper containing the aggregated milestone list.",
+      "justification": "The endpoint returns a milestones wrapper rather than a bare list. That wrapper is transport-specific and belongs in orchestration/rest/dto, while the item payload reuses the shared MilestoneDto.",
+      "placementJustification": "The wrapper belongs in orchestration/milestones/rest/dto because it exists solely to shape the HTTP response contract.",
+      "ownedBySlices": [
+        "S2"
+      ],
+      "fields": [
+        {
+          "name": "milestones",
+          "type": "List<MilestoneDto>",
+          "nullable": false,
+          "notes": "Normalize null to immutable empty list in the compact constructor."
+        }
+      ]
+    },
+    {
+      "id": "M8",
+      "name": "GitLabMilestoneResponse",
+      "qualifiedName": "com.gitlabflow.floworchestrator.integration.gitlab.milestones.dto.GitLabMilestoneResponse",
+      "kind": "record",
+      "status": "new",
+      "package": "com.gitlabflow.floworchestrator.integration.gitlab.milestones.dto",
+      "purpose": "Provider DTO mirroring the GitLab project milestones resource.",
+      "justification": "This provider DTO mirrors the GitLab project milestones response and therefore belongs strictly in the integration layer. It isolates GitLab field names and nullability from orchestration.",
+      "placementJustification": "The DTO belongs in integration/gitlab/milestones/dto because it is a GitLab transport shape and must not leak beyond the integration boundary.",
+      "ownedBySlices": [
+        "S3"
+      ],
+      "fields": [
+        {
+          "name": "id",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "iid",
+          "type": "long",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "startDate",
+          "type": "String",
+          "nullable": true,
+          "notes": "Mapped from JSON property start_date."
+        },
+        {
+          "name": "dueDate",
+          "type": "String",
+          "nullable": true,
+          "notes": "Mapped from JSON property due_date."
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "nullable": false
+        }
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "id": "C1",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesPort.java",
+      "status": "new",
+      "role": "Provider-agnostic orchestration port exposing searchMilestones(SearchMilestonesInput) -> List<Milestone>.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C2",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesService.java",
+      "status": "new",
+      "role": "Orchestration service that logs milestone search start/completion, delegates a single search call to MilestonesPort, and returns the aggregated milestone list unchanged.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C3",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+      "status": "new",
+      "role": "REST controller for POST /api/milestones/search with optional body; validates, maps to SearchMilestonesInput, delegates to MilestonesService, and returns SearchMilestonesResponse.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C4",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+      "status": "new",
+      "role": "Boundary validator that raises ValidationException for milestoneIds null-element, positive-integer, and duplicate violations with field-specific detail messages.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C5",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapper.java",
+      "status": "new",
+      "role": "Maps SearchMilestonesRequest to SearchMilestonesInput, applies default ACTIVE state, strips titleSearch, and passes milestoneIds through unchanged after validation.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C6",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapper.java",
+      "status": "new",
+      "role": "Maps List<Milestone> to SearchMilestonesResponse and shared MilestoneDto, including description and startDate.",
+      "ownedBySlices": [
+        "S2"
+      ]
+    },
+    {
+      "id": "C7",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabOperationExecutor.java",
+      "status": "new",
+      "role": "Shared GitLab transport helper that wraps supplier/runnable operations, converts RestClientResponseException and transport failures through GitLabExceptionMapper, and emits consistent WARN/ERROR logging for adapters and shared pagination support.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C15",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabOffsetPaginationLoader.java",
+      "status": "new",
+      "role": "Shared GitLab transport component that owns offset-pagination traversal for one listing resource, invokes one page fetch at a time through GitLabOperationExecutor, stops when a page returns fewer than perPage items, and returns an aggregated immutable DTO list.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C8",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapter.java",
+      "status": "modified",
+      "role": "Existing issues adapter updated only to delegate executeGitLabOperation behavior to GitLabOperationExecutor without changing issues API behavior.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C9",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+      "status": "new",
+      "role": "MilestonesPort adapter that builds the GitLab project milestones request, applies state/search/iids[] query params, delegates repeated page loading to GitLabOffsetPaginationLoader, maps DTOs to shared Milestone models, and returns one aggregated list.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C10",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java",
+      "status": "new",
+      "role": "Pure mapper from GitLabMilestoneResponse to shared Milestone.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C11",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/dto/GitLabMilestoneResponse.java",
+      "status": "new",
+      "role": "GitLab milestone response DTO for id, iid, title, description, start_date, due_date, and state.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C16",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabProjectLocator.java",
+      "status": "modified",
+      "role": "Shared GitLab project reference resolver updated so startup logging and invalid-configuration failures remain informative without logging apiBaseUrl, projectPath, or the raw configured project URL.",
+      "ownedBySlices": [
+        "S3"
+      ]
+    },
+    {
+      "id": "C12",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabSingleIssueResponse.java",
+      "status": "modified",
+      "role": "Existing GitLab issue detail DTO extended so nested milestone detail exposes description and start_date needed by the shared Milestone model.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C13",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+      "status": "modified",
+      "role": "Existing issue detail mapper updated to populate the expanded shared Milestone fields without changing other issue-detail behavior.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    },
+    {
+      "id": "C14",
+      "path": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "status": "modified",
+      "role": "Existing issue response mapper updated so shared MilestoneDto includes description and startDate when present.",
+      "ownedBySlices": [
+        "S1"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S1",
+      "title": "Shared milestone contract extension",
+      "goal": "Extend the shared milestone contract once and propagate the richer shared milestone fields through the existing issue-detail mapping path.",
+      "dependsOn": [],
+      "flowSteps": [],
+      "covers": {
+        "models": [
+          "M1",
+          "M2"
+        ],
+        "classes": [
+          "C12",
+          "C13",
+          "C14"
+        ],
+        "validationRules": [
+          "V5"
+        ],
+        "examples": [
+          "E2"
+        ],
+        "decisions": [
+          "D1"
+        ]
+      },
+      "implementationTasks": [
+        "Add description and startDate to the shared Milestone and MilestoneDto records while preserving existing id, milestoneId, title, state, and dueDate fields.",
+        "Extend GitLabSingleIssueResponse.GitLabMilestoneDetail with description and start_date mapping.",
+        "Update GitLabIssueDetailMapper and IssuesResponseMapper to populate the expanded shared milestone fields.",
+        "Update existing issue-detail tests to assert the additive milestone fields when present."
+      ],
+      "doneWhen": [
+        "The shared milestone model and DTO contain description and startDate.",
+        "Issue detail mapping populates those fields when GitLab provides them.",
+        "Existing issue-detail integration coverage remains green with additive field assertions."
+      ],
+      "tests": {
+        "unit": [
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/MilestoneTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneDtoTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java"
+        ],
+        "integration": [
+          "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java"
+        ],
+        "component": []
+      },
+      "logging": {
+        "info": [
+          "None."
+        ],
+        "warn": [
+          "None."
+        ],
+        "error": [
+          "None."
+        ]
+      }
+    },
+    {
+      "id": "S2",
+      "title": "Milestones REST and orchestration contract",
+      "goal": "Add the milestones REST and orchestration search contract with explicit validation, defaulting, and DTO mapping.",
+      "dependsOn": [
+        "S1"
+      ],
+      "flowSteps": [],
+      "covers": {
+        "models": [
+          "M3",
+          "M4",
+          "M5",
+          "M6",
+          "M7"
+        ],
+        "classes": [
+          "C1",
+          "C2",
+          "C3",
+          "C4",
+          "C5",
+          "C6"
+        ],
+        "validationRules": [
+          "V1",
+          "V2",
+          "V3",
+          "V4",
+          "V5",
+          "V6"
+        ],
+        "examples": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "decisions": [
+          "D1",
+          "D2",
+          "D5",
+          "D6"
+        ]
+      },
+      "implementationTasks": [
+        "Add MilestoneState, SearchMilestonesInput, SearchMilestonesRequest, MilestoneFiltersRequest, and SearchMilestonesResponse with builders and the required immutable/defaulting behavior.",
+        "Implement MilestonesController, MilestonesService, MilestonesPort, MilestonesRequestValidator, MilestonesRequestMapper, and MilestonesResponseMapper.",
+        "Use @RequestBody(required = false) and @Valid on the controller method, plus annotation validation for state/titleSearch and manual validator checks for milestoneIds.",
+        "Ensure the response shape is { milestones: [...] } and every item uses the shared MilestoneDto fields in the locked wire order and vocabulary.",
+        "Create flow-orchestrator/http/milestones.http with default omitted-body search, filtered search using state=all/titleSearch/milestoneIds, invalid state, and duplicate milestoneIds examples.",
+        "Update documentation/capabilities/milestones.md so it documents POST /api/milestones/search, the new orchestration REST package inventory, shared milestone reuse, and the milestones-specific test inventory."
+      ],
+      "doneWhen": [
+        "POST /api/milestones/search exists and accepts omitted body or omitted filters.",
+        "Default request mapping yields ACTIVE state with no titleSearch and no milestoneIds.",
+        "Invalid state, blank titleSearch, duplicate milestoneIds, non-positive milestoneIds, and malformed JSON all return VALIDATION_ERROR through the existing error handler.",
+        "The response mapper produces SearchMilestonesResponse with an immutable milestones list.",
+        "flow-orchestrator/http/milestones.http and documentation/capabilities/milestones.md are updated in the same change set as the endpoint."
+      ],
+      "tests": {
+        "unit": [
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/SearchMilestonesInputTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/MilestoneStateTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneFiltersRequestTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/SearchMilestonesResponseTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidatorTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesServiceTest.java"
+        ],
+        "integration": [
+          "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesControllerIT.java"
+        ],
+        "component": []
+      },
+      "logging": {
+        "info": [
+          "MilestonesController logs request receipt with hasBody and filter presence.",
+          "MilestonesService logs request start with effective state, titleSearch, milestoneIdCount, and completion with resultCount and durationMs."
+        ],
+        "warn": [
+          "MilestonesRequestValidator itself does not log; validation warnings remain centralized in GlobalExceptionHandler."
+        ],
+        "error": [
+          "None."
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "title": "Shared GitLab transport, milestones adapter, and documentation sync",
+      "goal": "Add the shared GitLab transport pieces needed by milestone search, implement the milestones adapter on top of them, sanitize shared project-location logging, and verify shared/documentation updates end to end.",
+      "dependsOn": [
+        "S1",
+        "S2"
+      ],
+      "flowSteps": [],
+      "covers": {
+        "models": [
+          "M8"
+        ],
+        "classes": [
+          "C7",
+          "C15",
+          "C8",
+          "C9",
+          "C10",
+          "C11",
+          "C16"
+        ],
+        "validationRules": [
+          "V6"
+        ],
+        "examples": [
+          "E1",
+          "E2",
+          "E4"
+        ],
+        "decisions": [
+          "D3",
+          "D4",
+          "D5"
+        ]
+      },
+      "implementationTasks": [
+        "Add GitLabOperationExecutor and refactor GitLabIssuesAdapter to use it for shared failure wrapping.",
+        "Add GitLabOffsetPaginationLoader as shared GitLab transport that performs sequential page traversal for one listing resource, executes each page through GitLabOperationExecutor, uses per_page=100, increments page starting at 1, and stops when a page returns fewer than 100 items.",
+        "Add GitLabMilestoneResponse and GitLabMilestonesMapper.",
+        "Implement GitLabMilestonesAdapter using GitLabUriFactory and GitLabProjectLocator, calling GitLabOffsetPaginationLoader for GET /projects/{projectPath}/milestones with search, repeated iids[], and conditional state while keeping the configured project as the only source of truth.",
+        "Update GitLabProjectLocator so INFO logging confirms resolution without printing apiBaseUrl, projectPath, or raw app.gitlab.url, and invalid configuration failures stay clear without echoing provider configuration values.",
+        "Update documentation/context-map.md so the milestones capability index lists POST /api/milestones/search and the shared integration inventory includes GitLabOperationExecutor plus GitLabOffsetPaginationLoader.",
+        "Add or update component stubs/tests and keep the existing milestones Karate runner/feature aligned with the locked search contract."
+      ],
+      "doneWhen": [
+        "A shared GitLab operation executor exists and both issues adapter calls plus shared pagination traversal use it for HTTP and transport failures.",
+        "GitLabMilestonesAdapter honors the configured project only, forwards search and iids[] correctly, omits state for ALL, and aggregates all pages through GitLabOffsetPaginationLoader.",
+        "GitLabProjectLocator no longer logs apiBaseUrl, projectPath, or raw app.gitlab.url, and invalid configuration failures remain clear without exposing provider configuration.",
+        "documentation/context-map.md is updated to reflect the new endpoint and shared GitLab transport inventory.",
+        "Adapter, component, and Karate coverage exists for the locked milestone search behavior."
+      ],
+      "tests": {
+        "unit": [
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabOperationExecutorTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabOffsetPaginationLoaderTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabProjectLocatorTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/GitLabIssuesAdapterTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapterTest.java"
+        ],
+        "integration": [],
+        "component": [
+          "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/MilestonesApiComponentTest.java",
+          "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/support/GitLabMilestonesStubSupport.java"
+        ],
+        "karate": [
+          "flow-orchestrator/src/test/karate/java/com/gitlabflow/floworchestrator/karate/milestones/MilestonesKarateTest.java",
+          "flow-orchestrator/src/test/karate/resources/milestones/milestones-search.feature"
+        ]
+      },
+      "logging": {
+        "info": [
+          "GitLabMilestonesAdapter logs before search with effective filters.",
+          "GitLabOffsetPaginationLoader logs completion with resource, pageCount, itemCount, and durationMs for the paged GitLab resource.",
+          "GitLabMilestonesAdapter logs completion with resultCount and durationMs.",
+          "GitLabProjectLocator logs only a generic resolution success message with no apiBaseUrl, projectPath, or raw project URL.",
+          "GitLabIssuesAdapter retains its existing INFO logs after delegating failure handling to GitLabOperationExecutor."
+        ],
+        "warn": [
+          "GitLabOperationExecutor logs mapped HTTP failures with resource and error category only; no provider response payloads or secrets are logged."
+        ],
+        "error": [
+          "GitLabOperationExecutor logs transport failures with resource and exception category only; no token, project URL, apiBaseUrl, projectPath, or raw response body is logged."
+        ]
+      }
+    }
+  ],
+  "verification": {
+    "slices": [
+      {
+        "slice": "S1",
+        "checks": [
+          "Unit: MilestoneTest verifies builder carries description/startDate/dueDate and the shared model remains immutable.",
+          "Unit: MilestoneDtoTest verifies the expanded shared DTO carries description/startDate/dueDate and preserves nullability.",
+          "Unit: GitLabIssueDetailMapperTest verifies nested issue milestone mapping now includes description and startDate when GitLab provides them and still handles null milestone cleanly.",
+          "Unit: IssuesResponseMapperTest verifies IssueDetailDto milestone mapping includes description and startDate.",
+          "Integration: update IssuesControllerIT detail-response assertion to confirm additive milestone fields are serialized when present."
+        ],
+        "evidence": "Updated shared-model and issue-detail tests prove the additive shared milestone fields are mapped and serialized correctly."
+      },
+      {
+        "slice": "S2",
+        "checks": [
+          "Unit: MilestoneStateTest covers fromValue for active, closed, and all and rejects unsupported values.",
+          "Unit: MilestoneFiltersRequestTest covers null-to-empty milestoneIds normalization and immutable copy behavior.",
+          "Unit: MilestonesRequestValidatorTest covers duplicate milestoneIds, zero, negative, null elements, and accepts distinct positive values.",
+          "Unit: MilestonesRequestMapperTest covers missing body defaulting to ACTIVE, omitted filters defaulting, and titleSearch stripping.",
+          "Unit: MilestonesResponseMapperTest covers empty list response and mapping of all milestone fields.",
+          "Unit: MilestonesServiceTest covers the happy path and empty-result path.",
+          "Integration: MilestonesControllerIT covers missing body 200, valid filters 200, invalid state 400, blank titleSearch 400, duplicate milestoneIds 400, non-positive milestoneIds 400, malformed JSON 400, and mapped integration error statuses.",
+          "Documentation review: flow-orchestrator/http/milestones.http contains default omitted-body, filtered search, invalid state, and duplicate milestoneIds examples.",
+          "Documentation review: documentation/capabilities/milestones.md records POST /api/milestones/search, the new REST/orchestration files, and the milestones test inventory."
+        ],
+        "evidence": "The milestones REST boundary is verified by focused unit tests, a MockMvc integration test suite covering happy-path/defaults/validation, and changed-file inspection for the milestone HTTP example plus capability documentation."
+      },
+      {
+        "slice": "S3",
+        "checks": [
+          "Unit: GitLabOperationExecutorTest covers HTTP 401/403/404/429/general failures and transport failures.",
+          "Unit: GitLabOffsetPaginationLoaderTest covers empty first page, single page, exact-100 continuation, multi-page aggregation, and termination when a page returns fewer than per_page items.",
+          "Unit: GitLabProjectLocatorTest captures startup logging and invalid configuration failure behavior to assert no apiBaseUrl, projectPath, or raw app.gitlab.url is logged or echoed.",
+          "Unit: GitLabIssuesAdapterTest is updated only as needed to prove issues behavior remains unchanged after GitLabOperationExecutor extraction.",
+          "Unit: GitLabMilestonesMapperTest covers full field mapping and nullable description/startDate/dueDate handling.",
+          "Unit: GitLabMilestonesAdapterTest covers default ACTIVE request, state=ALL omitting state query param, titleSearch -> search, milestoneIds -> repeated iids[], delegation to GitLabOffsetPaginationLoader, and sanitized exception mapping.",
+          "Component: MilestonesApiComponentTest uses WireMock to verify GET /projects/{project}/milestones page aggregation, per_page=100, default active filter, state omission for all, search forwarding, iids[] forwarding, and authentication failure mapping.",
+          "Documentation review: documentation/context-map.md updates the milestones capability index entry and shared integration inventory for GitLabOperationExecutor plus GitLabOffsetPaginationLoader.",
+          "Karate: MilestonesKarateTest runs smoke-tagged milestones scenarios covering 200 default request, 400 invalid state, and 400 duplicate milestoneIds without depending on project-specific milestone titles or counts."
+        ],
+        "evidence": "Shared transport tests, adapter unit tests, WireMock-backed component tests, a milestones Karate smoke file, and changed-file inspection for context-map updates verify query mapping, page aggregation ownership, and sanitized shared logging end to end."
+      }
+    ],
+    "finalGates": [
+      {
+        "gate": "verifyQuick",
+        "owner": "JavaCoder",
+        "required": true,
+        "command": "node flow-log/flow-log.mjs run-check --feature milestones-search-api --name verifyQuick --by JavaCoder",
+        "evidence": "Must pass after code and test changes, or be recorded as BLOCKED with the exact observed error if the environment cannot execute it."
+      },
+      {
+        "gate": "finalCheck",
+        "owner": "JavaCoder",
+        "required": true,
+        "command": "node flow-log/flow-log.mjs run-check --feature milestones-search-api --name finalCheck --by JavaCoder",
+        "evidence": "Must pass and produce the standard reports under flow-orchestrator/target/ including checkstyle, PMD, CPD, SpotBugs, and JaCoCo outputs. The same change set must also include updated documentation/capabilities/milestones.md, documentation/context-map.md, and flow-orchestrator/http/milestones.http."
+      },
+      {
+        "gate": "karate",
+        "owner": "JavaCoder",
+        "required": true,
+        "command": "node flow-log/flow-log.mjs run-check --feature milestones-search-api --name karate --by JavaCoder",
+        "evidence": "Must pass the milestones Karate smoke scenarios using the repo-supported karate profile."
+      },
+      {
+        "gate": "startup",
+        "owner": "JavaCoder",
+        "required": true,
+        "command": "SPRING_PROFILES_ACTIVE=local mvn spring-boot:run",
+        "evidence": "The repository-supported startup command must still boot cleanly after the feature, or be recorded as BLOCKED with the exact observed error."
+      }
+    ]
+  },
+  "hash": "35f36a703c75f8ec084c2d76f78e3ff3d02c82de04708011508600d1b5ca300a"
+}

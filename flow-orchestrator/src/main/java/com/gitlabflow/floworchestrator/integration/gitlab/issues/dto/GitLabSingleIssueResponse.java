@@ -37,6 +37,8 @@ public record GitLabSingleIssueResponse(
             long id,
             long iid,
             String title,
-            String state,
-            @JsonProperty("due_date") @Nullable String dueDate) {}
+            @Nullable String description,
+            @JsonProperty("start_date") @Nullable String startDate,
+            @JsonProperty("due_date") @Nullable String dueDate,
+            String state) {}
 }

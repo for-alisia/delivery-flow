@@ -5,10 +5,6 @@ export function validatePlanReadiness(plan) {
     issues.push("Readiness check failed: at least one slice is required.");
   }
 
-  if ((plan.implementationFlow ?? []).length === 0) {
-    issues.push("Readiness check failed: at least one implementation flow step is required.");
-  }
-
   for (const model of plan.models ?? []) {
     if ((model.status === "new" || model.status === "modified") && (model.ownedBySlices ?? []).length === 0) {
       issues.push(`Readiness check failed: model '${model.id}' must be owned by at least one slice.`);

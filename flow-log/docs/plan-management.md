@@ -54,17 +54,17 @@ node flow-log/flow-log.mjs plan-discard-draft --feature my-feature
 
 Top-level sections of a v3 plan JSON:
 
-| Section | Type | Purpose |
-|---------|------|---------|
-| `scope` | object | `purpose`, `inScope[]`, `outOfScope[]`, `constraints[]` |
-| `implementationFlow` | array | Ordered flow steps with IDs (`F1`, `F2`, …) describing the execution sequence |
-| `contractExamples` | array | Payload examples: type (`request`, `success`, `error`, `validation-error`), `description`, `json` |
-| `validationRules` | array | Each with `id`, `rule`, `location` |
-| `designDecisions` | array | Each with `id`, `decision`, `rationale` |
-| `models` | array | Each with `id`, `name`, `kind` (record/enum/interface/sealed-interface/class), `status`, `package`, `justification`, `fields[]` |
-| `classes` | array | Each with `id`, `path`, `status`, `role` |
-| `slices` | array | Each with `id`, `goal`, `files[]`, tests, logging |
-| `verification` | object | `slices[]` (per-slice test expectations), `finalGates[]` |
+| Section | Type | Required | Purpose |
+|---------|------|----------|---------|
+| `scope` | object | **yes** | `purpose`, `inScope[]`, `outOfScope[]`, `constraints[]` |
+| `validationRules` | array | **yes** | Each with `id`, `rule`, `location` |
+| `designDecisions` | array | **yes** | Each with `id`, `decision`, `rationale` |
+| `models` | array | **yes** | Each with `id`, `name`, `kind` (record/enum/interface/sealed-interface/class), `status`, `package`, `justification`, `fields[]` |
+| `classes` | array | **yes** | Each with `id`, `path`, `status`, `role` |
+| `slices` | array | **yes** | Each with `id`, `goal`, `files[]`, tests, logging |
+| `verification` | object | **yes** | `slices[]` (per-slice test expectations), `finalGates[]` |
+| `implementationFlow` | array | optional | Ordered flow steps with IDs (`F1`, `F2`, …) — include only when the feature has a non-trivial multi-step execution sequence |
+| `contractExamples` | array | optional | Payload examples — include only when the feature exposes or changes an API contract |
 
 ### Model kinds
 
@@ -81,11 +81,12 @@ node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
 ```
 
 Validation checks:
-- All required top-level sections present
+- All required top-level sections present (`scope`, `validationRules`, `designDecisions`, `models`, `classes`, `slices`, `verification`)
 - Schema version is `3.0`
 - Models have non-empty `justification`
+- Existing models (`status: "existing"`) with >3 fields or methods produce a warning — list only fields/methods the Coder needs to call
 - Slices reference valid model/class IDs
-- Implementation flow references valid IDs
+- Implementation flow references valid IDs (when `implementationFlow` is present)
 - Cross-references are consistent
 
 ## Reading Plans (all agents)
@@ -110,8 +111,11 @@ When addressing architecture review risks:
 # 1. Create a draft from the current canonical plan
 node flow-log/flow-log.mjs plan-create-draft --feature my-feature
 
-# 2. Edit the draft JSON directly — rewrite affected sections from scratch
-#    Do not patch; remove orphaned mechanisms, stale references, and dual-path ambiguity
+# 2. Edit the draft JSON directly — follow the revision scope from the TL handoff:
+#    LOCAL_CORRECTION  → fix only cited items, no section rewrite
+#    SECTION_REWRITE   → rewrite affected sections; do not touch unrelated sections
+#    FULL_REPLAN       → rewrite the entire plan from scratch
+#    Remove orphaned mechanisms, stale references, and dual-path ambiguity
 
 # 3. Validate and accept
 node flow-log/flow-log.mjs plan-validate-draft --feature my-feature

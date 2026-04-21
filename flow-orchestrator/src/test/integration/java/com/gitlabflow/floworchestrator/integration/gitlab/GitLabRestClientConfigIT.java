@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,16 +27,20 @@ class GitLabRestClientConfigIT {
 
     @Test
     @DisplayName("configures gitLabRestClient with JDK request factory and bound timeout values")
+    @SuppressWarnings("null")
     void configuresGitLabRestClientWithJdkRequestFactoryAndBoundTimeoutValues() {
-        final Object requestFactoryObject = ReflectionTestUtils.getField(gitLabRestClient, "clientRequestFactory");
+        final Object requestFactoryObject =
+                Objects.requireNonNull(ReflectionTestUtils.getField((Object) gitLabRestClient, "clientRequestFactory"));
 
         assertThat(requestFactoryObject).isInstanceOf(JdkClientHttpRequestFactory.class);
 
         final JdkClientHttpRequestFactory requestFactory = (JdkClientHttpRequestFactory) requestFactoryObject;
-        final Duration readTimeout = (Duration) ReflectionTestUtils.getField(requestFactory, "readTimeout");
-        final HttpClient httpClient = (HttpClient) ReflectionTestUtils.getField(requestFactory, "httpClient");
+        final Duration readTimeout =
+                (Duration) Objects.requireNonNull(ReflectionTestUtils.getField((Object) requestFactory, "readTimeout"));
+        final HttpClient httpClient = (HttpClient)
+                Objects.requireNonNull(ReflectionTestUtils.getField((Object) requestFactory, "httpClient"));
 
         assertThat(readTimeout).isEqualTo(Duration.ofSeconds(13));
-        assertThat(httpClient.connectTimeout()).contains(Duration.ofSeconds(11));
+        assertThat(Objects.requireNonNull(httpClient).connectTimeout()).contains(Duration.ofSeconds(11));
     }
 }

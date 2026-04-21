@@ -1,6 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.issues;
 
 import com.gitlabflow.floworchestrator.common.error.ValidationException;
+import com.gitlabflow.floworchestrator.common.util.ElapsedTime;
 import com.gitlabflow.floworchestrator.config.IssuesApiProperties;
 import com.gitlabflow.floworchestrator.orchestration.common.async.AsyncComposer;
 import com.gitlabflow.floworchestrator.orchestration.common.model.ChangeSet;
@@ -50,7 +51,7 @@ public class IssuesService {
                     issuePage.count(),
                     issuePage.page(),
                     query.auditTypes(),
-                    toDurationMs(startedAt));
+                    ElapsedTime.toDurationMs(startedAt));
             return issuePage;
         }
 
@@ -60,7 +61,7 @@ public class IssuesService {
                 enrichedIssuePage.count(),
                 enrichedIssuePage.page(),
                 query.auditTypes(),
-                toDurationMs(startedAt));
+                ElapsedTime.toDurationMs(startedAt));
         return enrichedIssuePage;
     }
 
@@ -109,7 +110,7 @@ public class IssuesService {
 
         final IssueDetail issueDetail = issueDetailFuture.join();
         final List<ChangeSet<?>> changeSets = changeSetsFuture.join();
-        final long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
+        final long durationMs = ElapsedTime.toDurationMs(startedAt);
         log.info(
                 "Issue detail composed issueId={} changeSetCount={} durationMs={}",
                 issueId,
@@ -153,10 +154,6 @@ public class IssuesService {
 
     private IssueSummary enrichIssue(final IssueSummary issue, final List<ChangeSet<?>> changeSets) {
         return issue.toBuilder().changeSets(changeSets).build();
-    }
-
-    private long toDurationMs(final long startedAt) {
-        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 
     private int countEffectiveUpdateFields(final UpdateIssueInput input) {

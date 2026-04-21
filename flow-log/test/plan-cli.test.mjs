@@ -458,6 +458,96 @@ test("flow-log legacy v2 plan commands remain available", () => {
   assert.match(draftWorkflow.stderr, /v3 draft commands require schemaVersion '3.0'/);
 });
 
+test("flow-log plan-init-draft creates canonical plan and draft in one step", () => {
+  const tempRoot = createPlanTempRoot("flow-log-plan-init-draft-");
+  const feature = uniqueFeature("init-draft");
+
+  const result = runCli(tempRoot, ["plan-init-draft", "--feature", feature]);
+  assert.equal(result.ok, true);
+  assert.equal(result.command, "plan-init-draft");
+  assert.equal(result.schemaVersion, "3.0");
+  assert.equal(result.draftCreated, true);
+  assert.ok(result.planPath);
+  assert.ok(result.draftPath);
+
+  // Verify both plan and draft exist by running status
+  const draftStatus = runCli(tempRoot, ["plan-draft-status", "--feature", feature]);
+  assert.equal(draftStatus.ok, true);
+  assert.equal(draftStatus.exists, true);
+});
+
+test("flow-log plan-init-draft rejects if plan exists without --force", () => {
+  const tempRoot = createPlanTempRoot("flow-log-plan-init-draft-exists-");
+  const feature = uniqueFeature("init-draft-exists");
+
+  runCli(tempRoot, ["init-plan", "--feature", feature]);
+
+  const raw = runCliRaw(tempRoot, ["plan-init-draft", "--feature", feature]);
+  assert.notEqual(raw.status, 0);
+  assert.match(raw.stderr, /Plan already exists/);
+});
+
+test("flow-log plan v3: validator warns on existing models with too many fields", () => {
+  const tempRoot = createPlanTempRoot("flow-log-plan-v3-existing-model-");
+  const feature = uniqueFeature("existing-bloat");
+
+  runCli(tempRoot, ["init-plan", "--feature", feature]);
+  const draft = runCli(tempRoot, ["plan-create-draft", "--feature", feature]);
+
+  const plan = buildValidV3Draft(feature);
+  // Add an existing model with 5 fields (exceeds limit of 3)
+  plan.models.push({
+    id: "M2",
+    qualifiedName: "com.gitlabflow.existing.BigModel",
+    kind: "record",
+    status: "existing",
+    purpose: "reused unchanged",
+    placementJustification: "already placed correctly",
+    ownedBySlices: ["S1"],
+    fields: [
+      { name: "a", type: "String", nullable: false },
+      { name: "b", type: "String", nullable: false },
+      { name: "c", type: "String", nullable: false },
+      { name: "d", type: "String", nullable: false },
+      { name: "e", type: "String", nullable: false }
+    ]
+  });
+  plan.slices[0].covers.models.push("M2");
+
+  fs.writeFileSync(draft.draftPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+  const validation = runCli(tempRoot, ["plan-validate-draft", "--feature", feature]);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.issues.some((issue) =>
+    issue.includes("has status 'existing' but lists 5 fields")
+  ));
+});
+
+test("flow-log plan v3: validator accepts plan without implementationFlow and contractExamples", () => {
+  const tempRoot = createPlanTempRoot("flow-log-plan-v3-optional-sections-");
+  const feature = uniqueFeature("optional-sections");
+
+  runCli(tempRoot, ["init-plan", "--feature", feature]);
+  const draft = runCli(tempRoot, ["plan-create-draft", "--feature", feature]);
+
+  const plan = buildValidV3Draft(feature);
+  // Remove optional sections
+  delete plan.implementationFlow;
+  delete plan.contractExamples;
+  // Clear flowSteps and example refs in slice since sections are absent
+  plan.slices[0].flowSteps = ["F1"];  // Will fail cross-ref but that's separate
+  plan.slices[0].covers.examples = [];
+  // Remove the flowSteps ref since implementationFlow is gone
+  plan.slices[0].flowSteps = [];
+
+  fs.writeFileSync(draft.draftPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+  const validation = runCli(tempRoot, ["plan-validate-draft", "--feature", feature]);
+  // Should fail only on "Slice must reference at least one flow step" — not on missing top-level keys
+  assert.ok(!validation.issues.some((issue) => issue.includes("Missing top-level key 'implementationFlow'")));
+  assert.ok(!validation.issues.some((issue) => issue.includes("Missing top-level key 'contractExamples'")));
+});
+
 function uniqueFeature(prefix) {
   return `${prefix}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }

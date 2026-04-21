@@ -1,0 +1,11 @@
+[
+  {
+    "id": 301,
+    "iid": 1,
+    "title": "Release 1.0",
+    "description": "First release",
+    "start_date": "2026-05-01",
+    "due_date": "2026-05-15",
+    "state": "active"
+  }
+]

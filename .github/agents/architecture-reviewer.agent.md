@@ -73,7 +73,9 @@ Team Lead reads all findings after you return, assigns severity based on project
 5. Read `documentation/constitution.md`, `documentation/code-guidance.md`, `documentation/architecture-guidance.md`.
 6. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md`.
 7. Challenge the plan against all of the above.
-8. Record each finding via `add-risk` with `--description`, `--suggested-fix`, and `--by ArchitectureReviewer`. For plan-aware references, add `--plan-ref` and `--connected-area`.
+8. Record each finding via `add-risk` with `--description`, `--suggested-fix`, `--plan-ref <section-id>`, and `--by ArchitectureReviewer`. Add `--connected-area <section-id>` for each additional plan section affected.
+
+`--plan-ref` is **required** on every risk — it identifies the primary plan section the risk targets (e.g., `M3`, `S2`, `VR1`, `D4`). TL uses these references to classify revision scope and the Architect uses them to locate which sections need revision.
 
 Every finding **must** include a `--suggested-fix` that describes the concrete change the Architect should make — not just what is wrong. The Architect reads `suggestedFix` alongside `description` to converge on a solution instead of guessing.
 

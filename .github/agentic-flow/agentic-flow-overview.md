@@ -40,10 +40,11 @@
 
 - Produces the implementation plan for `Java Coder`
 - Reads context via `flow-log summary`
-- Defines class structure, payload examples, validation boundaries, slices, tests, and documentation updates
-- Writes Karate `.feature` files directly when the plan adds or changes API endpoints
+- Defines class structure, payload examples, validation boundaries, slices, and tests (documentation updates are **not** in plan scope — handled by Code Reviewer)
+- Writes Karate `.feature` files directly when the plan adds or changes API endpoints. Coder may only adjust existing Karate tests for small payload or endpoint changes (field names, URL paths, status codes, request/response bodies).
 - Defines new ArchUnit rules when the plan introduces new layer interactions or package boundaries not covered by existing rules in `FlowOrchestratorArchitectureTest.java`
 - Uses repository rules and external docs when behavior is uncertain
+- On plan revision: follows TL-specified revision scope (`LOCAL_CORRECTION` / `SECTION_REWRITE` / `FULL_REPLAN`)
 
 ### `Architecture Reviewer`
 
@@ -92,11 +93,12 @@
 
 - Implements the plan exactly, slice by slice
 - Reads context via `flow-log summary`
-- Adds required tests and runs verification via `flow-log run-check` (`verifyQuick` per slice, `verify-all` before handoff to run all three checks in sequence)
+- Adds required tests and runs verification via `flow-log batch-verify` per slice (`verifyQuick` → `finalCheck`), then `verify-all` before handoff (adds `karate`)
 - Runs `scripts/coder-handoff-check.sh <feature-name>` before returning to TL — fixes any failures first
+- Runs `mvn -q spotless:apply` in `flow-orchestrator/` when formatting violations are reported
 - Records checks via `flow-log run-check` (runs script + records result) and changed files via `flow-log add-change`
 - When re-invoked to fix code review findings: reads OPEN/REOPENED findings from `flow-log summary`, responds via `flow-log respond-finding` (FIXED/DISPUTED with note)
-- Does NOT write Karate `.feature` files — that belongs to Architect
+- May adjust existing Karate `.feature` files for small payload or endpoint changes only (field names, URL paths, status codes, request/response bodies). Does not add scenarios, remove scenarios, or change test logic — those belong to Architect
 - Returns changed files, status, deviations, and blockers after every batch
 - Does not invent extra scope or self-certify weak evidence
 
@@ -121,8 +123,8 @@
 
 ## Verification Expectations
 
-- `Java Coder` runs `run-check --name verifyQuick` per slice, then `verify-all` (runs `verifyQuick` → `finalCheck` → `karate` in sequence) before handoff, and `coder-handoff-check.sh` as pre-handoff gate
-- `Team Lead` checks `*Stale` fields in `flow-log status` (`verifyQuickStale`, `finalCheckStale`, `karateStale`) before accepting check results — if a check is stale, source changed since it last passed and the check should be re-run. Runs `run-check --name finalCheck` as independent recheck, `run-check --name karate`, and validates via `flow-log status`
+- `Java Coder` runs `batch-verify` per slice (`verifyQuick` → `finalCheck`), then `verify-all` (adds `karate`) before handoff, and `coder-handoff-check.sh` as pre-handoff gate
+- `Team Lead` checks `*Stale` fields in `flow-log status` (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If `finalCheckStale` or `karateStale` is true, re-runs the stale check. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, staleness is non-blocking. Runs `run-check --name finalCheck` as independent recheck, `run-check --name karate`, and validates via `flow-log status`
 - `Code Reviewer` validates code quality, reviews flow-log evidence including staleness flags, and reruns checks only when evidence is suspect or stale
 - ArchUnit tests run as part of `mvn test` (verify-quick) — architecture boundary violations break the build deterministically without requiring manual review
 

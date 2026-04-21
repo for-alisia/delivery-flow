@@ -649,7 +649,7 @@ class IssuesControllerIT {
                 OPENED,
                 List.of("bug"),
                 List.of(new User(10L, JOHN_DOE, "John Doe")),
-                new Milestone(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                new Milestone(5L, 3L, "Sprint 12", "Cycle sprint", "2026-04-01", "2026-04-30", "active"),
                 java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
                 java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
                 null);
@@ -661,7 +661,7 @@ class IssuesControllerIT {
                 OPENED,
                 List.of("bug"),
                 List.of(new UserDto(10L, JOHN_DOE, "John Doe")),
-                new MilestoneDto(5L, 3L, "Sprint 12", "active", "2026-04-30"),
+                new MilestoneDto(5L, 3L, "Sprint 12", "Cycle sprint", "2026-04-01", "2026-04-30", "active"),
                 java.time.OffsetDateTime.parse("2026-01-04T15:31:51.081Z"),
                 java.time.OffsetDateTime.parse("2026-03-12T09:00:00.000Z"),
                 null,
@@ -676,6 +676,9 @@ class IssuesControllerIT {
                 .andExpect(jsonPath("$.state").value(OPENED))
                 .andExpect(jsonPath("$.assignees[0].username").value(JOHN_DOE))
                 .andExpect(jsonPath("$.milestone.title").value("Sprint 12"))
+                .andExpect(jsonPath("$.milestone.description").value("Cycle sprint"))
+                .andExpect(jsonPath("$.milestone.startDate").value("2026-04-01"))
+                .andExpect(jsonPath("$.milestone.dueDate").value("2026-04-30"))
                 .andExpect(jsonPath("$.changeSets").isArray());
 
         verify(issuesService).getIssueDetail(42L);

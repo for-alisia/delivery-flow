@@ -30,11 +30,19 @@ Implement approved plan slices for the `flow-orchestrator` Spring Boot module.
 - Do not add scope, behavior, or files not defined in the approved plan, and do not override locked constraints from the plan or architecture review.
 - Do not run custom bash pipelines to parse command output.
 - Do not hide failures or weak evidence.
-- Do not write or modify Karate `.feature` files.
+- Do not write or modify Karate `.feature` files **except** for small payload or endpoint adjustments (field names, URL paths, status codes, request/response bodies). Do not change scenario structure, add new scenarios, or alter test logic — those changes belong to the Architect.
 
 ## Flow-log pre-flight
 
 Before running any `flow-log` command, verify you are in the repository root directory (contains `artifacts/` and `flow-log/` directories). If you are in `flow-orchestrator/` or any subdirectory, `cd` to the repo root first. Flow-log commands must always run from repo root.
+
+## Formatting
+
+When formatting violations are reported by `verifyQuick` or `finalCheck`, fix them before re-running:
+
+```bash
+cd flow-orchestrator && mvn -q spotless:apply && cd ..
+```
 
 ## Terminal stall recovery
 
@@ -82,6 +90,16 @@ For each slice:
 2. add required tests
 3. run `node flow-log/flow-log.mjs run-check --feature <feature-name> --name verifyQuick --by JavaCoder` and fix failures before moving on
 4. record changed files via `add-change --file <path> [--file <path>]...`
+
+### Per-slice verification
+
+After completing a slice (production code + tests), run a quick batch verify:
+
+```bash
+node flow-log/flow-log.mjs batch-verify --feature <feature-name> --by JavaCoder
+```
+
+This runs `verifyQuick` → `finalCheck` in sequence. Fix failures before starting the next slice.
 
 ### When fixing code review findings
 

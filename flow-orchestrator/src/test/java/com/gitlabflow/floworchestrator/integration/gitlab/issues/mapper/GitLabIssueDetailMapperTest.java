@@ -24,7 +24,8 @@ class GitLabIssueDetailMapperTest {
     @DisplayName("maps all fields from full response")
     void mapsAllFieldsFromFullResponse() {
         final var assignee = new GitLabAssigneeDetail(10L, "john.doe", "John Doe");
-        final var milestone = new GitLabMilestoneDetail(5L, 3L, "Sprint 12", "active", "2026-04-30");
+        final var milestone =
+                new GitLabMilestoneDetail(5L, 3L, "Sprint 12", "Cycle sprint", "2026-04-01", "2026-04-30", "active");
         final var response = new GitLabSingleIssueResponse(
                 500L,
                 42L,
@@ -53,8 +54,10 @@ class GitLabIssueDetailMapperTest {
         assertThat(milestoneResult.id()).isEqualTo(5L);
         assertThat(milestoneResult.milestoneId()).isEqualTo(3L);
         assertThat(milestoneResult.title()).isEqualTo("Sprint 12");
-        assertThat(milestoneResult.state()).isEqualTo("active");
+        assertThat(milestoneResult.description()).isEqualTo("Cycle sprint");
+        assertThat(milestoneResult.startDate()).isEqualTo("2026-04-01");
         assertThat(milestoneResult.dueDate()).isEqualTo("2026-04-30");
+        assertThat(milestoneResult.state()).isEqualTo("active");
         assertThat(result.createdAt()).isEqualTo(CREATED_AT);
         assertThat(result.updatedAt()).isEqualTo(UPDATED_AT);
         assertThat(result.closedAt()).isNull();
@@ -118,7 +121,7 @@ class GitLabIssueDetailMapperTest {
     @Test
     @DisplayName("maps milestone with null dueDate cleanly")
     void mapsMilestoneWithNullDueDateCleanly() {
-        final var milestone = new GitLabMilestoneDetail(5L, 3L, "Sprint 12", "active", null);
+        final var milestone = new GitLabMilestoneDetail(5L, 3L, "Sprint 12", null, null, null, "active");
         final var response = new GitLabSingleIssueResponse(
                 1L, 7L, "T", null, "opened", List.of(), List.of(), milestone, CREATED_AT, UPDATED_AT, null);
 

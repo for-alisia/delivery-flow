@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:8080
+
+### Default search request (no body)
+POST {{baseUrl}}/api/milestones/search
+
+### Filtered search request
+POST {{baseUrl}}/api/milestones/search
+Content-Type: application/json
+
+{
+	"filters": {
+		"state": "all",
+		"titleSearch": "release",
+		"milestoneIds": [1, 2, 3]
+	}
+}
+
+### Invalid search request (unsupported state)
+POST {{baseUrl}}/api/milestones/search
+Content-Type: application/json
+
+{
+	"filters": {
+		"state": "opened"
+	}
+}
+
+### Invalid search request (duplicate milestoneIds)
+POST {{baseUrl}}/api/milestones/search
+Content-Type: application/json
+
+{
+	"filters": {
+		"milestoneIds": [3, 3]
+	}
+}

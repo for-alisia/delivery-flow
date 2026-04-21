@@ -26,6 +26,8 @@ Read these before changing code:
 
 If a framework or external API behavior is uncertain, verify it with official documentation using `web` or `io.github.upstash/context7/*` before coding.
 
+You are not working with flow-log, use prepared bash scripts for verification. Do not run `flow-log` commands directly.
+
 ## Core Rules
 
 - Treat the code-review file as input, not unquestionable truth. Re-check findings against the current code before modifying anything.
