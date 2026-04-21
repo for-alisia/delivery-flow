@@ -31,7 +31,7 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 | Capability | Endpoints | Detail |
 |-----------|-----------|--------|
 | **issues** — search, create, update, delete, get-single, label-event history | `POST /api/issues/search`, `POST /api/issues`, `PATCH /api/issues/{issueId}`, `DELETE /api/issues/{issueId}`, `GET /api/issues/{issueId}` | [capabilities/issues.md](capabilities/issues.md) |
-| **milestones** — shared model and DTO foundation (no endpoints yet) | N/A | [capabilities/milestones.md](capabilities/milestones.md) |
+| **milestones** — milestone search and shared milestone contracts | `POST /api/milestones/search` | [capabilities/milestones.md](capabilities/milestones.md) |
 
 ---
 
@@ -107,10 +107,14 @@ Reusable GitLab client infrastructure for all capability adapters.
 | `integration/gitlab/GitLabRestClientConfig.java` | `RestClient` bean with base URL and auth header |
 | `integration/gitlab/GitLabProjectLocator.java` | Resolves GitLab project path to encoded project ID |
 | `integration/gitlab/GitLabExceptionMapper.java` | Maps HTTP errors to `IntegrationException` |
+| `integration/gitlab/GitLabOperationExecutor.java` | Executes GitLab transport operations with shared HTTP/transport failure mapping and safe logging |
+| `integration/gitlab/GitLabOffsetPaginationLoader.java` | Shared offset-pagination traversal for GitLab listing resources (`page`/`per_page` aggregation) |
 | `integration/gitlab/GitLabUriFactory.java` | Builds GitLab API URIs with project path and optional query params |
 
 Tests:
 - `java/.../integration/gitlab/GitLabExceptionMapperTest.java`
+- `java/.../integration/gitlab/GitLabOperationExecutorTest.java`
+- `java/.../integration/gitlab/GitLabOffsetPaginationLoaderTest.java`
 - `java/.../integration/gitlab/GitLabProjectLocatorTest.java`
 - `java/.../integration/gitlab/GitLabUriFactoryTest.java`
 - `integration/java/.../integration/gitlab/GitLabRestClientConfigIT.java` (bean-inspection IT: verifies `JdkClientHttpRequestFactory` and bound timeout values; no outbound network calls)

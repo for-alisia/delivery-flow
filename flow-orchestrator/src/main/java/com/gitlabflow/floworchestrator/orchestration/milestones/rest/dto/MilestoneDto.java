@@ -8,5 +8,7 @@ public record MilestoneDto(
         long id,
         long milestoneId,
         String title,
-        String state,
-        @Nullable String dueDate) {}
+        @Nullable String description,
+        @Nullable String startDate,
+        @Nullable String dueDate,
+        String state) {}

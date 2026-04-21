@@ -26,6 +26,27 @@ These are the non-negotiable constraints copied from the original request or exp
 - Configuration or external-system constraints:
 - Unresolved items requiring clarification:
 
+## External Contracts
+
+Use this section only when the story touches client payloads or upstream APIs such as GitLab.
+Keep it slim and capture only the details that Architect, Coder, and Reviewer must preserve.
+Do not paste large payload dumps unless the exact payload shape is the main risk.
+If not applicable, write `None.`
+
+### Client Contract
+
+- Operation or endpoint:
+- Required request shape notes:
+- Required response shape notes:
+- Validation or error contract notes:
+
+### Upstream / GitLab Contract
+
+- Operation or endpoint:
+- Required query or body notes:
+- Response fields relied on:
+- Official doc reference checked by Architect:
+
 ## Business Context and Constraints
 
 - Primary users or stakeholders:

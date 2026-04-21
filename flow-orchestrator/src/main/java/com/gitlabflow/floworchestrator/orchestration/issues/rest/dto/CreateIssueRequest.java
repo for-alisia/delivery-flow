@@ -1,7 +1,6 @@
 package com.gitlabflow.floworchestrator.orchestration.issues.rest.dto;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import com.gitlabflow.floworchestrator.common.util.ImmutableListCopies;
 import java.util.List;
 import lombok.Builder;
 import org.springframework.lang.Nullable;
@@ -13,6 +12,12 @@ public record CreateIssueRequest(
         @Nullable List<String> labels) {
 
     public CreateIssueRequest {
-        labels = labels == null ? null : Collections.unmodifiableList(new ArrayList<>(labels));
+        labels = ImmutableListCopies.copyPreservingNullsOrNull(labels);
+    }
+
+    @Override
+    @Nullable
+    public List<String> labels() {
+        return ImmutableListCopies.copyPreservingNullsOrNull(labels);
     }
 }

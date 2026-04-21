@@ -28,8 +28,10 @@ public class GitLabIssueDetailMapper {
                         .id(rawMilestone.id())
                         .milestoneId(rawMilestone.iid())
                         .title(rawMilestone.title())
-                        .state(rawMilestone.state())
+                        .description(rawMilestone.description())
+                        .startDate(rawMilestone.startDate())
                         .dueDate(rawMilestone.dueDate())
+                        .state(rawMilestone.state())
                         .build();
 
         log.debug(

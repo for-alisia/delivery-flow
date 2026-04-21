@@ -1,0 +1,283 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "milestones-search-api",
+  "createdAt": "2026-04-20T17:40:32.877Z",
+  "updatedAt": "2026-04-20T19:15:38.057Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-20T17:40:33.417Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/milestone-get-api.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/milestones-search-api.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-20T17:42:03.502Z",
+      "approvedBy": "TL",
+      "approvedRevision": null,
+      "approvedHash": null,
+      "lastVerifiedExistsAt": "2026-04-20T17:42:03.504Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/milestones-search-api.plan.json",
+      "approved": true,
+      "approvedAt": "2026-04-20T18:13:18.164Z",
+      "approvedBy": "TL",
+      "approvedRevision": 3,
+      "approvedHash": "35f36a703c75f8ec084c2d76f78e3ff3d02c82de04708011508600d1b5ca300a",
+      "lastVerifiedExistsAt": "2026-04-20T18:13:18.166Z"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-20T18:16:44.532Z",
+      "updatedBy": "TL"
+    },
+    "codeReview": {
+      "status": "PASS",
+      "reason": null,
+      "updatedAt": "2026-04-20T19:14:53.110Z",
+      "updatedBy": "TL"
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T19:04:03.502Z",
+      "updatedBy": "JavaCoder",
+      "command": "scripts/verify-quick.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "63a11f62e865a566"
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T19:06:51.082Z",
+      "updatedBy": "TeamLead",
+      "command": "scripts/final-check.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "63a11f62e865a566"
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-20T19:07:23.583Z",
+      "updatedBy": "TeamLead",
+      "command": "scripts/karate-test.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "63a11f62e865a566"
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-20T17:40:32.877Z",
+    "completedAt": "2026-04-20T19:15:38.055Z",
+    "durationMinutes": 95
+  },
+  "batches": {
+    "current": null,
+    "total": 2,
+    "history": [
+      {
+        "batch": 1,
+        "slices": [
+          "S1",
+          "S2"
+        ],
+        "startedAt": "2026-04-20T18:17:02.979Z",
+        "completedAt": "2026-04-20T18:43:41.040Z",
+        "status": "complete",
+        "by": "TL"
+      },
+      {
+        "batch": 2,
+        "slices": [
+          "S3"
+        ],
+        "startedAt": "2026-04-20T18:43:46.110Z",
+        "completedAt": "2026-04-20T19:07:29.524Z",
+        "status": "complete",
+        "by": "TL"
+      }
+    ]
+  },
+  "changes": {
+    "files": [
+      "documentation/capabilities/milestones.md",
+      "flow-orchestrator/http/milestones.http",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/dto/GitLabSingleIssueResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/Milestone.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/MilestoneState.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/SearchMilestonesInput.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneDto.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneFiltersRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/SearchMilestonesRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/SearchMilestonesResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapper.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/issues/IssuesApiComponentTest.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabRestClientConfigIT.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesControllerIT.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/mapper/IssuesResponseMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/MilestoneStateTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/MilestoneTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/SearchMilestonesInputTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidatorTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneDtoTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/MilestoneFiltersRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/SearchMilestonesResponseTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapperTest.java"
+    ]
+  },
+  "architecturalRisks": {
+    "round": 2,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "HIGH",
+        "description": "Plan section D4 keeps all-page aggregation inside GitLabMilestonesAdapter even though architecture-guidance says an adapter method should build one URI, execute one RestClient call wrapped in executeGitLabOperation, map the response, and return. Without either a shared GitLab pagination mechanism or an explicit architectural exception, the coder must violate the documented adapter contract to satisfy the locked fetch-all-pages requirement, and future milestones/metrics/release endpoints will duplicate or reinterpret pagination behavior inconsistently.",
+        "suggestedFix": "Revise D4 and S3 to introduce a shared integration/gitlab pagination helper or another explicitly approved shared transport mechanism that owns repeated page fetches, document it as the sanctioned exception to the single-call adapter shape, and update the plan/tests around that mechanism.",
+        "planRefs": [
+          "D4"
+        ],
+        "connectedAreas": [
+          "S3",
+          "D3"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-20T18:04:34.063Z",
+        "responseNote": "D4 and S3 now extract shared GitLabOffsetPaginationLoader as the sanctioned shared transport owner for repeated page fetches, with GitLabMilestonesAdapter delegating traversal and GitLabOperationExecutor wrapping each page call.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-20T18:12:21.626Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-20T18:15:55.212Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-20T18:05:22.988Z",
+        "reclassificationReason": "The plan conflicts with documented GitLab adapter structure and would force coder guesswork on shared pagination ownership before implementation.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 2,
+        "severity": "MEDIUM",
+        "description": "Plan sections S2 and S3 add a new public API and a new GitLab integration resource but omit the required documentation artifacts. Constitution Principle 11 and code-guidance Final Verification require the corresponding capability documentation and HTTP example to be updated in the same change set. If this is not planned now, implementation can look complete in code while still failing review/sign-off and leaving the first milestones endpoint undocumented for future contributors and manual verification.",
+        "suggestedFix": "Add explicit plan tasks, owned files, and verification for updating documentation/capabilities/milestones.md, documentation/context-map.md as needed, and creating the milestone HTTP example under flow-orchestrator/http with default and filtered search requests.",
+        "planRefs": [
+          "S2"
+        ],
+        "connectedAreas": [
+          "S3"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-20T18:04:34.573Z",
+        "responseNote": "S2 and S3 now assign same-change-set updates and verification for documentation/capabilities/milestones.md, documentation/context-map.md, and flow-orchestrator/http/milestones.http.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-20T18:12:22.172Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-20T18:15:55.709Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-20T18:05:23.481Z",
+        "reclassificationReason": "Missing docs and HTTP examples will fail review/signoff if omitted, but they are plan completeness issues rather than a fundamental design blocker.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 3,
+        "severity": "MEDIUM",
+        "description": "Plan section S3 says no project configuration values are exposed in logs, but the shared GitLabProjectLocator already logs apiBaseUrl and projectPath during bean initialization and the plan includes no task to change that shared behavior. If left unchanged, the coder cannot satisfy the plan's own logging guarantee, and the review will either fail on internal inconsistency or silently weaken the stated security/operability contract.",
+        "suggestedFix": "Either narrow the S3 logging guarantee to the actual required redaction scope, or add an explicit shared-infrastructure change and verification to remove or redact project configuration values from GitLabProjectLocator logging before S3 can pass.",
+        "planRefs": [
+          "S3"
+        ],
+        "connectedAreas": [
+          "D3"
+        ],
+        "status": "RESOLVED",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-20T18:04:35.057Z",
+        "responseNote": "S3 now includes an explicit shared-infrastructure change to GitLabProjectLocator plus tests so startup logging and invalid-config behavior stay sanitized without weakening the no-provider-config-in-logs guarantee.",
+        "respondedBy": "JavaArchitect",
+        "respondedAt": "2026-04-20T18:12:22.725Z",
+        "resolvedBy": "ArchitectureReviewer",
+        "resolvedAt": "2026-04-20T18:15:56.208Z",
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-20T18:05:24.056Z",
+        "reclassificationReason": "The logging guarantee is internally inconsistent with shared startup logging and should be corrected in the plan, but it does not require a full redesign.",
+        "previousSeverity": "UNCLASSIFIED"
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 1,
+    "findings": [
+      {
+        "id": 1,
+        "severity": "MEDIUM",
+        "description": "documentation/capabilities/milestones.md is missing the Integration-GitLab section (GitLabMilestonesAdapter, GitLabMilestonesMapper, GitLabMilestoneResponse) and the component/Karate test inventory entries. The issues.md capability doc establishes the documented pattern with an '## Integration - GitLab' table and component/karate test references. milestones.md deviates, leaving the integration adapter layer undocumented for future contributors.",
+        "file": "documentation/capabilities/milestones.md",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-20T19:12:59.143Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      },
+      {
+        "id": 2,
+        "severity": "LOW",
+        "description": "toDurationMs(long) is duplicated verbatim in MilestonesService, GitLabMilestonesAdapter, and GitLabOffsetPaginationLoader. Each contains the same one-liner (System.nanoTime() - startedAt) / 1_000_000L. No shared utility currently exists but the repetition will grow as more adapters/services are added.",
+        "file": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-20T19:13:05.903Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 1,
+      "type": "note",
+      "by": "TL",
+      "reason": "Approved deviation: temporary test-scope MilestonesPort mocks in full-context tests are acceptable during batch 1 while S3 adapter wiring is still pending.",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-20T18:43:40.587Z"
+    },
+    {
+      "id": 2,
+      "type": "note",
+      "by": "TL",
+      "reason": "Audit passed: verified POST /api/milestones/search optional-body contract, shared GitLab pagination delegation, and milestones capability/context-map documentation on disk.",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-20T19:15:31.901Z"
+    }
+  ]
+}

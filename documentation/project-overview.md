@@ -27,7 +27,7 @@ The Architect uses this to anticipate reuse opportunities across capabilities.
 | # | Capability | Status | GitLab Resources Used |
 |---|-----------|--------|----------------------|
 | 1 | **Issues** — search, create, delete, get-single, label-event history | Implemented | `issues`, `resource_label_events` |
-| 2 | **Milestones** — list, get-single, milestone-scoped issues | Planned | `milestones`, `issues?milestone=` |
+| 2 | **Milestones** — search (implemented), list/get-single/milestone-scoped issues (planned) | Partially implemented | `milestones`, `issues?milestone=` |
 | 3 | **Aging and flow metrics** — age calculation, bottleneck detection, label-based phase tracking | Planned | `issues`, `resource_label_events`, `milestones` |
 | 4 | **Merge requests** — list, status, review state | Planned | `merge_requests` |
 | 5 | **Release notes** — generate from milestone + issues + MR data | Planned | `milestones`, `issues`, `merge_requests` |

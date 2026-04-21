@@ -12,6 +12,7 @@ import com.gitlabflow.floworchestrator.common.error.ErrorCode;
 import com.gitlabflow.floworchestrator.common.error.IntegrationException;
 import com.gitlabflow.floworchestrator.config.GitLabProperties;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabExceptionMapper;
+import com.gitlabflow.floworchestrator.integration.gitlab.GitLabOperationExecutor;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.issues.mapper.GitLabIssueDetailMapper;
@@ -70,7 +71,7 @@ class GitLabIssuesAdapterTest {
                 new GitLabIssuesMapper(),
                 new GitLabIssueDetailMapper(),
                 new GitLabLabelEventMapper(),
-                new GitLabExceptionMapper());
+                new GitLabOperationExecutor(new GitLabExceptionMapper()));
     }
 
     @BeforeEach

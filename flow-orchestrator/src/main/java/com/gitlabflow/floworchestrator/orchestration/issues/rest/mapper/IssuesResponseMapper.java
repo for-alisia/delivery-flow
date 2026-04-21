@@ -106,8 +106,10 @@ public class IssuesResponseMapper {
                 .id(milestone.id())
                 .milestoneId(milestone.milestoneId())
                 .title(milestone.title())
-                .state(milestone.state())
+                .description(milestone.description())
+                .startDate(milestone.startDate())
                 .dueDate(milestone.dueDate())
+                .state(milestone.state())
                 .build();
     }
 
