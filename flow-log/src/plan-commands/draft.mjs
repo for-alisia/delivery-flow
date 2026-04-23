@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import {
+  assertPlan,
+  PLAN_SCHEMA_VERSION,
   createDraft,
   createInitialPlan,
   discardDraft,
@@ -12,17 +14,14 @@ import {
   resolvePlanPath,
   runFullDraftValidation,
   savePlan,
-  validateRiskLinks,
   acceptDraft,
   computePlanHash,
-  plansEquivalentForAcceptance,
-  isV3Plan
+  plansEquivalentForAcceptance
 } from "../plan/index.mjs";
 import { optionalFlag, requiredFlag } from "../cli-helpers.mjs";
 import { ensureFeatureMatches, loadState, resolveStatePath } from "../log/store.mjs";
 
 export const DRAFT_PLAN_COMMAND_HELP = [
-  "init-plan --feature <name> [--force]",
   "plan-create-draft --feature <name>",
   "plan-init-draft --feature <name> [--force]",
   "plan-validate-draft --feature <name> [--state-path <path>]",
@@ -33,8 +32,6 @@ export const DRAFT_PLAN_COMMAND_HELP = [
 
 export function dispatchDraftPlanCommand(command, parsed, cwd) {
   switch (command) {
-    case "init-plan":
-      return handleInitPlan(parsed, cwd);
     case "plan-create-draft":
       return handlePlanCreateDraft(parsed, cwd);
     case "plan-init-draft":
@@ -50,29 +47,6 @@ export function dispatchDraftPlanCommand(command, parsed, cwd) {
     default:
       return undefined;
   }
-}
-
-function handleInitPlan(parsed, cwd) {
-  const feature = requiredFlag(parsed, "feature");
-  const planPath = resolvePlanPath(cwd, feature);
-
-  if (optionalFlag(parsed, "force") !== true && planExists(planPath)) {
-    throw new Error(`Plan already exists: ${planPath}. Use --force to overwrite.`);
-  }
-
-  const plan = createInitialPlan(feature);
-  plan.hash = computePlanHash(plan);
-  savePlan(planPath, plan);
-
-  return {
-    ok: true,
-    command: "init-plan",
-    feature,
-    planPath,
-    schemaVersion: plan.schemaVersion,
-    revision: plan.revision,
-    status: plan.status
-  };
 }
 
 function handlePlanInitDraft(parsed, cwd) {
@@ -108,11 +82,11 @@ function handlePlanCreateDraft(parsed, cwd) {
   const planPath = resolvePlanPath(cwd, feature);
 
   if (!planExists(planPath)) {
-    throw new Error(`Cannot create draft: canonical plan does not exist at ${planPath}. Run init-plan first.`);
+    throw new Error(`Cannot create draft: canonical plan does not exist at ${planPath}. Run plan-init-draft first.`);
   }
 
   const canonicalPlan = loadPlan(planPath);
-  assertV3(canonicalPlan, "canonical plan");
+  assertPlan(canonicalPlan, "canonical plan");
 
   const existingDraft = loadDraftIfExists(feature);
   if (existingDraft) {
@@ -162,10 +136,10 @@ function handlePlanValidateDraft(parsed, cwd) {
   }
 
   const canonicalPlan = loadPlan(planPath);
-  assertV3(canonicalPlan, "canonical plan");
+  assertPlan(canonicalPlan, "canonical plan");
 
   const { draftPath, draft } = loadDraft(feature);
-  assertV3(draft, "draft");
+  assertPlan(draft, "draft");
 
   const validation = runFullDraftValidation(draft, cwd, feature, explicitStatePath);
 
@@ -193,10 +167,10 @@ function handlePlanAcceptDraft(parsed, cwd) {
   }
 
   const canonicalPlan = loadPlan(planPath);
-  assertV3(canonicalPlan, "canonical plan");
+  assertPlan(canonicalPlan, "canonical plan");
 
   const { draftPath, draft } = loadDraft(feature);
-  assertV3(draft, "draft");
+  assertPlan(draft, "draft");
 
   const result = acceptDraft({
     cwd,
@@ -221,7 +195,7 @@ function handlePlanAcceptDraft(parsed, cwd) {
     accepted: result.accepted,
     changed: result.changed,
     revision: result.revision ?? canonicalPlan.revision,
-    hash: result.hash ?? canonicalPlan.hash ?? computePlanHash(canonicalPlan),
+    hash: result.hash ?? computePlanHash(canonicalPlan),
     validation: result.validation,
     approvalInvalidation: result.approvalInvalidation
   };
@@ -253,9 +227,9 @@ function handlePlanDraftStatus(parsed, cwd) {
 
   if (draftStatus.exists && planExists(planPath)) {
     const canonicalPlan = loadPlan(planPath);
-    if (isV3Plan(canonicalPlan)) {
+    if (canonicalPlan?.schemaVersion === PLAN_SCHEMA_VERSION) {
       currentRevision = canonicalPlan.revision;
-      currentHash = canonicalPlan.hash ?? computePlanHash(canonicalPlan);
+      currentHash = computePlanHash(canonicalPlan);
 
       const loadedDraft = loadDraftIfExists(feature);
       if (loadedDraft) {
@@ -297,12 +271,4 @@ function readPlanApprovalState(cwd, feature, explicitStatePath) {
     stateFound: true,
     statePath
   };
-}
-
-function assertV3(plan, label) {
-  if (!isV3Plan(plan)) {
-    throw new Error(
-      `${label} uses schemaVersion '${plan?.schemaVersion ?? "unknown"}'. v3 draft commands require schemaVersion '3.0'.`
-    );
-  }
 }

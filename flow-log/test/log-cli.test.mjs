@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { createTempRoot, runCli, runCliRaw } from "./test-helpers.mjs";
+import { createPlanTempRoot, createTempRoot, runCli, runCliRaw } from "./test-helpers.mjs";
 
 test("flow-log records minimal workflow facts and reports signoff readiness", () => {
   const tempRoot = createTempRoot();
@@ -207,10 +207,11 @@ test("flow-log tracks red cards and rejections in event history", () => {
 });
 
 test("flow-log tracks batch lifecycle (start, complete, multiple batches)", () => {
-  const tempRoot = createTempRoot();
+  const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["slice-1", "slice-2", "slice-3"]);
 
   const firstBatch = runCli(tempRoot, [
     "start-batch",
@@ -257,6 +258,310 @@ test("flow-log tracks batch lifecycle (start, complete, multiple batches)", () =
   assert.equal(summary.summary.batches.completed, 2);
   assert.equal(summary.summary.batches.total, 2);
   assert.equal(summary.summary.batches.current, null);
+  assert.equal(summary.summary.events.counts.batchStart, 2);
+  assert.equal(summary.summary.events.counts.batchEnd, 2);
+
+  const history = runCli(tempRoot, ["history", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(history.events[0].type, "batchStart");
+  assert.deepEqual(history.events[0].slices, ["slice-1", "slice-2"]);
+  assert.equal(history.events[1].type, "batchEnd");
+  assert.equal(history.events[1].batchStatus, "complete");
+});
+
+test("flow-log summary exposes active batch slice ids", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
+  runCli(tempRoot, [
+    "start-batch",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--slice", "S1",
+    "--slice", "S2",
+    "--by", "TL"
+  ]);
+
+  const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(summary.summary.batches.current.batch, 1);
+  assert.deepEqual(summary.summary.batches.current.slices, ["S1", "S2"]);
+  assert.equal(summary.summary.batches.current.changedFileCount, 0);
+  assert.deepEqual(summary.summary.batches.current.changedFiles, []);
+});
+
+test("flow-log start-batch requires explicit approved slice ids", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
+
+  const missingSlice = runCliRaw(tempRoot, [
+    "start-batch", "--feature", "demo", "--state-path", statePath
+  ]);
+  assert.notEqual(missingSlice.status, 0);
+  assert.match(missingSlice.stderr, /requires at least one --slice/i);
+
+  const unknownSlice = runCliRaw(tempRoot, [
+    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S404"
+  ]);
+  assert.notEqual(unknownSlice.status, 0);
+  assert.match(unknownSlice.stderr, /Unknown approved slice ids: S404/);
+});
+
+test("flow-log start-batch rejects a second in-progress batch", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
+  runCli(tempRoot, [
+    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S1", "--by", "TL"
+  ]);
+
+  const secondStart = runCliRaw(tempRoot, [
+    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S2", "--by", "TL"
+  ]);
+  assert.notEqual(secondStart.status, 0);
+  assert.match(secondStart.stderr, /already in progress/i);
+});
+
+test("flow-log start-batch rejects stale approved plan after direct file edits even when stored hash is unchanged", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const feature = "demo";
+  const planPath = path.join(tempRoot, "artifacts", "implementation-plans", `${feature}.plan.json`);
+
+  runCli(tempRoot, ["create", "--feature", feature, "--state-path", statePath]);
+
+  const plan = buildValidV4Plan(feature, ["S1"]);
+  plan.hash = "persisted-hash";
+  fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+  runCli(tempRoot, [
+    "register-artifact",
+    "plan",
+    "--feature",
+    feature,
+    "--state-path",
+    statePath,
+    "--path",
+    planPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "plan",
+    "--feature",
+    feature,
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+
+  plan.slices[0].title = "Changed directly after approval";
+  fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+  const start = runCliRaw(tempRoot, [
+    "start-batch",
+    "--feature",
+    feature,
+    "--state-path",
+    statePath,
+    "--slice",
+    "S1",
+    "--by",
+    "TL"
+  ]);
+  assert.notEqual(start.status, 0);
+  assert.match(start.stderr, /Plan approval is stale/i);
+});
+
+test("flow-log summary exposes changed files for review intake", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["S1"]);
+  runCli(tempRoot, [
+    "start-batch",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--slice", "S1",
+    "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "add-change",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--file", "flow-orchestrator/src/main/java/com/example/Demo.java",
+    "--file", "flow-orchestrator/src/test/java/com/example/DemoTest.java"
+  ]);
+
+  const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(summary.summary.changedFileCount, 2);
+  assert.deepEqual(summary.summary.changedFiles, [
+    "flow-orchestrator/src/main/java/com/example/Demo.java",
+    "flow-orchestrator/src/test/java/com/example/DemoTest.java"
+  ]);
+  assert.equal(summary.summary.batches.current.changedFileCount, 2);
+  assert.deepEqual(summary.summary.batches.current.changedFiles, [
+    "flow-orchestrator/src/main/java/com/example/Demo.java",
+    "flow-orchestrator/src/test/java/com/example/DemoTest.java"
+  ]);
+});
+
+test("flow-log complete-batch preserves changed file ownership in history", () => {
+  const tempRoot = createPlanTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  registerApprovedPlan(tempRoot, statePath, "demo", ["S1"]);
+  runCli(tempRoot, [
+    "start-batch",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--slice", "S1",
+    "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "add-change",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--file", "flow-orchestrator/src/main/java/com/example/Demo.java"
+  ]);
+  runCli(tempRoot, [
+    "complete-batch",
+    "--feature", "demo",
+    "--state-path", statePath,
+    "--status", "complete"
+  ]);
+
+  const state = runCli(tempRoot, ["get", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(state.state.batches.history.length, 1);
+  assert.deepEqual(state.state.batches.history[0].changedFiles, [
+    "flow-orchestrator/src/main/java/com/example/Demo.java"
+  ]);
+});
+
+test("flow-log story-get returns the External Contracts section from the approved story", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const storyPath = path.join(tempRoot, "artifacts", "user-stories", "demo.story.md");
+
+  fs.mkdirSync(path.dirname(storyPath), { recursive: true });
+  fs.writeFileSync(storyPath, `# Story\n\n## Business Goal\n\nGoal.\n\n## External Contracts\n\n### Client Contract\n\n- Operation or endpoint: POST /api/milestones/search\n- Required request shape notes: body may be omitted\n\n### Upstream / GitLab Contract\n\n- Operation or endpoint: GET /projects/:id/milestones\n\n## Scope\n\n### In Scope\n\n- milestone search\n`);
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, [
+    "register-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--path",
+    storyPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+
+  const storySection = runCli(tempRoot, [
+    "story-get",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--section",
+    "external-contracts"
+  ]);
+
+  assert.equal(storySection.command, "story-get");
+  assert.equal(storySection.section, "external-contracts");
+  assert.match(storySection.content, /POST \/api\/milestones\/search/);
+  assert.match(storySection.content, /GET \/projects\/:id\/milestones/);
+});
+
+test("flow-log story-get rejects stale approved stories", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const storyPath = path.join(tempRoot, "artifacts", "user-stories", "demo.story.md");
+
+  fs.mkdirSync(path.dirname(storyPath), { recursive: true });
+  fs.writeFileSync(storyPath, "# Story\n\n## External Contracts\n\n- initial\n");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, [
+    "register-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--path",
+    storyPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+
+  fs.writeFileSync(storyPath, "# Story\n\n## External Contracts\n\n- changed after approval\n");
+
+  const storyGet = runCliRaw(tempRoot, [
+    "story-get",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--section",
+    "external-contracts"
+  ]);
+  assert.notEqual(storyGet.status, 0);
+  assert.match(storyGet.stderr, /stale/i);
+
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(status.status.storyStale, true);
+});
+
+test("flow-log add-risk requires a plan-ref", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
+
+  const result = runCliRaw(tempRoot, [
+    "add-risk",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--description",
+    "Missing slice reference",
+    "--suggested-fix",
+    "Target the slice explicitly",
+    "--by",
+    "ArchitectureReviewer"
+  ]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /plan-ref/i);
 });
 
 test("flow-log reset-checks clears all checks and records red card event", () => {
@@ -348,6 +653,7 @@ test("flow-log architectural risks full lifecycle: add, respond, resolve/reopen,
   const firstRisk = runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--severity", "CRITICAL", "--description", "Missing interface contract for port",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
   assert.equal(firstRisk.risk.id, 1);
@@ -358,6 +664,7 @@ test("flow-log architectural risks full lifecycle: add, respond, resolve/reopen,
   runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--severity", "MEDIUM", "--description", "Naming could be clearer",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
 
@@ -408,6 +715,7 @@ test("flow-log add-risk stores suggestedFix and surfaces it in summary", () => {
     "--severity", "HIGH",
     "--description", "Missing fail-fast on rejected execution",
     "--suggested-fix", "Add CallerRunsPolicy or throw ServiceUnavailableException from a RejectedExecutionHandler",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
   assert.equal(highRisk.risk.suggestedFix, "Add CallerRunsPolicy or throw ServiceUnavailableException from a RejectedExecutionHandler");
@@ -417,6 +725,7 @@ test("flow-log add-risk stores suggestedFix and surfaces it in summary", () => {
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--severity", "MEDIUM",
     "--description", "Naming could be clearer",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
   assert.equal(mediumRisk.risk.suggestedFix, null);
@@ -436,6 +745,7 @@ test("flow-log architectural risks reopen and escalation after 3 rounds", () => 
   runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--severity", "HIGH", "--description", "Wrong composition strategy",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
 
@@ -512,6 +822,7 @@ test("flow-log architectural risks invalidation path", () => {
   runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--severity", "HIGH", "--description", "Shared infra duplicated",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
 
@@ -542,6 +853,7 @@ test("flow-log reclassify-risk changes severity and preserves previous", () => {
   const added = runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--description", "Shared infra duplicated — will cause runtime class conflicts in production",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
   assert.equal(added.risk.severity, "UNCLASSIFIED");
@@ -580,6 +892,7 @@ test("flow-log reclassify-risk to LOW makes risk non-blocking", () => {
   runCli(tempRoot, [
     "add-risk", "--feature", "demo", "--state-path", statePath,
     "--description", "Naming convention mismatch — advisory only",
+    "--plan-ref", "S1",
     "--by", "ArchitectureReviewer"
   ]);
 
@@ -956,6 +1269,69 @@ test("flow-log status detects stale checks after source file changes", () => {
   assert.equal(staleStatus.status.finalCheckStale, true);
 });
 
+test("flow-log readiness signoff rejects stale verification evidence", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const storyPath = path.join(tempRoot, "story.md");
+  const planPath = path.join(tempRoot, "plan.md");
+  const scriptPath = path.join(tempRoot, "pass.sh");
+
+  const srcDir = path.join(tempRoot, "flow-orchestrator", "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+  const javaFile = path.join(srcDir, "Main.java");
+  fs.writeFileSync(javaFile, "class Main {}");
+
+  fs.writeFileSync(storyPath, "# Story\n");
+  fs.writeFileSync(planPath, "# Plan\n");
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["lock-requirements", "--feature", "demo", "--state-path", statePath, "--by", "TL"]);
+  runCli(tempRoot, [
+    "register-artifact", "story", "--feature", "demo", "--state-path", statePath, "--path", storyPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact", "story", "--feature", "demo", "--state-path", statePath, "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "register-artifact", "plan", "--feature", "demo", "--state-path", statePath, "--path", planPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact", "plan", "--feature", "demo", "--state-path", statePath, "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "set-review", "--feature", "demo", "--state-path", statePath,
+    "--name", "architectureReview", "--status", "PASS", "--by", "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "set-review", "--feature", "demo", "--state-path", statePath,
+    "--name", "codeReview", "--status", "PASS", "--by", "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "finalCheck", "--command", scriptPath
+  ]);
+  runCli(tempRoot, [
+    "run-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "karate", "--command", scriptPath
+  ]);
+
+  const originalMtime = fs.statSync(javaFile).mtimeMs;
+  fs.writeFileSync(javaFile, "class Main { void changed() {} }");
+  const newMtime = fs.statSync(javaFile).mtimeMs;
+  if (newMtime === originalMtime) {
+    const futureTime = originalMtime + 1000;
+    fs.utimesSync(javaFile, futureTime / 1000, futureTime / 1000);
+  }
+
+  const readiness = runCli(tempRoot, [
+    "readiness", "signoff", "--feature", "demo", "--state-path", statePath
+  ]);
+  assert.equal(readiness.readiness.ready, false);
+  assert.ok(readiness.readiness.reasons.some((reason) => reason.includes("finalCheck must be re-run")));
+  assert.ok(readiness.readiness.reasons.some((reason) => reason.includes("karate must be re-run")));
+});
+
 test("flow-log status shows stale=false for NOT_RUN and FAIL checks", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
@@ -973,9 +1349,9 @@ test("flow-log status shows stale=false for NOT_RUN and FAIL checks", () => {
   assert.equal(status.status.karateStale, false);
 });
 
-// --- verify-all tests ---
+// --- verify tests ---
 
-test("flow-log verify-all runs all checks and reports combined PASS", () => {
+test("flow-log verify --profile full runs all checks and reports combined PASS", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -989,11 +1365,12 @@ test("flow-log verify-all runs all checks and reports combined PASS", () => {
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const result = runCli(tempRoot, [
-    "verify-all", "--feature", "demo", "--state-path", statePath, "--by", "JavaCoder"
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "full", "--by", "JavaCoder"
   ]);
 
   assert.equal(result.ok, true);
-  assert.equal(result.command, "verify-all");
+  assert.equal(result.command, "verify");
+  assert.equal(result.profile, "full");
   assert.equal(result.results.length, 3);
   assert.equal(result.results[0].check, "verifyQuick");
   assert.equal(result.results[0].status, "PASS");
@@ -1009,7 +1386,7 @@ test("flow-log verify-all runs all checks and reports combined PASS", () => {
   assert.equal(status.status.karate, "PASS");
 });
 
-test("flow-log verify-all stops on first failure and reports which check failed", () => {
+test("flow-log verify --profile full stops on first failure and reports which check failed", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -1023,7 +1400,7 @@ test("flow-log verify-all stops on first failure and reports which check failed"
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const result = runCli(tempRoot, [
-    "verify-all", "--feature", "demo", "--state-path", statePath
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "full"
   ]);
 
   assert.equal(result.ok, false);
@@ -1042,9 +1419,9 @@ test("flow-log verify-all stops on first failure and reports which check failed"
   assert.equal(status.status.karate, "NOT_RUN");
 });
 
-// --- batch-verify tests ---
+// --- verify batch tests ---
 
-test("flow-log batch-verify runs verifyQuick and finalCheck only", () => {
+test("flow-log verify --profile batch runs verifyQuick and finalCheck only", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -1057,11 +1434,12 @@ test("flow-log batch-verify runs verifyQuick and finalCheck only", () => {
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const result = runCli(tempRoot, [
-    "batch-verify", "--feature", "demo", "--state-path", statePath, "--by", "JavaCoder"
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "batch", "--by", "JavaCoder"
   ]);
 
   assert.equal(result.ok, true);
-  assert.equal(result.command, "batch-verify");
+  assert.equal(result.command, "verify");
+  assert.equal(result.profile, "batch");
   assert.equal(result.results.length, 2);
   assert.equal(result.results[0].check, "verifyQuick");
   assert.equal(result.results[0].status, "PASS");
@@ -1075,7 +1453,7 @@ test("flow-log batch-verify runs verifyQuick and finalCheck only", () => {
   assert.equal(status.status.karate, "NOT_RUN");
 });
 
-test("flow-log batch-verify stops on first failure", () => {
+test("flow-log verify --profile batch stops on first failure", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -1087,7 +1465,7 @@ test("flow-log batch-verify stops on first failure", () => {
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const raw = runCliRaw(tempRoot, [
-    "batch-verify", "--feature", "demo", "--state-path", statePath
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "batch"
   ]);
   const result = JSON.parse(raw.stdout);
 
@@ -1119,3 +1497,77 @@ test("flow-log run-check PASS trims outputTail to 5 lines max", () => {
   assert.equal(result.status, "PASS");
   assert.ok(result.outputTail.length <= 5, `Expected at most 5 lines, got ${result.outputTail.length}`);
 });
+
+function registerApprovedPlan(tempRoot, statePath, feature, sliceIds) {
+  const planPath = path.join(tempRoot, "artifacts", "implementation-plans", `${feature}.plan.json`);
+  fs.mkdirSync(path.dirname(planPath), { recursive: true });
+  fs.writeFileSync(planPath, `${JSON.stringify(buildValidV4Plan(feature, sliceIds), null, 2)}\n`);
+
+  runCli(tempRoot, [
+    "register-artifact",
+    "plan",
+    "--feature",
+    feature,
+    "--state-path",
+    statePath,
+    "--path",
+    planPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "plan",
+    "--feature",
+    feature,
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+
+  return planPath;
+}
+
+function buildValidV4Plan(feature, sliceIds = ["S1"]) {
+  return {
+    schemaVersion: "4.0",
+    feature,
+    revision: 1,
+    status: "approved",
+    scope: {
+      purpose: "Test plan",
+      inScope: ["Batch validation"],
+      outOfScope: ["None"],
+      constraints: []
+    },
+    sharedRules: [],
+    sharedDecisions: [],
+    slices: sliceIds.map((sliceId, index) => ({
+      id: sliceId,
+      title: `Slice ${index + 1}`,
+      goal: `Goal for ${sliceId}`,
+      dependsOn: [],
+      units: [
+        {
+          id: `${sliceId}-U1`,
+          kind: "java-class",
+          locationHint: `flow-orchestrator/src/main/java/com/example/${sliceId}Handler.java`,
+          status: "new",
+          purpose: `Unit for ${sliceId}`,
+          change: "Implement the batch-owned unit.",
+          tests: {
+            levels: ["unit"],
+            notes: "Exercise the owned unit."
+          }
+        }
+      ],
+      doneWhen: [
+        `Slice ${sliceId} is implemented.`
+      ]
+    })),
+    finalVerification: {
+      requiredGates: ["verifyQuick", "finalCheck", "karate"],
+      notes: []
+    },
+    hash: null
+  };
+}

@@ -66,16 +66,16 @@ Team Lead reads all findings after you return, assigns severity based on project
 
 **Risk commands reference:** [flow-log/docs/review-commands.md](../../flow-log/docs/review-commands.md) — `add-risk`, `resolve-risk`, `reopen-risk`, round management.
 
-1. Run `node flow-log/flow-log.mjs summary --feature <feature-name>` — check `architecturalRisks` section for existing risks and current round.
-2. Run `node flow-log/flow-log.mjs plan-summary --feature <feature-name>` — verify plan structure is registered. If `classCount` or `sliceCount` is 0, raise a CRITICAL risk: plan structure was not registered.
-3. Read the plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` for full plan, or `plan-get --section models`, `--section slices`, etc. for focused review. Check that every model has a `justification` that defends its placement against constitution rules.
+1. Run `scripts/flow-log.sh summary --feature <feature-name>` — check `architecturalRisks` section for existing risks and current round.
+2. Run `scripts/flow-log.sh plan-summary --feature <feature-name>` — verify the slice-first plan is registered. If `sectionCounts.slices` or `sectionCounts.units` is 0, raise a CRITICAL risk: plan structure was not registered.
+3. Read the plan surgically: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>` for owned slice details, plus `plan-get --section sharedRules`, `plan-get --section sharedDecisions`, and `plan-get --section finalVerification` when cross-slice context is needed. Read `story-get --section external-contracts` when a slice depends on an external contract, and treat compact request / response / error examples there as contract evidence when present.
 4. Read request and story from paths in summary.
 5. Read `documentation/constitution.md`, `documentation/code-guidance.md`, `documentation/architecture-guidance.md`.
 6. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md`.
 7. Challenge the plan against all of the above.
-8. Record each finding via `add-risk` with `--description`, `--suggested-fix`, `--plan-ref <section-id>`, and `--by ArchitectureReviewer`. Add `--connected-area <section-id>` for each additional plan section affected.
+8. Record each finding via `add-risk` with `--description`, `--suggested-fix`, `--plan-ref <slice-or-unit-id>`, and `--by ArchitectureReviewer`. Add `--connected-area <id>` for each additional affected slice, unit, shared rule, or shared decision.
 
-`--plan-ref` is **required** on every risk — it identifies the primary plan section the risk targets (e.g., `M3`, `S2`, `VR1`, `D4`). TL uses these references to classify revision scope and the Architect uses them to locate which sections need revision.
+`--plan-ref` is **required** on every risk — it identifies the primary slice, unit, shared rule, or shared decision the risk targets (for example `S2`, `S2-U3`, `R1`, `D1`). TL uses these references to classify revision scope and the Architect uses them to locate which sections need revision.
 
 Every finding **must** include a `--suggested-fix` that describes the concrete change the Architect should make — not just what is wrong. The Architect reads `suggestedFix` alongside `description` to converge on a solution instead of guessing.
 

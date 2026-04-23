@@ -1,6 +1,7 @@
 export * from "./schema.mjs";
 export * from "./store.mjs";
 export * from "./draft-store.mjs";
+export * from "./validate-helpers.mjs";
 export * from "./validate-shape.mjs";
 export * from "./validate-readiness.mjs";
 export * from "./validate-risk-links.mjs";

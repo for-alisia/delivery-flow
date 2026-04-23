@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { saveDraft } from "./draft-store.mjs";
 import { computePlanHash, plansEquivalentForAcceptance } from "./hash.mjs";
-import { PLAN_V3_SCHEMA_VERSION } from "./schema.mjs";
+import { PLAN_SCHEMA_VERSION } from "./schema.mjs";
 import { savePlan } from "./store.mjs";
 import { validatePlanReadiness } from "./validate-readiness.mjs";
 import { validateRiskLinks } from "./validate-risk-links.mjs";
@@ -48,22 +48,20 @@ export function acceptDraft(options) {
     };
   }
 
-  if (draft.schemaVersion !== PLAN_V3_SCHEMA_VERSION) {
+  if (draft.schemaVersion !== PLAN_SCHEMA_VERSION) {
     return {
       accepted: false,
       changed: false,
       validation: {
         ...validation,
         valid: false,
-        issues: [...validation.issues, `[shape] schemaVersion must be '${PLAN_V3_SCHEMA_VERSION}'.`]
+        issues: [...validation.issues, `[shape] schemaVersion must be '${PLAN_SCHEMA_VERSION}'.`]
       }
     };
   }
 
   const changed = !plansEquivalentForAcceptance(canonicalPlan, draft);
-  const canonicalHash = typeof canonicalPlan.hash === "string"
-    ? canonicalPlan.hash
-    : computePlanHash(canonicalPlan);
+  const canonicalHash = computePlanHash(canonicalPlan);
 
   if (!changed) {
     return {
@@ -82,7 +80,7 @@ export function acceptDraft(options) {
 
   const nextPlan = structuredClone(draft);
   nextPlan.feature = feature;
-  nextPlan.schemaVersion = PLAN_V3_SCHEMA_VERSION;
+  nextPlan.schemaVersion = PLAN_SCHEMA_VERSION;
   nextPlan.revision = canonicalPlan.revision + 1;
   nextPlan.hash = computePlanHash(nextPlan);
 

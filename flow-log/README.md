@@ -2,7 +2,7 @@
 
 Minimal workflow state CLI for feature delivery.
 
-One machine-owned JSON state file per feature. Tracks artifacts, reviews, checks, risks, findings, batches, and timing.
+One machine-owned JSON state file per feature tracks artifacts, reviews, checks, risks, findings, batches, and timing.
 
 ## State File
 
@@ -10,186 +10,86 @@ One machine-owned JSON state file per feature. Tracks artifacts, reviews, checks
 
 ## Quickstart
 
-### 1) Create and Lock
+### 1) Create and lock
 
 ```bash
-node flow-log/flow-log.mjs create --feature my-feature
-node flow-log/flow-log.mjs lock-requirements --feature my-feature --by TL --request-source <path>
+scripts/flow-log.sh create --feature my-feature
+scripts/flow-log.sh lock-requirements --feature my-feature --by TL --request-source <path>
 ```
 
 ### 2) Story
 
 ```bash
-node flow-log/flow-log.mjs register-artifact story --feature my-feature --path artifacts/user-stories/my-feature.story.md
-node flow-log/flow-log.mjs approve-artifact story --feature my-feature --by TL
+scripts/flow-log.sh register-artifact story --feature my-feature --path artifacts/user-stories/my-feature.story.md
+scripts/flow-log.sh approve-artifact story --feature my-feature --by TL
+scripts/flow-log.sh story-get --feature my-feature --section external-contracts
 ```
 
-### 3) Plan
+`story-get` reads one section from the approved story artifact. Keep compact concrete request / response / error examples in that section when field names, nullability, omitted-body behavior, or error payload shape are easy to misread. If the story changed after approval, the command fails until Team Lead re-approves it.
 
-Uses v3 draft lifecycle. Full details: [docs/plan-management.md](docs/plan-management.md)
+### 3) Plan (v4)
+
+The canonical plan artifact is `artifacts/implementation-plans/<feature>.plan.json`.
+Use [artifacts/templates/plan-v4.example.json](../artifacts/templates/plan-v4.example.json) as the field-level reference example.
 
 ```bash
-node flow-log/flow-log.mjs init-plan --feature my-feature
-node flow-log/flow-log.mjs plan-create-draft --feature my-feature
-# edit draft at /tmp/flow-log-plan-drafts/<feature>.draft.json
-node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
-node flow-log/flow-log.mjs plan-accept-draft --feature my-feature
-node flow-log/flow-log.mjs register-artifact plan --feature my-feature --path artifacts/implementation-plans/my-feature.plan.json
-node flow-log/flow-log.mjs approve-artifact plan --feature my-feature --by TL
+scripts/flow-log.sh plan-init-draft --feature my-feature
+# edit /tmp/flow-log-plan-drafts/<feature>.draft.json
+scripts/flow-log.sh plan-validate-draft --feature my-feature
+scripts/flow-log.sh plan-accept-draft --feature my-feature
+scripts/flow-log.sh register-artifact plan --feature my-feature --path artifacts/implementation-plans/my-feature.plan.json
+scripts/flow-log.sh approve-artifact plan --feature my-feature --by TL
 ```
 
-Or use the convenience shortcut that combines `init-plan` + `plan-create-draft`:
+Read plans surgically whenever possible:
 
 ```bash
-node flow-log/flow-log.mjs plan-init-draft --feature my-feature
-# edit draft, then validate and accept as above
+scripts/flow-log.sh plan-summary --feature my-feature
+scripts/flow-log.sh plan-get --feature my-feature --slice S1
+scripts/flow-log.sh plan-get --feature my-feature --section sharedDecisions
 ```
 
-### 4) Reviews, Checks, Queries
+### 4) Batches, reviews, and checks
 
 ```bash
-node flow-log/flow-log.mjs set-review --feature my-feature --name architectureReview --status PASS --by Reviewer
-
-# Run verification scripts and record results atomically:
-node flow-log/flow-log.mjs run-check --feature my-feature --name verifyQuick --by JavaCoder
-node flow-log/flow-log.mjs run-check --feature my-feature --name finalCheck --by TeamLead
-node flow-log/flow-log.mjs run-check --feature my-feature --name karate --by TeamLead
-
-# Manual override (when script was run outside flow-log):
-node flow-log/flow-log.mjs set-check --feature my-feature --name finalCheck --status PASS --by TL --command scripts/final-check.sh
-
-node flow-log/flow-log.mjs summary --feature my-feature
-node flow-log/flow-log.mjs status --feature my-feature
-node flow-log/flow-log.mjs readiness signoff --feature my-feature
+scripts/flow-log.sh start-batch --feature my-feature --slice S1 --slice S2 --by TL
+scripts/flow-log.sh summary --feature my-feature
+scripts/flow-log.sh verify --feature my-feature --profile batch --by JavaCoder
+scripts/flow-log.sh verify --feature my-feature --profile full --by JavaCoder
+scripts/flow-log.sh complete-batch --feature my-feature --status complete
 ```
 
-### run-check Details
+`start-batch` requires at least one approved slice ID from the registered v4 plan. The `summary` output includes the current batch number, active slice IDs, and batch-owned changed files so downstream agents can stay slice-scoped.
 
-`run-check` executes a verification script via `spawnSync`, captures exit code and output, and records the result in flow-log state atomically. This replaces the old 3-step pattern of: run script → read output → call `set-check`.
+### 5) Architecture risks and code findings
 
 ```bash
-# Uses the default script mapped to each check name:
-node flow-log/flow-log.mjs run-check --feature my-feature --name verifyQuick
-#   → runs scripts/verify-quick.sh
+scripts/flow-log.sh add-risk \
+  --feature my-feature \
+  --description "Wrong slice ownership" \
+  --plan-ref S1-U2 \
+  --suggested-fix "Move the unit to the correct slice" \
+  --by ArchitectureReviewer
 
-node flow-log/flow-log.mjs run-check --feature my-feature --name finalCheck
-#   → runs scripts/final-check.sh
-
-node flow-log/flow-log.mjs run-check --feature my-feature --name karate
-#   → runs scripts/karate-test.sh
-
-# Override the script:
-node flow-log/flow-log.mjs run-check --feature my-feature --name verifyQuick --command path/to/script.sh
-
-# Custom timeout (default 300s):
-node flow-log/flow-log.mjs run-check --feature my-feature --name karate --timeout 600000
+scripts/flow-log.sh add-finding \
+  --feature my-feature \
+  --severity HIGH \
+  --description "Null check missing on mapper input" \
+  --file src/main/java/Mapper.java \
+  --by CodeReviewer
 ```
 
-**Output:** Structured JSON with `ok`, `status` (PASS/FAIL), `exitCode`, `outputTail` (last 5 lines on PASS, last 80 lines on FAIL), `durationMs`, `timedOut`, `sourceFingerprint` (16-char hex hash on PASS, `null` on FAIL).
-
-**Default script mapping:**
-| Check name | Script |
-|---|---|
-| `verifyQuick` | `scripts/verify-quick.sh` |
-| `finalCheck` | `scripts/final-check.sh` |
-| `karate` | `scripts/karate-test.sh` |
-
-### verify-all
-
-Runs all three checks in sequence (`verifyQuick` → `finalCheck` → `karate`), stopping on the first failure. Each check is saved to state immediately after completion.
-
-```bash
-# Run all checks:
-node flow-log/flow-log.mjs verify-all --feature my-feature --by JavaCoder
-
-# Custom timeout (applies to each check):
-node flow-log/flow-log.mjs verify-all --feature my-feature --timeout 600000
-```
-
-**Output:** Structured JSON with `ok`, `results` (array of `{check, status, durationMs}`). On failure, includes `stoppedAt` (check name) and `failedCheck` (full result with `outputTail`).
-
-### batch-verify
-
-Runs `verifyQuick` → `finalCheck` in sequence (no Karate), stopping on the first failure. Designed for mid-batch verification during coding — faster feedback without Karate startup overhead.
-
-```bash
-# Run compile + test checks only:
-node flow-log/flow-log.mjs batch-verify --feature my-feature --by JavaCoder
-
-# Custom timeout (applies to each check):
-node flow-log/flow-log.mjs batch-verify --feature my-feature --timeout 600000
-```
-
-**Output:** Same structure as `verify-all` but with 2 results max.
-
-### Source Fingerprinting And Staleness
-
-When a check passes via `run-check` or `verify-all`, flow-log records a `sourceFingerprint` — a SHA-256 hash (16-char hex) computed from the modification times of all source files in `flow-orchestrator/src/` plus `pom.xml` (extensions: `.java`, `.xml`, `.properties`, `.yml`, `.yaml`, `.json`, `.feature`).
-
-The `status` command computes a live fingerprint and compares it against the recorded fingerprint for each check:
-
-```bash
-node flow-log/flow-log.mjs status --feature my-feature
-# Output includes: verifyQuickStale, finalCheckStale, karateStale (boolean)
-```
-
-- `*Stale: false` — source unchanged since the check passed
-- `*Stale: true` — source changed after the check passed; re-run recommended
-- `*Stale: false` for `NOT_RUN` or `FAIL` checks — staleness only applies to PASS results
-
-### 5) Events and History
-
-```bash
-node flow-log/flow-log.mjs add-event --feature my-feature --type redCard --by TL --target JavaCoder --reason "final-check failed"
-node flow-log/flow-log.mjs history --feature my-feature --limit 10
-```
-
-### 6) Batches
-
-```bash
-node flow-log/flow-log.mjs start-batch --feature my-feature --slice "slice-1" --slice "slice-2" --by TL
-node flow-log/flow-log.mjs complete-batch --feature my-feature --status complete
-node flow-log/flow-log.mjs reset-checks --feature my-feature --reason "test failure" --by TL --target JavaCoder
-node flow-log/flow-log.mjs complete --feature my-feature
-```
-
-### 7) Architecture Risks and Code Findings
-
-Full details: [docs/review-commands.md](docs/review-commands.md)
-
-```bash
-# risks (architecture review loop)
-node flow-log/flow-log.mjs add-risk --feature my-feature --description "..." --suggested-fix "..." --by ArchitectureReviewer
-node flow-log/flow-log.mjs reclassify-risk --feature my-feature --id 1 --severity HIGH --reason "..." --by TL
-node flow-log/flow-log.mjs respond-risk --feature my-feature --id 1 --status ADDRESSED --note "..." --by JavaArchitect
-node flow-log/flow-log.mjs resolve-risk --feature my-feature --id 1 --by ArchitectureReviewer
-node flow-log/flow-log.mjs increment-round --feature my-feature
-node flow-log/flow-log.mjs architecture-gate --feature my-feature
-
-# findings (code review loop)
-node flow-log/flow-log.mjs add-finding --feature my-feature --severity HIGH --description "..." --file "..." --by CodeReviewer
-node flow-log/flow-log.mjs respond-finding --feature my-feature --id 1 --status FIXED --note "..." --by JavaCoder
-node flow-log/flow-log.mjs resolve-finding --feature my-feature --id 1 --by CodeReviewer
-node flow-log/flow-log.mjs increment-code-review-round --feature my-feature
-node flow-log/flow-log.mjs code-review-gate --feature my-feature
-```
-
-## Sign-off Readiness
-
-`readiness signoff` returns `ready: true` when: requirements locked, story registered+approved, plan registered+approved, `architectureReview` PASS, `codeReview` PASS, `finalCheck` PASS, `karate` PASS.
-
-## Detailed Documentation
-
-- [Plan Management (v3)](docs/plan-management.md) — draft lifecycle, schema, validation, revision workflow
-- [Review Commands](docs/review-commands.md) — architectural risks, code findings, gates, escalation
+`--plan-ref` is required for every architecture risk. Use slice IDs (`S1`), unit IDs (`S1-U2`), or shared rule / decision IDs (`R1`, `D1`).
 
 ## Notes
 
 - Output is JSON only.
 - `verifyQuick` is recorded but not part of sign-off readiness.
-- Agents should use `run-check` or `verify-all` instead of running verification scripts directly. `set-check` remains available for manual overrides.
-- All commands must run from the repository root directory. Running from a subdirectory without `--state-path` produces an actionable error.
-- `set-review` accepts legacy aliases `phase1` → `architectureReview`, `phase2` → `codeReview`.
-- `reset-checks` automatically records a `redCard` event.
-- `status` = short check; `summary` = medium detail; `history` = event trail.
-- `create` records `timing.startedAt`; `complete` records `timing.completedAt` and `durationMinutes`.
+- Sign-off blocks stale story or plan approvals and stale `finalCheck` / `karate` evidence.
+- Run commands from the repository root directory. The canonical wrapper is `scripts/flow-log.sh`.
+- `status` is the compact check, `summary` is the medium-detail handoff view, and `history` is the event trail.
+
+## Detailed Docs
+
+- [docs/plan-management.md](docs/plan-management.md)
+- [docs/review-commands.md](docs/review-commands.md)

@@ -43,7 +43,7 @@ Report status to the user at each stage transition.
 
 `flow-log` CLI is the single source of truth. State file: `artifacts/flow-logs/<feature-name>.json`.
 
-All commands run from repo root: `node flow-log/flow-log.mjs <command>`.
+All commands run from repo root: `scripts/flow-log.sh <command>`.
 
 **Command reference:** [flow-log/README.md](../../flow-log/README.md) — quickstart and all commands.
 
@@ -66,7 +66,7 @@ Before every gate, run `flow-log status` and verify phase matches expectations. 
 ### 3. Plan Gate
 
 - Invoke `Java Architect` with feature name.
-- Verify plan on disk: requirement lock preserved, payloads, validation boundary, slices, tests defined.
+- Verify plan on disk: requirement lock preserved, story `External Contracts` used as the contract source of truth, shared rules / decisions are clear, slices and units are explicit, and done criteria are defined. If a boundary contract is easy to misread, verify the story carries compact concrete request / response / error examples instead of prose-only notes.
 - `validate-plan` (must show `valid: true`) → `plan-summary` (verify counts) → `register-artifact plan` → `approve-artifact plan`
 
 ### 4. Architecture Review
@@ -118,12 +118,13 @@ Log every escalation decision via `add-event --type archEscalationDecision` with
 
 Max 2 slices per invocation.
 
-1. `start-batch --slice <s1> [--slice <s2>]`
-2. Invoke `Java Coder`
-3. After return: check `flow-log status` for `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If `finalCheckStale` or `karateStale` is true, re-run the stale check via `run-check`. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, the staleness is non-blocking — `finalCheck` already includes compilation and tests.
-4. Independent recheck: `run-check --feature <feature-name> --name finalCheck --by TeamLead`
-5. After final batch: `run-check --feature <feature-name> --name karate --by TeamLead`
-6. `complete-batch --status complete`
+1. `start-batch --slice <approved-s1> [--slice <approved-s2>]`
+2. Use only approved slice IDs from the registered plan when starting the batch.
+3. Invoke `Java Coder` with the same active slice IDs recorded in the batch
+4. After return: check `flow-log status` for `storyStale`, `planStale`, and `*Stale` fields (`verifyQuickStale`, `finalCheckStale`, `karateStale`). Then read `flow-log summary` and verify the handoff against `batches.current.slices` and `batches.current.changedFiles`. If `storyStale` or `planStale` is true, stop and re-approve the changed artifact before proceeding.
+5. If `finalCheckStale` or `karateStale` is true, or the evidence looks suspect, re-run only the affected check via `run-check`. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, the staleness is non-blocking — `finalCheck` already includes compilation and tests.
+6. Do not re-run `finalCheck` or `karate` by default when coder evidence is fresh and credible.
+7. `complete-batch --status complete`
 
 **Red cards:** TL recheck fails while coder claims PASS → `reset-checks`. First red card: return evidence to coder. Second red card on same feature: stop coder retries, route to `Java Architect` for plan revision. Count via `flow-log history` (filter `redCard` events).
 
@@ -140,7 +141,7 @@ Max 2 slices per invocation.
 
 Accept only when `flow-log readiness signoff` returns `ready: true` AND:
 - Architecture review and code review both PASS
-- `finalCheck` and `karate` checks recorded
+- `finalCheck` and `karate` checks recorded with fresh PASS evidence
 - `documentation/capabilities/<capability>.md` updated when endpoints, models, or config changed
 - `documentation/context-map.md` Capability Index updated for new capabilities
 - Spot checks passed; no unresolved red cards (check via `flow-log history`)
@@ -149,14 +150,14 @@ Run `flow-log complete` to record timing.
 
 ## Subagent Invocation
 
-Query `flow-log status` first. Pass only feature name plus task line. Never pass conversation history, artifact bodies, or terminal output.
+Query `flow-log status` first. Pass feature name plus task line, and include active slice IDs whenever implementation or review work is slice-scoped. Never pass conversation history, artifact bodies, or terminal output.
 
-Format: `"<task> for <feature-name>. Run 'node flow-log/flow-log.mjs summary --feature <feature-name>' to load your context and follow your instructions."`
+Format: `"<task> for <feature-name>. Run 'scripts/flow-log.sh summary --feature <feature-name>' to load your context and follow your instructions."`
 
 End every prompt with:
 `Return ONLY: (1) artifact path, (2) status, (3) key decisions (max 5 bullets), (4) blockers. Do NOT return file contents.`
 
-`Java Coder` exception: `Return ONLY: (1) Feature name (2) Status (3) Changed files (4) Deviations (5) Blockers`
+`Java Coder` exception: `Return ONLY: (1) Feature name (2) Implemented slice IDs (3) Status (4) Changed files (5) Deviations (6) Blockers`
 
 After every result: verify artifacts on disk, update flow-log state.
 

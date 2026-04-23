@@ -18,7 +18,7 @@ Shared scripts — run from repo root (scripts self-correct their cwd):
 - Final verify: `scripts/final-check.sh`
 - Karate smoke: `scripts/karate-test.sh`
 
-When recording verification evidence, prefer shared scripts over raw Maven commands. Agents should use `flow-log run-check` or `verify-all` which call these scripts automatically.
+When recording verification evidence, prefer shared scripts over raw Maven commands. Agents should use `flow-log run-check` or `verify --profile <batch|full>` which call these scripts automatically.
 
 For local Karate smoke verification, prefer `scripts/karate-test.sh` over a separate manual startup flow. The script reuses a healthy local app when available or starts it automatically.
 

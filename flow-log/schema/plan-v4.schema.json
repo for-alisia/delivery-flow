@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitlabflow.local/flow-log/plan-v4.schema.json",
+  "title": "Flow Log Implementation Plan v4",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "feature",
+    "revision",
+    "status",
+    "scope",
+    "slices",
+    "finalVerification"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "4.0"
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "sharedRules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sharedRule"
+      }
+    },
+    "sharedDecisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sharedDecision"
+      }
+    },
+    "slices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/slice"
+      }
+    },
+    "finalVerification": {
+      "$ref": "#/$defs/finalVerification"
+    },
+    "hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "purpose",
+        "inScope",
+        "outOfScope"
+      ],
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inScope": {
+          "$ref": "#/$defs/stringList"
+        },
+        "outOfScope": {
+          "$ref": "#/$defs/stringList"
+        },
+        "constraints": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "sharedRule": {
+      "type": "object",
+      "required": [
+        "id",
+        "rule",
+        "appliesTo"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appliesTo": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "sharedDecision": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "decision",
+        "rationale",
+        "appliesTo"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appliesTo": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "contractDependency": {
+      "type": "object",
+      "required": [
+        "section"
+      ],
+      "properties": {
+        "section": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "unitTests": {
+      "type": "object",
+      "required": [
+        "levels",
+        "notes"
+      ],
+      "properties": {
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "unit",
+              "integration",
+              "component",
+              "karate",
+              "archunit"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "unit": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "locationHint",
+        "status",
+        "purpose",
+        "change",
+        "tests"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "java-class",
+            "karate-feature",
+            "archunit-test",
+            "config"
+          ]
+        },
+        "locationHint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "new",
+            "modified",
+            "existing"
+          ]
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "change": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contractDetails": {
+          "$ref": "#/$defs/stringList"
+        },
+        "tests": {
+          "$ref": "#/$defs/unitTests"
+        },
+        "loggingNotes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "slice": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "goal",
+        "dependsOn",
+        "units",
+        "doneWhen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dependsOn": {
+          "$ref": "#/$defs/stringList"
+        },
+        "readsExisting": {
+          "$ref": "#/$defs/stringList"
+        },
+        "sliceRules": {
+          "$ref": "#/$defs/stringList"
+        },
+        "contractDependency": {
+          "$ref": "#/$defs/contractDependency"
+        },
+        "compositionNotes": {
+          "$ref": "#/$defs/stringList"
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unit"
+          }
+        },
+        "doneWhen": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "finalVerification": {
+      "type": "object",
+      "required": [
+        "requiredGates"
+      ],
+      "properties": {
+        "requiredGates": {
+          "$ref": "#/$defs/stringList"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  }
+}

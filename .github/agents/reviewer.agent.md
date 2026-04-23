@@ -21,9 +21,9 @@ You do not implement. Gate statuses are recorded in flow-log by Team Lead.
 
 ## Must
 
-- Use `node flow-log/flow-log.mjs summary --feature <feature-name>` as the context entry point.
+- Use `scripts/flow-log.sh summary --feature <feature-name>` as the context entry point.
 - Validate directly. Never trust another artifact just because it claims `PASS`.
-- Record every material code finding via `node flow-log/flow-log.mjs add-finding`.
+- Record every material code finding via `scripts/flow-log.sh add-finding`.
 - Mark `FAIL` when required evidence is missing, contradictory, or unverifiable.
 - Mark every applicable item as `PASS`, `FAIL`, `BLOCKED`, or `N/A`.
 - For every `FAIL` or `BLOCKED`, state what failed, where, and what must change.
@@ -50,15 +50,18 @@ with the core flaw explanation.
 Query flow-log first. Then load only the artifacts needed for the current review.
 
 ```
-node flow-log/flow-log.mjs summary --feature <feature-name>
+scripts/flow-log.sh summary --feature <feature-name>
 ```
 
 Review:
 - original request (path from flow-log `requestSource`)
-- approved plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` (full plan JSON). Use `--section models`, `--section slices`, etc. for focused comparison.
+- active slice IDs from `flow-log summary`
+- approved plan slices: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>`
+- shared plan context only when needed: `plan-get --section sharedRules`, `plan-get --section sharedDecisions`, `plan-get --section finalVerification`
+- story contracts only when a reviewed slice depends on them: `scripts/flow-log.sh story-get --feature <feature-name> --section external-contracts` (including compact request / response / error examples when present)
 - flow-log checks and events (from `summary`)
 - architecture review outcome (flow-log `reviews.architectureReview`)
-- changed source files (from flow-log `changes.files` or `get`)
+- changed source files from the active batch (`flow-log summary -> batches.current.changedFiles`); if no batch is active, fall back to `summary.changedFiles`
 - changed test files
 - `documentation/constitution.md`
 - `documentation/code-guidance.md`
@@ -71,9 +74,10 @@ Always also read:
 Validate evidence before reviewing code quality.
 
 - Query `flow-log summary` for check statuses and events.
+- If `summary.artifacts.story.stale` or `summary.artifacts.plan.stale` is `true`, mark the review `BLOCKED` until Team Lead re-approves the artifact.
 - Confirm that `finalCheck` and `karate` checks are recorded as `PASS` in flow-log.
 - Check `flow-log status` for `*Stale` fields — if `finalCheckStale` or `karateStale` is `true`, the source changed after the check passed. Mark the stale check as suspect.
-- If `finalCheck` status is `NOT_RUN` or suspect (including stale), re-run via `node flow-log/flow-log.mjs run-check --feature <feature-name> --name finalCheck --by CodeReviewer`.
+- If `finalCheck` status is `NOT_RUN` or suspect (including stale), re-run via `scripts/flow-log.sh run-check --feature <feature-name> --name finalCheck --by CodeReviewer`.
 - Never re-run startup or Karate tests.
 - If startup or Karate evidence is missing (check status is `NOT_RUN`), mark `BLOCKED`.
 
@@ -149,10 +153,11 @@ After code quality review, update documentation to reflect the actual implementa
 
 1. Validate evidence (flow-log checks, finalCheck and karate statuses).
 2. Compare implementation to plan and approved deviations.
-3. Check architecture boundaries and test levels.
-4. Review code quality in changed files.
-5. Reconcile code, tests, evidence, and report for contradictions.
-6. Record status for each applicable item.
+3. Compare changed files against the owned slice units, not against a whole-plan artifact inventory.
+4. Check architecture boundaries and test levels.
+5. Review code quality in changed files.
+6. Reconcile code, tests, evidence, and report for contradictions.
+7. Record status for each applicable item.
 
 ## Completion criteria
 

@@ -1,6 +1,6 @@
 import { handleRegisterArtifact, handleApproveArtifact } from "./artifacts.mjs";
 import { handleCompleteBatch, handleResetChecks, handleStartBatch } from "./batches.mjs";
-import { handleAddChange, handleRunCheck, handleSetCheck, handleVerifyAll, handleBatchVerify } from "./checks.mjs";
+import { handleAddChange, handleRunCheck, handleSetCheck, handleVerify } from "./checks.mjs";
 import { handleAddEvent } from "./events.mjs";
 import {
   handleAddFinding,
@@ -11,7 +11,7 @@ import {
   handleRespondFinding
 } from "./findings.mjs";
 import { handleComplete, handleCreate, handleLockRequirements } from "./lifecycle.mjs";
-import { handleGet, handleHistory, handleReadiness, handleStatus, handleSummary } from "./queries.mjs";
+import { handleGet, handleHistory, handleReadiness, handleStatus, handleStoryGet, handleSummary } from "./queries.mjs";
 import {
   handleAddRisk,
   handleArchitectureGate,
@@ -31,14 +31,13 @@ export const LOG_COMMAND_HELP = [
   "set-review --feature <name> --name <architectureReview|codeReview> --status <PENDING|PASS|FAIL|BLOCKED> [--by <actor>] [--reason <text>] [--state-path <path>]",
   "set-check --feature <name> --name <verifyQuick|finalCheck|karate> --status <NOT_RUN|PASS|FAIL|BLOCKED> [--by <actor>] [--command <cmd>] [--details <text>] [--report-path <path>]... [--state-path <path>]",
   "run-check --feature <name> --name <verifyQuick|finalCheck|karate> [--command <script-path>] [--timeout <ms>] [--by <actor>] [--state-path <path>]",
-  "verify-all --feature <name> [--timeout <ms>] [--by <actor>] [--state-path <path>]",
-  "batch-verify --feature <name> [--timeout <ms>] [--by <actor>] [--state-path <path>]",
+  "verify --feature <name> [--profile <full|batch>] [--timeout <ms>] [--by <actor>] [--state-path <path>]",
   "add-change --feature <name> --file <path> [--file <path>]... [--state-path <path>]",
   "add-event --feature <name> --type <redCard|rejection|reroute|note|batchStart|batchEnd|archEscalationDecision> --reason <text> [--decision <PROCEED_TO_CODING|FINAL_ADJUSTMENT|ESCALATE_TO_USER>] [--by <actor>] [--target <agent>] [--related-check <name>] [--related-review <name>] [--state-path <path>]",
-  "start-batch --feature <name> [--slice <name>]... [--by <actor>] [--state-path <path>]",
+  "start-batch --feature <name> --slice <approved-slice-id> [--slice <approved-slice-id>]... [--by <actor>] [--state-path <path>]",
   "complete-batch --feature <name> [--status <complete|failed|blocked>] [--state-path <path>]",
   "reset-checks --feature <name> [--reason <text>] [--by <actor>] [--target <agent>] [--state-path <path>]",
-  "add-risk --feature <name> [--severity <CRITICAL|HIGH|MEDIUM|LOW|UNCLASSIFIED>] --description <text> [--suggested-fix <text>] [--plan-ref <id>]... [--connected-area <id>]... [--by <actor>] [--state-path <path>]",
+  "add-risk --feature <name> [--severity <CRITICAL|HIGH|MEDIUM|LOW|UNCLASSIFIED>] --description <text> --plan-ref <id> [--plan-ref <id>]... [--suggested-fix <text>] [--connected-area <id>]... [--by <actor>] [--state-path <path>]",
   "respond-risk --feature <name> --id <number> --status <ADDRESSED|INVALIDATED> --note <text> [--by <actor>] [--state-path <path>]",
   "resolve-risk --feature <name> --id <number> [--by <actor>] [--state-path <path>]",
   "reopen-risk --feature <name> --id <number> [--reason <text>] [--by <actor>] [--state-path <path>]",
@@ -52,10 +51,10 @@ export const LOG_COMMAND_HELP = [
   "increment-code-review-round --feature <name> [--state-path <path>]",
   "code-review-gate --feature <name> [--state-path <path>]",
   "complete --feature <name> [--state-path <path>]",
-  "get --feature <name> [--state-path <path>]",
   "history --feature <name> [--limit <n>] [--state-path <path>]",
   "status --feature <name> [--state-path <path>]",
   "summary --feature <name> [--state-path <path>]",
+  "story-get --feature <name> --section <name> [--state-path <path>]",
   "readiness signoff --feature <name> [--state-path <path>]"
 ];
 
@@ -75,10 +74,8 @@ export function dispatchLogCommand(command, subcommand, parsed, cwd) {
       return handleSetCheck(parsed, cwd);
     case "run-check":
       return handleRunCheck(parsed, cwd);
-    case "verify-all":
-      return handleVerifyAll(parsed, cwd);
-    case "batch-verify":
-      return handleBatchVerify(parsed, cwd);
+    case "verify":
+      return handleVerify(parsed, cwd);
     case "add-change":
       return handleAddChange(parsed, cwd);
     case "add-event":
@@ -99,6 +96,8 @@ export function dispatchLogCommand(command, subcommand, parsed, cwd) {
       return handleStatus(parsed, cwd);
     case "summary":
       return handleSummary(parsed, cwd);
+    case "story-get":
+      return handleStoryGet(parsed, cwd);
     case "readiness":
       return handleReadiness(parsed, cwd, subcommand);
     case "add-risk":

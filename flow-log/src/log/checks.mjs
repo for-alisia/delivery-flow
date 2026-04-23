@@ -30,12 +30,20 @@ export function setCheck(state, name, status, options = {}) {
 
 export function appendChangedFiles(state, files) {
   const next = new Set(state.changes.files);
+  const currentBatchFiles = state.batches?.current
+    ? new Set(state.batches.current.changedFiles ?? [])
+    : null;
 
   for (const file of files) {
     next.add(file);
+    currentBatchFiles?.add(file);
   }
 
   state.changes.files = Array.from(next).sort();
+
+  if (state.batches?.current) {
+    state.batches.current.changedFiles = Array.from(currentBatchFiles).sort();
+  }
 }
 
 export function resetChecksForRedCard(state) {

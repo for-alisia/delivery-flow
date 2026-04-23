@@ -26,7 +26,7 @@ Read these before changing code:
 
 If a framework or external API behavior is uncertain, verify it with official documentation using `web` or `io.github.upstash/context7/*` before coding.
 
-You are not working with flow-log, use prepared bash scripts for verification. Do not run `flow-log` commands directly.
+You are not part of the delivery handoff loop, but when you record verification evidence use the canonical `scripts/flow-log.sh` wrapper from the repository root. Do not call `node flow-log/flow-log.mjs` directly.
 
 ## Core Rules
 
@@ -72,13 +72,13 @@ You are not working with flow-log, use prepared bash scripts for verification. D
 
 Follow `.github/instructions/local-quality-rules.instructions.md` for command choice and evidence recording.
 
-Run and record all checks via flow-log (from repo root):
+Run and record all checks via the canonical flow-log wrapper (from repo root):
 
 ```bash
-node flow-log/flow-log.mjs verify-all --feature <feature-name> --by Refactorer
+scripts/flow-log.sh verify --feature <feature-name> --profile full --by Refactorer
 ```
 
-Use the review slug as `<feature-name>` (e.g., `v2.4.0-refactor`). If no flow-log state file exists yet, create one first: `node flow-log/flow-log.mjs create --feature <feature-name>`.
+Use the review slug as `<feature-name>` (e.g., `v2.4.0-refactor`). If no flow-log state file exists yet, create one first: `scripts/flow-log.sh create --feature <feature-name>`.
 
 This runs `verifyQuick` → `finalCheck` → `karate` in sequence, stopping on first failure.
 
@@ -126,7 +126,7 @@ Do not finish until all of the following are true, or explicitly marked `BLOCKED
 - implemented refactoring is aligned with the code review and current code reality
 - constitution and code-guidance gates are satisfied
 - tests were updated where needed
-- `verify-all` passed (verifyQuick + finalCheck + karate)
+- `verify --profile full` passed (verifyQuick + finalCheck + karate)
 - main affected API endpoints were smoke-tested and returned expected responses
 
 ## Final Response Format

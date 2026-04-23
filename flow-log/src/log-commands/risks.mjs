@@ -21,6 +21,9 @@ export function handleAddRisk(parsed, cwd) {
   const description = requiredFlag(parsed, "description");
   const suggestedFix = optionalFlag(parsed, "suggested-fix");
   const planRefs = parseMultiValueFlags(optionalFlag(parsed, "plan-ref"));
+  if (planRefs.length === 0) {
+    throw new Error("add-risk requires at least one --plan-ref <id>.");
+  }
   const connectedAreas = parseMultiValueFlags(optionalFlag(parsed, "connected-area"));
   const by = optionalFlag(parsed, "by");
   const { feature, state, statePath } = openState(parsed, cwd);

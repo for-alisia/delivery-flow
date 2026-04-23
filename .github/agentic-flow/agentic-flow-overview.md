@@ -24,8 +24,8 @@
 - Workflow owner and final acceptance gate
 - Maintains requirement lock and flow-log state (`artifacts/flow-logs/<feature-name>.json`)
 - Verifies artifacts before every stage transition via `flow-log status`
-- Runs verification checks after coder batches via `flow-log run-check`; the karate script reuses a healthy local app when available or starts it automatically
-- Records verification evidence via `flow-log run-check` (executes script and records result atomically)
+- Re-runs only stale or suspect verification checks after coder batches via `flow-log run-check`; the karate script reuses a healthy local app when available or starts it automatically
+- Records verification evidence via `flow-log run-check` when TL executes an independent check
 - Tracks batches via `flow-log start-batch` / `complete-batch`
 - Enforces coder batching, red cards (via `flow-log reset-checks`), and architect escalation
 
@@ -34,13 +34,15 @@
 - Converts locked request into a business-facing user story
 - Reads context via `flow-log summary`
 - Preserves scope, constraints, assumptions, and acceptance criteria
+- Seeds story `External Contracts` with compact concrete request / response / error examples when payload shape is easy to misread
 - Stays implementation-agnostic
 
 ### `Java Architect`
 
 - Produces the implementation plan for `Java Coder`
 - Reads context via `flow-log summary`
-- Defines class structure, payload examples, validation boundaries, slices, and tests (documentation updates are **not** in plan scope — handled by Code Reviewer)
+- Produces a slice-first `v4` plan with shared rules, shared decisions, slice units, done criteria, and final verification expectations
+- Uses story `External Contracts` as the single source of truth for external payloads instead of duplicating them in the plan, and tightens that story section with compact concrete examples when prose alone is not safe enough (documentation updates are **not** in plan scope — handled by Code Reviewer)
 - Writes Karate `.feature` files directly when the plan adds or changes API endpoints. Coder may only adjust existing Karate tests for small payload or endpoint changes (field names, URL paths, status codes, request/response bodies).
 - Defines new ArchUnit rules when the plan introduces new layer interactions or package boundaries not covered by existing rules in `FlowOrchestratorArchitectureTest.java`
 - Uses repository rules and external docs when behavior is uncertain
@@ -50,7 +52,7 @@
 
 - Pre-implementation architectural risk gate
 - Reads context via `flow-log summary` — including existing risks and Architect's response notes
-- Records findings via `flow-log add-risk` without severity (defaults to UNCLASSIFIED); on re-review, resolves or reopens risks via `flow-log resolve-risk` / `reopen-risk`
+- Records findings via `flow-log add-risk` with required `--plan-ref` slice / unit / shared-rule IDs; on re-review, resolves or reopens risks via `flow-log resolve-risk` / `reopen-risk`
 - Does not assign severity — describes what is violated and consequences; TL classifies via `reclassify-risk` before running the gate
 - Verifies that new layer interactions or package boundaries are covered by ArchUnit rules in the plan
 - Does not edit any artifact
@@ -93,7 +95,8 @@
 
 - Implements the plan exactly, slice by slice
 - Reads context via `flow-log summary`
-- Adds required tests and runs verification via `flow-log batch-verify` per slice (`verifyQuick` → `finalCheck`), then `verify-all` before handoff (adds `karate`)
+- Uses `summary.batches.current.slices` as the default intake path, reads each active slice via `plan-get --slice`, uses `summary.batches.current.changedFiles` as the owned handoff file list, and loads story contracts only through `story-get --section external-contracts` when needed, including compact concrete examples when present
+- Adds required tests and runs verification via `flow-log verify --profile batch` per slice (`verifyQuick` → `finalCheck`), then `verify --profile full` before handoff (adds `karate`)
 - Runs `scripts/coder-handoff-check.sh <feature-name>` before returning to TL — fixes any failures first
 - Runs `mvn -q spotless:apply` in `flow-orchestrator/` when formatting violations are reported
 - Records checks via `flow-log run-check` (runs script + records result) and changed files via `flow-log add-change`
@@ -104,12 +107,15 @@
 
 ## Shared Control Rules
 
-- Use `flow-log` CLI (`node flow-log/flow-log.mjs`) as the shared state source. The state file at `artifacts/flow-logs/<feature-name>.json` is the single source of truth for delivery state and gate readiness
+- Use `flow-log` CLI (`scripts/flow-log.sh`) as the shared state source. The state file at `artifacts/flow-logs/<feature-name>.json` is the single source of truth for delivery state and gate readiness
+- Plans use a single slice-first schema version (`4.0`). Archived schemas are not part of the active workflow.
+- Story `External Contracts` is the single source of truth for external request / response details; when contract shape is easy to misread it should include compact concrete request / response / error examples, and downstream agents load it via `story-get --section external-contracts`.
 - Architectural risks are durable state in flow-log — Reviewer records them, Architect responds to them, Reviewer resolves or reopens them
 - TL uses `architecture-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (3 unresolved rounds hard cap)
 - Code findings are durable state in flow-log — Code Reviewer records them, Coder responds to them, Code Reviewer resolves or reopens them
 - TL uses `code-review-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (3 unresolved rounds)
 - Invoke agents with feature name; agents query `flow-log summary` to load context
+- TL passes active slice IDs when invoking `Java Coder` or slice-scoped review work
 - Do not advance on chat claims; validate artifacts on disk and flow-log state
 - `Architecture Reviewer` and `Code Reviewer` are the technical gates; `Team Lead` performs audit-style spot checks
 - `Java Coder` is limited to 2 slices per invocation
@@ -123,8 +129,8 @@
 
 ## Verification Expectations
 
-- `Java Coder` runs `batch-verify` per slice (`verifyQuick` → `finalCheck`), then `verify-all` (adds `karate`) before handoff, and `coder-handoff-check.sh` as pre-handoff gate
-- `Team Lead` checks `*Stale` fields in `flow-log status` (`verifyQuickStale`, `finalCheckStale`, `karateStale`). If `finalCheckStale` or `karateStale` is true, re-runs the stale check. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, staleness is non-blocking. Runs `run-check --name finalCheck` as independent recheck, `run-check --name karate`, and validates via `flow-log status`
+- `Java Coder` runs `verify --profile batch` per slice (`verifyQuick` → `finalCheck`), then `verify --profile full` (adds `karate`) before handoff, and `coder-handoff-check.sh` as pre-handoff gate
+- `Team Lead` checks `storyStale`, `planStale`, and `*Stale` fields in `flow-log status`. If `finalCheckStale` or `karateStale` is true, re-runs only the stale check. If only `verifyQuickStale` is true but `finalCheck` is PASS and not stale, staleness is non-blocking. Fresh coder evidence is trusted by default instead of triggering automatic TL reruns.
 - `Code Reviewer` validates code quality, reviews flow-log evidence including staleness flags, and reruns checks only when evidence is suspect or stale
 - ArchUnit tests run as part of `mvn test` (verify-quick) — architecture boundary violations break the build deterministically without requiring manual review
 

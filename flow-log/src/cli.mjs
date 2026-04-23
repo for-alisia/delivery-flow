@@ -2,7 +2,7 @@ import { parseArgs } from "./cli-helpers.mjs";
 import { dispatchLogCommand, LOG_COMMAND_HELP } from "./log-commands.mjs";
 import { dispatchPlanCommand, PLAN_COMMAND_HELP } from "./plan-commands.mjs";
 
-const FLOW_LOG_VERSION = "0.8.0";
+const FLOW_LOG_VERSION = "0.9.0";
 
 export function runCli(argv, io) {
   try {
@@ -67,10 +67,10 @@ function resolveErrorHint(message) {
     return "State file may be corrupted. Check file contents at the path shown.";
   }
   if (message.startsWith("Unknown command")) {
-    return "Run `node flow-log/flow-log.mjs help` for available commands.";
+      return "Run `scripts/flow-log.sh help` from the repository root for available commands.";
   }
   if (message.startsWith("Missing required flag")) {
-    return "Run `node flow-log/flow-log.mjs help` for command syntax.";
+      return "Run `scripts/flow-log.sh help` from the repository root for command syntax.";
   }
   return undefined;
 }

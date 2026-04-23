@@ -28,14 +28,27 @@ else
 fi
 
 # 2. Flow-log status — parse JSON checks via node one-liner for reliability
-STATUS_JSON=$(node flow-log/flow-log.mjs status --feature "${FEATURE}" 2>/dev/null) || {
+STATUS_JSON=$(scripts/flow-log.sh status --feature "${FEATURE}" 2>/dev/null) || {
   echo "  FAIL: Could not read flow-log status for ${FEATURE}"
+  exit 1
+}
+SUMMARY_JSON=$(scripts/flow-log.sh summary --feature "${FEATURE}" 2>/dev/null) || {
+  echo "  FAIL: Could not read flow-log summary for ${FEATURE}"
   exit 1
 }
 
 parse_check() {
   local check_name="$1"
   echo "${STATUS_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).status; console.log(s.${check_name} ?? 'MISSING')})" 2>/dev/null || echo "MISSING"
+}
+
+parse_status_flag() {
+  local flag_name="$1"
+  echo "${STATUS_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).status; console.log(String(s.${flag_name} ?? 'MISSING'))})" 2>/dev/null || echo "MISSING"
+}
+
+parse_changed_file_count() {
+  echo "${SUMMARY_JSON}" | node -e "process.stdin.resume(); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{const s=JSON.parse(d).summary; const batchFiles=Array.isArray(s?.batches?.current?.changedFiles)?s.batches.current.changedFiles:[]; const files=batchFiles.length>0?batchFiles:(Array.isArray(s.changedFiles)?s.changedFiles:[]); console.log(files.length)})" 2>/dev/null || echo "0"
 }
 
 # verifyQuick
@@ -49,8 +62,14 @@ fi
 
 # finalCheck
 FINAL_CHECK=$(parse_check finalCheck)
+FINAL_CHECK_STALE=$(parse_status_flag finalCheckStale)
 if [[ "${FINAL_CHECK}" == "PASS" ]]; then
-  echo "  PASS: finalCheck recorded as PASS"
+  if [[ "${FINAL_CHECK_STALE}" == "true" ]]; then
+    echo "  FAIL: finalCheck PASS is stale — re-run verification before handoff"
+    ERRORS=$((ERRORS + 1))
+  else
+    echo "  PASS: finalCheck recorded as fresh PASS"
+  fi
 else
   echo "  FAIL: finalCheck is '${FINAL_CHECK}' — must be PASS"
   ERRORS=$((ERRORS + 1))
@@ -58,15 +77,21 @@ fi
 
 # karate
 KARATE_CHECK=$(parse_check karate)
+KARATE_STALE=$(parse_status_flag karateStale)
 if [[ "${KARATE_CHECK}" == "PASS" ]]; then
-  echo "  PASS: karate recorded as PASS"
+  if [[ "${KARATE_STALE}" == "true" ]]; then
+    echo "  FAIL: karate PASS is stale — re-run verification before handoff"
+    ERRORS=$((ERRORS + 1))
+  else
+    echo "  PASS: karate recorded as fresh PASS"
+  fi
 else
   echo "  FAIL: karate is '${KARATE_CHECK}' — must be PASS"
   ERRORS=$((ERRORS + 1))
 fi
 
 # 3. Changed files tracked (non-empty array)
-FILE_COUNT=$(node -e "const s=JSON.parse(require('fs').readFileSync('${STATE_FILE}','utf8')); console.log(s.changes.files.length)" 2>/dev/null) || FILE_COUNT="0"
+FILE_COUNT=$(parse_changed_file_count)
 if [[ "${FILE_COUNT}" -gt 0 ]]; then
   echo "  PASS: ${FILE_COUNT} changed file(s) tracked in flow-log"
 else

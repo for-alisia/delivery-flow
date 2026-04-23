@@ -10,7 +10,7 @@ argument-hint: "Provide feature name, approved slice scope, and target module/pa
 handoffs:
   - label: "Return to Team Lead"
     agent: Team Lead
-    prompt: "Coder batch complete for <feature-name>. Verify the implementation report and run independent recheck before advancing."
+    prompt: "Coder batch complete for <feature-name>. Check flow-log status, stale evidence, and changed files before advancing."
     send: false
 ---
 
@@ -59,18 +59,21 @@ Do not repeatedly re-run the same hanging command without changing something fir
 
 Read the feature context via flow-log before starting:
 ```
-node flow-log/flow-log.mjs summary --feature <feature-name>
+scripts/flow-log.sh summary --feature <feature-name>
 ```
 
 Then read only what is needed for the current batch:
 
-- approved implementation plan: `node flow-log/flow-log.mjs plan-get --feature <feature-name>` (full plan JSON). Use `--section slices` or `--section models` for focused reads.
+- active slice IDs from `summary.batches.current.slices`
+- current batch-owned changed files from `summary.batches.current.changedFiles`
+- approved implementation plan slices: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>`
+- story contracts only when a slice depends on them: `scripts/flow-log.sh story-get --feature <feature-name> --section external-contracts` (treat compact request / response / error examples there as wire-level source of truth when present)
 - `documentation/context-map.md`
 - `documentation/capabilities/<capability>.md` for the capability being implemented
 - `documentation/code-guidance.md`
 - `documentation/constitution.md`
 
-Read `documentation/context-map.md` first, then load the relevant `documentation/capabilities/<capability>.md`. Read only the files relevant to the current slice. Do not scan the full codebase.
+Read `documentation/context-map.md` first, then load the relevant `documentation/capabilities/<capability>.md`. Read only the files relevant to the active slice units. Do not read the full plan by default and do not scan the full codebase.
 
 ## External verification
 
@@ -86,17 +89,19 @@ Record assumptions in the implementation report.
 
 For each slice:
 
+0. read the active slice via `plan-get --slice <slice-id>` and identify the units you own
 1. implement production code for the current slice
 2. add required tests
-3. run `node flow-log/flow-log.mjs run-check --feature <feature-name> --name verifyQuick --by JavaCoder` and fix failures before moving on
-4. record changed files via `add-change --file <path> [--file <path>]...`
+3. record changed files via `add-change --file <path> [--file <path>]...` so the active batch owns its file list
+4. run a quick batch verify and fix failures before moving on:
+   `scripts/flow-log.sh verify --feature <feature-name> --profile batch --by JavaCoder`
 
 ### Per-slice verification
 
 After completing a slice (production code + tests), run a quick batch verify:
 
 ```bash
-node flow-log/flow-log.mjs batch-verify --feature <feature-name> --by JavaCoder
+scripts/flow-log.sh verify --feature <feature-name> --profile batch --by JavaCoder
 ```
 
 This runs `verifyQuick` → `finalCheck` in sequence. Fix failures before starting the next slice.
@@ -109,7 +114,7 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 2. For each finding:
    - If you agree and can fix it → fix the code, then respond `FIXED` via `respond-finding`
    - If the finding is wrong or already covered → respond `DISPUTED` via `respond-finding`
-3. After all findings are addressed, run `node flow-log/flow-log.mjs run-check --feature <feature-name> --name verifyQuick --by JavaCoder` and fix any failures.
+3. After all findings are addressed, run `scripts/flow-log.sh verify --feature <feature-name> --profile batch --by JavaCoder` and fix any failures.
 
 ### Before handoff
 
@@ -117,7 +122,7 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 2. verify acceptance criteria
 3. run all verification checks via flow-log (from repo root):
    ```bash
-   node flow-log/flow-log.mjs verify-all --feature <feature-name> --by JavaCoder
+   scripts/flow-log.sh verify --feature <feature-name> --profile full --by JavaCoder
    ```
    This runs `verifyQuick` → `finalCheck` → `karate` in sequence, stopping on the first failure.
    Fix any failures and re-run until all pass.
@@ -125,14 +130,14 @@ If `flow-log summary` shows OPEN or REOPENED code findings (`codeFindings.findin
 
 ## Evidence rule
 
-After each `run-check`, report the JSON result. On failure, use the `outputTail` field to diagnose.
-Do not build custom parsing pipelines or run scripts separately from `run-check`.
+After each `run-check` or `verify` command, report the JSON result. On failure, use the returned `outputTail` or `failedCheck.outputTail` to diagnose.
+Do not build custom parsing pipelines or run scripts separately from flow-log verification commands.
 
 ## Required handoff
 
 Before returning, verify delivery state:
 ```
-node flow-log/flow-log.mjs status --feature <feature-name>
+scripts/flow-log.sh status --feature <feature-name>
 ```
 
 Return:

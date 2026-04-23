@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "4.0",
+  "feature": "<feature-name>",
+  "revision": 1,
+  "status": "draft",
+  "scope": {
+    "purpose": "Explain the smallest meaningful business or delivery outcome this plan implements.",
+    "inScope": [
+      "The slice-scoped work this plan delivers."
+    ],
+    "outOfScope": [
+      "Closely related work that must stay out of this feature."
+    ],
+    "constraints": [
+      "Key non-negotiable constraints copied from the locked request or story."
+    ]
+  },
+  "sharedRules": [
+    {
+      "id": "R1",
+      "rule": "Reuse the existing validation error contract and do not invent a feature-local variant.",
+      "appliesTo": [
+        "S1"
+      ]
+    }
+  ],
+  "sharedDecisions": [
+    {
+      "id": "D1",
+      "title": "Keep external payload details in the story",
+      "decision": "Reference story External Contracts instead of duplicating request and response payload details in the plan.",
+      "rationale": "The story is the single source of truth for external contracts, so the plan stays slice-first and easier to revise.",
+      "appliesTo": [
+        "S1"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S1",
+      "title": "REST boundary and orchestration mapping",
+      "goal": "Add the endpoint boundary and map it onto the orchestration input without leaking transport concerns deeper into the stack.",
+      "dependsOn": [],
+      "readsExisting": [
+        "flow-orchestrator/src/main/java/com/example/common/web/GlobalExceptionHandler.java"
+      ],
+      "sliceRules": [
+        "Treat an omitted request body the same as an empty filter object."
+      ],
+      "contractDependency": {
+        "section": "external-contracts",
+        "notes": [
+          "Use story External Contracts as the source of truth for wire-level request and response expectations."
+        ]
+      },
+      "compositionNotes": [
+        "This slice is a single orchestration call with no cross-provider composition."
+      ],
+      "units": [
+        {
+          "id": "S1-U1",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/example/orchestration/demo/rest/DemoController.java",
+          "status": "new",
+          "purpose": "Expose the endpoint and map the transport request into orchestration input.",
+          "change": "Add the endpoint method, keep validation at the boundary, and translate omitted inputs into the expected orchestration defaults.",
+          "contractDetails": [
+            "Preserve the existing validation error field names exactly."
+          ],
+          "tests": {
+            "levels": [
+              "integration"
+            ],
+            "notes": "Cover omitted body, validation failure, and happy-path response mapping."
+          },
+          "loggingNotes": "Log the effective filter summary and result count without dumping raw payloads."
+        },
+        {
+          "id": "S1-U2",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/example/orchestration/demo/DemoInput.java",
+          "status": "new",
+          "purpose": "Represent the normalized orchestration input for the new endpoint.",
+          "change": "Default optional collections, keep the type immutable, and expose only orchestration-facing fields.",
+          "tests": {
+            "levels": [
+              "unit"
+            ],
+            "notes": "Cover defaulting and immutability."
+          }
+        }
+      ],
+      "doneWhen": [
+        "The endpoint exists and omitted input is normalized correctly.",
+        "The owned unit and integration tests planned for the slice pass."
+      ]
+    }
+  ],
+  "finalVerification": {
+    "requiredGates": [
+      "verifyQuick",
+      "finalCheck",
+      "karate"
+    ],
+    "notes": [
+      "Signoff requires fresh PASS evidence for finalCheck and karate."
+    ]
+  },
+  "hash": null
+}
