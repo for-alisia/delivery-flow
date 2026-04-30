@@ -17,6 +17,7 @@ public class GitLabRestClientConfig {
             final GitLabProperties gitLabProperties,
             final GitLabProjectLocator gitLabProjectLocator) {
         final HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(gitLabProperties.connectTimeoutSeconds()))
                 .build();
         final JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);

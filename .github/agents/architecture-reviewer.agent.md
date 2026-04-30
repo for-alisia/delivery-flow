@@ -71,7 +71,7 @@ Team Lead reads all findings after you return, assigns severity based on project
 3. Read the plan surgically: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>` for owned slice details, plus `plan-get --section sharedRules`, `plan-get --section sharedDecisions`, and `plan-get --section finalVerification` when cross-slice context is needed. Read `story-get --section external-contracts` when a slice depends on an external contract, and treat compact request / response / error examples there as contract evidence when present.
 4. Read request and story from paths in summary.
 5. Read `documentation/constitution.md`, `documentation/code-guidance.md`, `documentation/architecture-guidance.md`.
-6. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md`.
+6. Read `documentation/context-map.md` + relevant `documentation/capabilities/<capability>.md` when it already exists. For a new capability without a capability file yet, validate the proposed package area against the story, project overview, context map, and code guidance.
 7. Challenge the plan against all of the above.
 8. Record each finding via `add-risk` with `--description`, `--suggested-fix`, `--plan-ref <slice-or-unit-id>`, and `--by ArchitectureReviewer`. Add `--connected-area <id>` for each additional affected slice, unit, shared rule, or shared decision.
 

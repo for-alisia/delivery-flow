@@ -2,8 +2,10 @@ package com.gitlabflow.floworchestrator.orchestration.milestones.rest.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
+import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.CreateMilestoneRequest;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.SearchMilestonesRequest;
 import java.util.List;
@@ -45,5 +47,32 @@ class MilestonesRequestMapperTest {
         assertThat(input.state()).isEqualTo(MilestoneState.ALL);
         assertThat(input.titleSearch()).isEqualTo("release");
         assertThat(input.milestoneIds()).containsExactly(1L, 2L, 3L);
+    }
+
+    @Test
+    @DisplayName("maps create request with title only")
+    void mapsCreateRequestWithTitleOnly() {
+        final CreateMilestoneRequest request = new CreateMilestoneRequest("Release v1.0", null, null, null);
+
+        final CreateMilestoneInput input = mapper.toCreateMilestoneInput(request);
+
+        assertThat(input.title()).isEqualTo("Release v1.0");
+        assertThat(input.description()).isNull();
+        assertThat(input.startDate()).isNull();
+        assertThat(input.dueDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("maps create request with full payload")
+    void mapsCreateRequestWithFullPayload() {
+        final CreateMilestoneRequest request = new CreateMilestoneRequest(
+                "Q2 2026 Delivery", "Second quarter release cycle", "2026-06-30", "2026-04-01");
+
+        final CreateMilestoneInput input = mapper.toCreateMilestoneInput(request);
+
+        assertThat(input.title()).isEqualTo("Q2 2026 Delivery");
+        assertThat(input.description()).isEqualTo("Second quarter release cycle");
+        assertThat(input.startDate()).isEqualTo("2026-04-01");
+        assertThat(input.dueDate()).isEqualTo("2026-06-30");
     }
 }

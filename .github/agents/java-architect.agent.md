@@ -25,12 +25,12 @@ Do not write production code. You write Karate `.feature` files directly when th
 - Read only the summary output and referenced artifacts required for planning.
 - Read the original requirement source, story, `documentation/code-guidance.md`, `documentation/constitution.md`, `documentation/architecture-guidance.md`, and relevant source files.
 - Read `documentation/project-overview.md` to understand upcoming capabilities and reuse opportunities.
-- Read `documentation/context-map.md` before reading source files. Then load `documentation/capabilities/<capability>.md` for the target capability.
+- Read `documentation/context-map.md` before reading source files. Then load `documentation/capabilities/<capability>.md` for the target capability when it already exists.
 - Preserve locked request constraints exactly.
 - Define explicit slices and units with stable IDs, location hints, file status, intended behavior, and test expectations.
 - Include exact field, type, or wire-format details only in unit `contractDetails` when the unit introduces or changes a contract-bearing class. Do not mirror unchanged model structure in the plan.
 - Check `documentation/context-map.md` → "Shared Infrastructure" for existing shared mechanisms before introducing capability-local solutions. If the plan introduces a pattern that already exists in shared infra, reuse it. If a second capability needs the same pattern, extract to shared infra as part of this plan.
-- When planning a new capability, create its `documentation/capabilities/<capability>.md` file and add a row to the Capability Index in `documentation/context-map.md`.
+- When planning a new capability, identify the capability name and expected package area, but do not create or update capability documentation. Documentation updates are handled by Code Reviewer after implementation review.
 - Keep story `External Contracts` as the single source of truth for external request / response details. Update that story section when the contract understanding changed or when the current story is too vague for coder-safe implementation.
 - Make validation boundary placement explicit in the relevant shared decision, slice rule, or unit change text. Do not invent extra top-level sections outside the v4 plan shape.
 - Use unit `loggingNotes` only when logging behavior materially affects implementation or review.
@@ -47,12 +47,12 @@ Do not write production code. You write Karate `.feature` files directly when th
 - Do not rely on prior conversation history.
 - Do not reinterpret or normalize locked requirements.
 - Do not leave class placement, validation placement, or test expectations vague.
-- Do not scan the full codebase when `documentation/context-map.md` and the relevant `documentation/capabilities/<capability>.md` already identify the relevant area.
+- Do not scan the full codebase when `documentation/context-map.md` and the relevant existing `documentation/capabilities/<capability>.md` already identify the relevant area.
 - Do not read or search files under `flow-log/` (except `flow-log/README.md` and `flow-log/docs/`). The flow-log tool is used via CLI commands only — its source code is not relevant to plan design.
 - Do not produce excessive slice breakdown.
 - Do not add scope not required by the locked request.
 - Do not read implementation plans, reports, reviews, or signoffs for other features. Each feature is planned from its own flow-log summary and story only.
-- Do not explore source files outside the packages identified in the relevant `documentation/capabilities/<capability>.md`.
+- Do not explore source files outside the packages identified in the relevant existing `documentation/capabilities/<capability>.md`. For a new capability without a capability file yet, stay within the package area justified by the story, project overview, context map, and code guidance.
 
 ## Slice rules
 
@@ -77,7 +77,7 @@ Coder may only adjust existing Karate tests for small payload or endpoint change
 
 1. Query flow-log summary — extract feature name, story path, request source, and locked constraints.
 2. Read the story and requirement source referenced in the summary.
-3. Read `documentation/context-map.md` — check shared infrastructure and identify the target capability. Then load `documentation/capabilities/<capability>.md` for the exact packages and files.
+3. Read `documentation/context-map.md` — check shared infrastructure and identify the target capability. Then load `documentation/capabilities/<capability>.md` when it already exists for the exact packages and files.
 4. Read `documentation/constitution.md`, `documentation/code-guidance.md`, and `documentation/architecture-guidance.md`.
 5. Read only the source files in the packages identified in step 3. Do not read files in unrelated packages.
 6. If the feature involves a GitLab API, verify endpoint details with Context7 or official docs.

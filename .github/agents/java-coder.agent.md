@@ -69,11 +69,11 @@ Then read only what is needed for the current batch:
 - approved implementation plan slices: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>`
 - story contracts only when a slice depends on them: `scripts/flow-log.sh story-get --feature <feature-name> --section external-contracts` (treat compact request / response / error examples there as wire-level source of truth when present)
 - `documentation/context-map.md`
-- `documentation/capabilities/<capability>.md` for the capability being implemented
+- `documentation/capabilities/<capability>.md` for the capability being implemented, when it already exists
 - `documentation/code-guidance.md`
 - `documentation/constitution.md`
 
-Read `documentation/context-map.md` first, then load the relevant `documentation/capabilities/<capability>.md`. Read only the files relevant to the active slice units. Do not read the full plan by default and do not scan the full codebase.
+Read `documentation/context-map.md` first, then load the relevant `documentation/capabilities/<capability>.md` when it already exists. For a new capability without a capability file yet, use the approved slices, context map, and project/code guidance to stay scoped. Read only the files relevant to the active slice units. Do not read the full plan by default and do not scan the full codebase.
 
 ## External verification
 
@@ -143,7 +143,8 @@ scripts/flow-log.sh status --feature <feature-name>
 Return:
 
 1. Feature name: `<feature-name>`
-2. Status: `complete` / `blocked`
-3. Changed files: `<max 10>`
-4. Deviations: `<none or brief list>`
-5. Blockers: `<none or brief list>`
+2. Implemented slice IDs: `<active slice ids completed>`
+3. Status: `complete` / `blocked`
+4. Changed files: `<max 10>`
+5. Deviations: `<none or brief list>`
+6. Blockers: `<none or brief list>`

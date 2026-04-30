@@ -81,6 +81,7 @@
 - Classifies findings by severity: Critical, High, Medium, Low. Critical/High block acceptance; Medium/Low are advisory
 - Reruns scripts only when flow-log evidence is missing or suspect
 - Updates documentation (`capabilities/<capability>.md`, `.http` examples) after reviewing implementation
+- Acts as the interim documentation owner for `v2.5.2`; a dedicated documentation agent remains future workflow work
 
 ### Code Review Loop
 
@@ -116,6 +117,7 @@
 - TL uses `code-review-gate` to determine readiness: `PASS`, `FAIL`, or `ESCALATE` (3 unresolved rounds)
 - Invoke agents with feature name; agents query `flow-log summary` to load context
 - TL passes active slice IDs when invoking `Java Coder` or slice-scoped review work
+- Default one story to one implementation batch; if more than one batch is needed, TL records a one-line justification before coding starts
 - Do not advance on chat claims; validate artifacts on disk and flow-log state
 - `Architecture Reviewer` and `Code Reviewer` are the technical gates; `Team Lead` performs audit-style spot checks
 - `Java Coder` is limited to 2 slices per invocation

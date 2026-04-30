@@ -117,6 +117,7 @@ Log every escalation decision via `add-event --type archEscalationDecision` with
 ### 5. Implementation (Coder Batches)
 
 Max 2 slices per invocation.
+Default one story to one batch. If the feature needs more than one implementation batch, write a one-line justification in the run notes before starting the first batch.
 
 1. `start-batch --slice <approved-s1> [--slice <approved-s2>]`
 2. Use only approved slice IDs from the registered plan when starting the batch.

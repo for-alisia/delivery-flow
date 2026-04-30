@@ -2,6 +2,7 @@ package com.gitlabflow.floworchestrator.integration.gitlab.milestones;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -16,9 +17,11 @@ import com.gitlabflow.floworchestrator.integration.gitlab.GitLabOperationExecuto
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.milestones.mapper.GitLabMilestonesMapper;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +39,8 @@ class GitLabMilestonesAdapterTest {
     private static final String PROJECT_URL = "https://gitlab.example.com/group/project";
     private static final String API_URL = "https://gitlab.example.com/api/v4/projects/group%2Fproject/milestones";
     private static final @NonNull MediaType APPLICATION_JSON = Objects.requireNonNull(MediaType.APPLICATION_JSON);
+    private static final CreateMilestoneInput CREATE_INPUT =
+            new CreateMilestoneInput("Q2 2026 Delivery", "Scope", "2026-04-01", "2026-06-30");
 
     private MockRestServiceServer server;
     private GitLabMilestonesAdapter adapter;
@@ -160,6 +165,138 @@ class GitLabMilestonesAdapterTest {
         server.verify();
     }
 
+    @Test
+    @DisplayName("posts create milestone payload and maps iid to milestoneId")
+    void postsCreateMilestonePayloadAndMapsIidToMilestoneId() {
+        server.expect(requestTo(API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.POST)))
+                .andExpect(content().contentType(APPLICATION_JSON))
+                .andExpect(content().json("""
+                                                                {
+                                                                  "title": "Q2 2026 Delivery",
+                                                                  "description": "Scope",
+                                                                  "start_date": "2026-04-01",
+                                                                  "due_date": "2026-06-30"
+                                                                }
+                                                                """, true))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(APPLICATION_JSON)
+                        .body("""
+                                                                {
+                                                                  "id": 905,
+                                                                  "iid": 42,
+                                                                  "title": "Q2 2026 Delivery",
+                                                                  "description": "Scope",
+                                                                  "start_date": "2026-04-01",
+                                                                  "due_date": "2026-06-30",
+                                                                  "state": "active"
+                                                                }
+                                                                """));
+
+        final Milestone milestone = adapter.createMilestone(CREATE_INPUT);
+
+        assertThat(milestone.id()).isEqualTo(905L);
+        assertThat(milestone.milestoneId()).isEqualTo(42L);
+        assertThat(milestone.title()).isEqualTo("Q2 2026 Delivery");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("omits null optional fields from create milestone request body")
+    void omitsNullOptionalFieldsFromCreateMilestoneRequestBody() {
+        final CreateMilestoneInput input = new CreateMilestoneInput("Release v1.0", null, null, null);
+
+        server.expect(requestTo(API_URL))
+                .andExpect(method(Objects.requireNonNull(HttpMethod.POST)))
+                .andExpect(content().contentType(APPLICATION_JSON))
+                .andExpect(content().json("""
+                                                {
+                                                  "title": "Release v1.0"
+                                                }
+                                                """, true))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(APPLICATION_JSON)
+                        .body("""
+                                                                {
+                                                                  "id": 906,
+                                                                  "iid": 43,
+                                                                  "title": "Release v1.0",
+                                                                  "state": "active"
+                                                                }
+                                                                """));
+
+        final Milestone milestone = adapter.createMilestone(input);
+
+        assertThat(milestone.id()).isEqualTo(906L);
+        assertThat(milestone.milestoneId()).isEqualTo(43L);
+        assertThat(milestone.description()).isNull();
+        assertThat(milestone.startDate()).isNull();
+        assertThat(milestone.dueDate()).isNull();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("maps create milestone 401 to authentication integration error")
+    void mapsCreateMilestone401ToAuthenticationIntegrationError() {
+        assertCreateStatusIsMappedToError(HttpStatus.UNAUTHORIZED, ErrorCode.INTEGRATION_AUTHENTICATION_FAILED);
+    }
+
+    @Test
+    @DisplayName("maps create milestone 404 to resource not found integration error")
+    void mapsCreateMilestone404ToResourceNotFoundIntegrationError() {
+        assertCreateStatusIsMappedToError(HttpStatus.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("maps create milestone 429 to rate limited integration error")
+    void mapsCreateMilestone429ToRateLimitedIntegrationError() {
+        assertCreateStatusIsMappedToError(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.INTEGRATION_RATE_LIMITED);
+    }
+
+    @Test
+    @DisplayName("maps create milestone 5xx to generic integration error")
+    void mapsCreateMilestone5xxToGenericIntegrationError() {
+        assertCreateStatusIsMappedToError(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTEGRATION_FAILURE);
+    }
+
+    @Test
+    @DisplayName("maps create milestone transport failures to generic integration error")
+    void mapsCreateMilestoneTransportFailuresToGenericIntegrationError() {
+        server.expect(requestTo(API_URL)).andRespond(request -> {
+            throw new IOException("connection reset");
+        });
+
+        assertThatThrownBy(() -> adapter.createMilestone(CREATE_INPUT))
+                .isInstanceOfSatisfying(IntegrationException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE);
+                    assertThat(exception.getMessage()).isEqualTo("GitLab create milestone operation failed");
+                });
+    }
+
+    @Test
+    @DisplayName("maps create milestone null body to generic integration error")
+    void mapsCreateMilestoneNullBodyToGenericIntegrationError() {
+        server.expect(requestTo(API_URL))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(APPLICATION_JSON)
+                        .body("null"));
+
+        assertThatThrownBy(() -> adapter.createMilestone(CREATE_INPUT))
+                .isInstanceOfSatisfying(IntegrationException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTEGRATION_FAILURE);
+                    assertThat(exception.getMessage()).isEqualTo("GitLab create milestone operation failed");
+                });
+    }
+
+    private void assertCreateStatusIsMappedToError(final HttpStatus status, final ErrorCode expectedErrorCode) {
+        server.expect(requestTo(API_URL)).andRespond(withStatus(Objects.requireNonNull(status)));
+
+        assertThatThrownBy(() -> adapter.createMilestone(CREATE_INPUT))
+                .isInstanceOfSatisfying(
+                        IntegrationException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(expectedErrorCode));
+    }
+
     private static GitLabMilestonesAdapter createAdapter(
             final RestClient.Builder builder, final GitLabProjectLocator locator) {
         final GitLabOperationExecutor operationExecutor = new GitLabOperationExecutor(new GitLabExceptionMapper());
@@ -171,7 +308,8 @@ class GitLabMilestonesAdapterTest {
                 locator,
                 new GitLabUriFactory(locator),
                 paginationLoader,
-                new GitLabMilestonesMapper());
+                new GitLabMilestonesMapper(),
+                operationExecutor);
     }
 
     private String milestonesBody(final int startMilestoneId, final int count, final String state) {

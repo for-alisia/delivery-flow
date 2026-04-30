@@ -25,6 +25,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class MilestonesApiComponentTest {
 
+    private static final String CREATE_ENDPOINT = "/api/milestones";
     private static final String SEARCH_ENDPOINT = "/api/milestones/search";
     private static final int GITLAB_CONNECT_TIMEOUT_SECONDS = 2;
     private static final int GITLAB_READ_TIMEOUT_SECONDS = 1;
@@ -204,5 +205,109 @@ class MilestonesApiComponentTest {
         assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_RATE_LIMITED");
 
         GitLabMilestonesStubSupport.verifyDefaultMilestonesRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("creates milestone with title only and returns minimal response")
+    void createsMilestoneWithTitleOnlyAndReturnsMinimalResponse() throws Exception {
+        wireMockServer.resetAll();
+        GitLabMilestonesStubSupport.stubCreateMilestoneTitleOnlySuccess(wireMockServer);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                                {
+                                  "title": "Release v1.0"
+                                }
+                                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity(CREATE_ENDPOINT, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("milestoneId").asLong()).isEqualTo(42L);
+        assertThat(json.path("title").asText()).isEqualTo("Release v1.0");
+        assertThat(json.has("id")).isFalse();
+        assertThat(json.has("description")).isFalse();
+        assertThat(json.has("startDate")).isFalse();
+        assertThat(json.has("dueDate")).isFalse();
+
+        GitLabMilestonesStubSupport.verifyCreateMilestoneTitleOnlyRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("creates milestone with full payload and returns minimal response")
+    void createsMilestoneWithFullPayloadAndReturnsMinimalResponse() throws Exception {
+        wireMockServer.resetAll();
+        GitLabMilestonesStubSupport.stubCreateMilestoneFullSuccess(wireMockServer);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                                {
+                                  "title": "Q2 2026 Delivery",
+                                  "description": "Second quarter release cycle",
+                                  "startDate": "2026-04-01",
+                                  "dueDate": "2026-06-30"
+                                }
+                                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity(CREATE_ENDPOINT, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("milestoneId").asLong()).isEqualTo(43L);
+        assertThat(json.path("title").asText()).isEqualTo("Q2 2026 Delivery");
+        assertThat(json.size()).isEqualTo(2);
+
+        GitLabMilestonesStubSupport.verifyCreateMilestoneFullRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("rejects invalid create date range before calling GitLab")
+    void rejectsInvalidCreateDateRangeBeforeCallingGitLab() throws Exception {
+        wireMockServer.resetAll();
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                                {
+                                  "title": "Q2 2026 Delivery",
+                                  "startDate": "2026-06-30",
+                                  "dueDate": "2026-06-30"
+                                }
+                                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity(CREATE_ENDPOINT, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("VALIDATION_ERROR");
+        assertThat(json.path("details").toString()).contains("dueDate must be after startDate");
+
+        GitLabMilestonesStubSupport.verifyNoMilestonesApiRequest(wireMockServer);
+    }
+
+    @Test
+    @DisplayName("maps create milestone GitLab authentication failure to unauthorized")
+    void mapsCreateMilestoneGitLabAuthenticationFailureToUnauthorized() throws Exception {
+        wireMockServer.resetAll();
+        GitLabMilestonesStubSupport.stubCreateMilestoneUnauthorized(wireMockServer);
+
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        final HttpEntity<String> request = new HttpEntity<>("""
+                                {
+                                  "title": "Release v1.0"
+                                }
+                                """, headers);
+
+        final ResponseEntity<String> response = restTemplate.postForEntity(CREATE_ENDPOINT, request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        final JsonNode json = objectMapper.readTree(response.getBody());
+        assertThat(json.path("code").asText()).isEqualTo("INTEGRATION_AUTHENTICATION_FAILED");
+
+        GitLabMilestonesStubSupport.verifyCreateMilestoneTitleOnlyRequest(wireMockServer);
     }
 }

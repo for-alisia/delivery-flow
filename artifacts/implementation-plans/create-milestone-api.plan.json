@@ -1,0 +1,296 @@
+{
+  "schemaVersion": "4.0",
+  "feature": "create-milestone-api",
+  "revision": 2,
+  "status": "draft",
+  "scope": {
+    "purpose": "Add milestone creation to the existing milestones capability so clients can create a GitLab project milestone through the configured project and receive the GitLab IID-based milestone identifier.",
+    "inScope": [
+      "POST /api/milestones boundary, validation, orchestration input, and HTTP 201 response mapping inside the existing milestones capability.",
+      "A single GitLab project milestone create call against the configured project, including iid-to-milestoneId mapping and established integration error translation.",
+      "Automated unit, integration, component, and Karate coverage for the create request contract and downstream GitLab write flow."
+    ],
+    "outOfScope": [
+      "Milestone update, delete, get-single, group milestones, bulk operations, or multi-project routing.",
+      "Changes to existing milestone search behavior beyond additive reuse needed to support create inside the same capability.",
+      "Reviewer-owned documentation maintenance in flow-orchestrator/http and documentation/capabilities after implementation review."
+    ],
+    "constraints": [
+      "Request fields are title required; description, dueDate, and startDate optional.",
+      "Validation requires title length greater than 3 and less than 500 characters, ISO YYYY-MM-DD parsing for provided dates, and dueDate strictly after startDate when both dates are present.",
+      "Success response is HTTP 201 and exposes only milestoneId and title.",
+      "milestoneId must map from GitLab iid, never GitLab id.",
+      "Validation failures return HTTP 400 through the existing ErrorResponse contract and GitLab failures reuse the established integration error pattern."
+    ]
+  },
+  "sharedRules": [
+    {
+      "id": "R1",
+      "rule": "Keep create-milestone input validation inside MilestonesRequestValidator; do not split title and date semantics across bean-validation annotations and manual validation for this endpoint.",
+      "appliesTo": [
+        "S1"
+      ]
+    },
+    {
+      "id": "R2",
+      "rule": "Reuse the existing shared Milestone orchestration model and GitLabMilestoneResponse provider response for create flow; only the REST boundary may project a narrower create response contract.",
+      "appliesTo": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "R3",
+      "rule": "The create flow must target the configured GitLab project through shared GitLab infrastructure and make exactly one upstream POST call; no client-supplied routing or multi-call composition is introduced.",
+      "appliesTo": [
+        "S2"
+      ]
+    }
+  ],
+  "sharedDecisions": [
+    {
+      "id": "D1",
+      "title": "Validation boundary stays in milestone request validator",
+      "decision": "The create endpoint accepts raw nullable request strings and the controller invokes MilestonesRequestValidator before mapping to CreateMilestoneInput. The validator parses provided dates only for validation and reports all failures through ValidationException detail entries.",
+      "rationale": "This matches the existing create-issue style better than mixed validation and keeps date-ordering logic at the REST boundary.",
+      "appliesTo": [
+        "S1"
+      ]
+    },
+    {
+      "id": "D2",
+      "title": "Internal reuse of shared milestone model with narrow create response",
+      "decision": "MilestonesService, MilestonesPort, and the GitLab adapter return the existing shared Milestone model so milestone identity and future milestone reuse stay centralized. MilestonesResponseMapper adds a dedicated create response projection that exposes only milestoneId and title.",
+      "rationale": "The locked response is narrower than MilestoneDto, but a second internal create-result model would duplicate the existing milestone concept.",
+      "appliesTo": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": "D3",
+      "title": "GitLab create call uses shared write-path infrastructure",
+      "decision": "The adapter posts one JSON body to /projects/{projectPath}/milestones using GitLabUriFactory and GitLabOperationExecutor, maps request fields to GitLab wire names title, description, start_date, and due_date, and treats null response bodies as transport failures.",
+      "rationale": "This preserves the established GitLab error pattern and keeps provider mechanics isolated in the integration layer.",
+      "appliesTo": [
+        "S2"
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "S1",
+      "title": "REST contract and orchestration create flow",
+      "goal": "Add POST /api/milestones, validate the request at the boundary, and route the create operation through the existing milestones service and port.",
+      "dependsOn": [],
+      "readsExisting": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesService.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesPort.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/common/web/GlobalExceptionHandler.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/issues/rest/IssuesController.java"
+      ],
+      "sliceRules": [
+        "Do not widen the client response to the existing MilestoneDto; the create response must contain only milestoneId and title.",
+        "An omitted optional date stays null; an invalid date string never reaches orchestration or integration.",
+        "The create endpoint keeps the request body required and treats missing or blank title as a validation failure."
+      ],
+      "contractDependency": {
+        "section": "external-contracts",
+        "notes": [
+          "Use the story External Contracts section as the wire-level source of truth for POST /api/milestones request, success response, and error expectations."
+        ]
+      },
+      "compositionNotes": [
+        "This slice ends at one capability-local service call and does not introduce cross-capability composition."
+      ],
+      "units": [
+        {
+          "id": "S1-U1",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+          "status": "modified",
+          "purpose": "Expose the create endpoint while keeping the controller thin and capability-local.",
+          "change": "Add POST /api/milestones alongside the existing search endpoint. The method accepts CreateMilestoneRequest, logs title length and optional-field presence only, invokes MilestonesRequestValidator.validateCreateRequest(...), maps to CreateMilestoneInput, delegates to MilestonesService.createMilestone(...), and returns ResponseEntity.status(HttpStatus.CREATED) with the dedicated create response DTO.",
+          "tests": {
+            "levels": [
+              "integration"
+            ],
+            "notes": "Cover title-only success, full-payload success, title length boundaries, invalid date format, dueDate before or equal to startDate, malformed JSON, and representative GitLab error mapping through GlobalExceptionHandler."
+          },
+          "loggingNotes": "Log title length plus date/description presence; do not log raw description text."
+        },
+        {
+          "id": "S1-U2",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/",
+          "status": "modified",
+          "purpose": "Define the REST create contract and REST-to-orchestration mapping within the existing milestones capability.",
+          "change": "Add CreateMilestoneRequest and a dedicated create response DTO under orchestration/milestones/rest/dto. Extend MilestonesRequestMapper with toCreateMilestoneInput(...) and MilestonesResponseMapper with a create-response projection that emits only the locked response fields.",
+          "contractDetails": [
+            "CreateMilestoneRequest JSON fields use camelCase names: title:string required by validator, description:string optional, dueDate:string optional, startDate:string optional.",
+            "The create response exposes exactly milestoneId:long and title:string; it omits GitLab id, description, startDate, dueDate, and state."
+          ],
+          "tests": {
+            "levels": [
+              "unit",
+              "integration"
+            ],
+            "notes": "Unit tests cover request-to-input mapping and create-response projection. Integration tests assert the exact HTTP 201 body shape."
+          }
+        },
+        {
+          "id": "S1-U3",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+          "status": "modified",
+          "purpose": "Enforce create-request semantics at the REST boundary before orchestration or integration code runs.",
+          "change": "Add validateCreateRequest(...) that accumulates detail messages for missing or blank title, title length less than or equal to 3, title length greater than or equal to 500, invalid startDate or dueDate format, and non-increasing date range when both dates are present. Throw the existing ValidationException with top-level message 'Request validation failed'.",
+          "tests": {
+            "levels": [
+              "unit",
+              "integration"
+            ],
+            "notes": "Unit tests cover blank title, short title, 500-character title, invalid startDate, invalid dueDate, equal dueDate/startDate, and dueDate earlier than startDate."
+          }
+        },
+        {
+          "id": "S1-U4",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/",
+          "status": "modified",
+          "purpose": "Add the orchestration-side create contract without introducing a parallel milestones service structure.",
+          "change": "Add CreateMilestoneInput under orchestration/milestones/model, extend MilestonesPort with createMilestone(CreateMilestoneInput input), and extend MilestonesService with thin create delegation and create-specific logging. Keep the input immutable and store optional date strings only after boundary validation succeeds.",
+          "tests": {
+            "levels": [
+              "unit"
+            ],
+            "notes": "Cover service delegation and CreateMilestoneInput immutability or null-preservation behavior if the record adds constructor logic."
+          }
+        }
+      ],
+      "doneWhen": [
+        "POST /api/milestones exists and returns HTTP 201 with only milestoneId and title on success.",
+        "Invalid create inputs fail at the milestone REST boundary before MilestonesService delegates to the port.",
+        "The slice's unit and integration tests for create milestone pass."
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "GitLab milestone create adapter and downstream coverage",
+      "goal": "Map validated create input to the GitLab milestone create endpoint and prove the downstream flow through adapter, component, and smoke coverage.",
+      "dependsOn": [
+        "S1"
+      ],
+      "readsExisting": [
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/dto/GitLabMilestoneResponse.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabOperationExecutor.java",
+        "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/GitLabUriFactory.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/MilestonesApiComponentTest.java",
+        "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/support/GitLabMilestonesStubSupport.java",
+        "flow-orchestrator/src/test/karate/java/com/gitlabflow/floworchestrator/karate/milestones/MilestonesKarateTest.java"
+      ],
+      "sliceRules": [
+        "Make exactly one upstream POST call to the configured project milestone collection; do not derive project routing from the client request.",
+        "Map Milestone.milestoneId from GitLab iid, never from GitLab id.",
+        "Place the new Karate feature under src/test/karate/resources/milestones so the existing MilestonesKarateTest runner remains unchanged."
+      ],
+      "contractDependency": {
+        "section": "external-contracts",
+        "notes": [
+          "Use the story External Contracts section for the GitLab POST /projects/:id/milestones fields and the locked milestoneId/title response contract."
+        ]
+      },
+      "compositionNotes": [
+        "This slice is a single adapter call plus downstream verification; it does not add orchestration-side composition."
+      ],
+      "units": [
+        {
+          "id": "S2-U1",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+          "status": "modified",
+          "purpose": "Implement milestone creation in the existing GitLab milestones adapter using the shared GitLab failure path.",
+          "change": "Add createMilestone(...) that logs create intent, posts JSON to /projects/{projectPath}/milestones, executes through GitLabOperationExecutor with resource name 'create milestone', rejects null response bodies, and returns the shared Milestone via the existing mapper.",
+          "tests": {
+            "levels": [
+              "unit",
+              "component"
+            ],
+            "notes": "Adapter tests assert POST method, request body shape, HTTP 201 mapping, and 401, 404, 429, 5xx, and transport-failure error translation. Component tests assert end-to-end HTTP 201 and provider request verification."
+          },
+          "loggingNotes": "Log title length and optional-field presence only; do not log description text or request bodies."
+        },
+        {
+          "id": "S2-U2",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java",
+          "status": "modified",
+          "purpose": "Map orchestration create input to GitLab wire format while preserving shared milestone response mapping in one place.",
+          "change": "Add GitLabCreateMilestoneRequest under integration/gitlab/milestones/dto and extend GitLabMilestonesMapper with toCreateRequest(CreateMilestoneInput input) using exact GitLab field names title, description, start_date, and due_date. Continue using toMilestone(GitLabMilestoneResponse) so iid remains the source of milestoneId.",
+          "contractDetails": [
+            "GitLabCreateMilestoneRequest JSON fields are title:string required, description:string optional, start_date:string optional, and due_date:string optional.",
+            "Null optional fields are omitted from the GitLab request body rather than serialized as explicit null values."
+          ],
+          "tests": {
+            "levels": [
+              "unit"
+            ],
+            "notes": "Cover title-only and full-payload request mapping plus explicit iid-to-milestoneId mapping on the shared milestone response path."
+          }
+        },
+        {
+          "id": "S2-U3",
+          "kind": "java-class",
+          "locationHint": "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/",
+          "status": "modified",
+          "purpose": "Extend milestone downstream verification to prove create flow behavior against WireMock-backed GitLab stubs.",
+          "change": "Update MilestonesApiComponentTest and GitLabMilestonesStubSupport with create-success, title-only success, validation short-circuit, and representative GitLab authentication or not-found failure coverage. Verify the outbound WireMock request body uses GitLab field names and omits optional null fields.",
+          "tests": {
+            "levels": [
+              "component"
+            ],
+            "notes": "Include at least one test that proves invalid input never reaches GitLab and one that proves success returns only milestoneId and title."
+          }
+        },
+        {
+          "id": "S2-U4",
+          "kind": "karate-feature",
+          "locationHint": "flow-orchestrator/src/test/karate/resources/milestones/milestones-create.feature",
+          "status": "new",
+          "purpose": "Define smoke coverage for the new POST /api/milestones contract.",
+          "change": "Add smoke scenarios for title-only success (201 with numeric milestoneId and matching title), full-payload success (201 with the same minimal response shape), and validation failure when dueDate is not after startDate (400 with VALIDATION_ERROR). The existing MilestonesKarateTest runner remains unchanged because it already executes smoke-tagged features from the milestones package.",
+          "tests": {
+            "levels": [
+              "karate"
+            ],
+            "notes": "Keep the scenarios contract-focused and deterministic; provider-specific failure mapping stays covered by component tests instead of Karate."
+          }
+        }
+      ],
+      "doneWhen": [
+        "Validated create input reaches GitLab through one POST /projects/{projectPath}/milestones call with the correct GitLab field names.",
+        "The adapter returns milestoneId from GitLab iid and the API omits non-contract fields from the HTTP 201 body.",
+        "The slice's adapter, component, and Karate tests for create milestone pass with the existing milestones Karate runner."
+      ]
+    }
+  ],
+  "finalVerification": {
+    "requiredGates": [
+      "verifyQuick",
+      "finalCheck",
+      "karate"
+    ],
+    "notes": [
+      "After implementation, run scripts/flow-log.sh verify --feature create-milestone-api --profile full --by java-coder so verifyQuick, finalCheck, and karate are recorded atomically.",
+      "Expected automated evidence includes milestone create unit tests, MilestonesControllerIT, GitLabMilestonesAdapterTest, MilestonesApiComponentTest, and the new milestones-create Karate smoke feature.",
+      "Because this is an API addition in an existing capability, reviewer-owned follow-up still updates flow-orchestrator/http/milestones.http and documentation/capabilities/milestones.md after implementation review."
+    ]
+  },
+  "hash": "978a2e6a544e5e0c4ed48d4a5c44c27c9cdea6d7d7e944ef38656c29c211124f"
+}

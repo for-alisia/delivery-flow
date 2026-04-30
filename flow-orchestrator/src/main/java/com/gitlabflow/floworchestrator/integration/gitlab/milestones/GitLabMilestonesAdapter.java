@@ -2,11 +2,13 @@ package com.gitlabflow.floworchestrator.integration.gitlab.milestones;
 
 import com.gitlabflow.floworchestrator.common.util.ElapsedTime;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabOffsetPaginationLoader;
+import com.gitlabflow.floworchestrator.integration.gitlab.GitLabOperationExecutor;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabProjectLocator;
 import com.gitlabflow.floworchestrator.integration.gitlab.GitLabUriFactory;
 import com.gitlabflow.floworchestrator.integration.gitlab.milestones.dto.GitLabMilestoneResponse;
 import com.gitlabflow.floworchestrator.integration.gitlab.milestones.mapper.GitLabMilestonesMapper;
 import com.gitlabflow.floworchestrator.orchestration.milestones.MilestonesPort;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
@@ -15,6 +17,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -26,12 +29,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class GitLabMilestonesAdapter implements MilestonesPort {
 
     private static final String RESOURCE_MILESTONES = "milestones";
+    private static final String RESOURCE_CREATE_MILESTONE = "create milestone";
+    private static final String EMPTY_BODY_MESSAGE = "GitLab returned empty response body";
 
     private final RestClient gitLabRestClient;
     private final GitLabProjectLocator gitLabProjectLocator;
     private final GitLabUriFactory gitLabUriFactory;
     private final GitLabOffsetPaginationLoader gitLabOffsetPaginationLoader;
     private final GitLabMilestonesMapper gitLabMilestonesMapper;
+    private final GitLabOperationExecutor gitLabOperationExecutor;
 
     @Override
     public List<Milestone> searchMilestones(final SearchMilestonesInput input) {
@@ -56,6 +62,34 @@ public class GitLabMilestonesAdapter implements MilestonesPort {
         return milestones;
     }
 
+    @Override
+    public Milestone createMilestone(final CreateMilestoneInput input) {
+        log.info(
+                "Creating GitLab milestone titleLength={} descriptionPresent={} startDate={} dueDate={}",
+                input.title().length(),
+                input.description() != null,
+                input.startDate(),
+                input.dueDate());
+
+        return gitLabOperationExecutor.execute(RESOURCE_CREATE_MILESTONE, () -> {
+            final GitLabMilestoneResponse response = gitLabRestClient
+                    .post()
+                    .uri(milestonesCollectionUri())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(gitLabMilestonesMapper.toCreateRequest(input))
+                    .retrieve()
+                    .body(GitLabMilestoneResponse.class);
+
+            if (response == null) {
+                throw new IllegalStateException(EMPTY_BODY_MESSAGE);
+            }
+
+            final Milestone milestone = gitLabMilestonesMapper.toMilestone(response);
+            log.info("GitLab milestone created milestoneId={}", milestone.milestoneId());
+            return milestone;
+        });
+    }
+
     private List<GitLabMilestoneResponse> fetchPage(
             final SearchMilestonesInput input, final int page, final int perPage) {
         return gitLabRestClient
@@ -76,6 +110,14 @@ public class GitLabMilestonesAdapter implements MilestonesPort {
         addMilestoneIdsParam(builder, input.milestoneIds());
 
         return builder.encode()
+                .buildAndExpand(gitLabProjectLocator.projectReference().projectPath())
+                .toUri();
+    }
+
+    private @NonNull URI milestonesCollectionUri() {
+        return UriComponentsBuilder.fromUriString(gitLabUriFactory.apiBaseUrl())
+                .path(milestonesResourcePathTemplate())
+                .encode()
                 .buildAndExpand(gitLabProjectLocator.projectReference().projectPath())
                 .toUri();
     }

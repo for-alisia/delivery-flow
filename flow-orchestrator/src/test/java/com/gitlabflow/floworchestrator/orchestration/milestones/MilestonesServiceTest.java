@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
@@ -46,5 +47,22 @@ class MilestonesServiceTest {
 
         assertThat(actual).isEmpty();
         verify(milestonesPort).searchMilestones(input);
+    }
+
+    @Test
+    @DisplayName("delegates milestone create and returns mapped milestone")
+    void delegatesMilestoneCreateAndReturnsMappedMilestone() {
+        final MilestonesService service = new MilestonesService(milestonesPort);
+        final CreateMilestoneInput input =
+                new CreateMilestoneInput("Q2 2026 Delivery", "Scope", "2026-04-01", "2026-06-30");
+        final Milestone expected =
+                new Milestone(401L, 42L, "Q2 2026 Delivery", "Scope", "2026-04-01", "2026-06-30", "active");
+
+        when(milestonesPort.createMilestone(input)).thenReturn(expected);
+
+        final Milestone actual = service.createMilestone(input);
+
+        assertThat(actual).isEqualTo(expected);
+        verify(milestonesPort).createMilestone(input);
     }
 }

@@ -1,0 +1,304 @@
+{
+  "schemaVersion": "1.0",
+  "feature": "create-milestone-api",
+  "createdAt": "2026-04-25T16:04:42.031Z",
+  "updatedAt": "2026-04-25T17:09:44.276Z",
+  "requirements": {
+    "locked": true,
+    "lockedAt": "2026-04-25T16:04:58.514Z",
+    "lockedBy": "TL",
+    "requestSource": "artifacts/user-prompts/create-milestone-api.md"
+  },
+  "artifacts": {
+    "story": {
+      "path": "artifacts/user-stories/create-milestone-api.story.md",
+      "approved": true,
+      "approvedAt": "2026-04-25T16:15:57.219Z",
+      "approvedBy": "TL",
+      "approvedRevision": null,
+      "approvedHash": "b3b1b48f175e8d2be6693d8c4024c30f40b82856fed5049385bdba19d43cdced",
+      "lastVerifiedExistsAt": "2026-04-25T16:15:57.220Z"
+    },
+    "plan": {
+      "path": "artifacts/implementation-plans/create-milestone-api.plan.json",
+      "approved": true,
+      "approvedAt": "2026-04-25T16:16:26.956Z",
+      "approvedBy": "TL",
+      "approvedRevision": 2,
+      "approvedHash": "978a2e6a544e5e0c4ed48d4a5c44c27c9cdea6d7d7e944ef38656c29c211124f",
+      "lastVerifiedExistsAt": "2026-04-25T16:16:26.957Z"
+    }
+  },
+  "reviews": {
+    "architectureReview": {
+      "status": "PASS",
+      "reason": "Round 1 produced only non-blocking MEDIUM/LOW risks; design is acceptable for implementation.",
+      "updatedAt": "2026-04-25T16:23:04.709Z",
+      "updatedBy": "TL"
+    },
+    "codeReview": {
+      "status": "PASS",
+      "reason": "Round 1 found only MEDIUM/LOW findings; no correctness or boundary blockers remain.",
+      "updatedAt": "2026-04-25T17:09:08.763Z",
+      "updatedBy": "TL"
+    }
+  },
+  "checks": {
+    "verifyQuick": {
+      "status": "PASS",
+      "updatedAt": "2026-04-25T16:57:46.899Z",
+      "updatedBy": "JavaCoder",
+      "command": "scripts/verify-quick.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "9565b34e3d4f370a"
+    },
+    "finalCheck": {
+      "status": "PASS",
+      "updatedAt": "2026-04-25T17:05:34.018Z",
+      "updatedBy": "CodeReviewer",
+      "command": "scripts/final-check.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "9565b34e3d4f370a"
+    },
+    "karate": {
+      "status": "PASS",
+      "updatedAt": "2026-04-25T16:59:14.943Z",
+      "updatedBy": "JavaCoder",
+      "command": "scripts/karate-test.sh",
+      "details": null,
+      "reportPaths": [],
+      "sourceFingerprint": "9565b34e3d4f370a"
+    }
+  },
+  "timing": {
+    "startedAt": "2026-04-25T16:04:42.031Z",
+    "completedAt": "2026-04-25T17:09:44.274Z",
+    "durationMinutes": 65
+  },
+  "batches": {
+    "current": null,
+    "total": 1,
+    "history": [
+      {
+        "batch": 1,
+        "slices": [
+          "S1",
+          "S2"
+        ],
+        "changedFiles": [
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/dto/GitLabCreateMilestoneRequest.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesPort.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesService.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/CreateMilestoneInput.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneRequest.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneResponse.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapper.java",
+          "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapper.java",
+          "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/MilestonesApiComponentTest.java",
+          "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/support/GitLabMilestonesStubSupport.java",
+          "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesControllerIT.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapterTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesServiceTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/CreateMilestoneInputTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidatorTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneRequestTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneResponseTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapperTest.java",
+          "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapperTest.java"
+        ],
+        "startedAt": "2026-04-25T16:23:32.800Z",
+        "completedAt": "2026-04-25T16:59:55.798Z",
+        "status": "complete",
+        "by": "TL"
+      }
+    ]
+  },
+  "changes": {
+    "files": [
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapter.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/dto/GitLabCreateMilestoneRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesPort.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesService.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/CreateMilestoneInput.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidator.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneRequest.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneResponse.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapper.java",
+      "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapper.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/MilestonesApiComponentTest.java",
+      "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/support/GitLabMilestonesStubSupport.java",
+      "flow-orchestrator/src/test/integration/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesControllerIT.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/GitLabMilestonesAdapterTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/integration/gitlab/milestones/mapper/GitLabMilestonesMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/MilestonesServiceTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/model/CreateMilestoneInputTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesRequestValidatorTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneRequestTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/dto/CreateMilestoneResponseTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesRequestMapperTest.java",
+      "flow-orchestrator/src/test/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/mapper/MilestonesResponseMapperTest.java"
+    ]
+  },
+  "architecturalRisks": {
+    "round": 1,
+    "risks": [
+      {
+        "id": 1,
+        "severity": "MEDIUM",
+        "description": "The plan leaves the required title contract under-specified at the HTTP boundary. S1-U1 only calls for title-length integration cases even though the create flow uses manual validation in MilestonesRequestValidator, and the plan does not require controller-level coverage for missing or blank title. This violates the test instructions and code-guidance requirement that changed request-contract and HTTP validation behavior receive integration coverage. If left unchanged, coding can satisfy the plan while POST /api/milestones still returns the wrong 400 shape or a 500 when title is absent or blank.",
+        "suggestedFix": "Amend S1-U1 to require MilestonesControllerIT cases for missing title and blank title, and amend S1-U3 to require unit coverage for both null-title and blank-title detail messages so the manual validation path is fully specified end-to-end.",
+        "planRefs": [
+          "S1-U1"
+        ],
+        "connectedAreas": [
+          "S1-U3"
+        ],
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-25T16:21:21.697Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null,
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-25T16:22:39.669Z",
+        "reclassificationReason": "Missing integration and unit edge cases for title presence is a real test-spec gap, but it is localized and does not indicate a flawed design direction.",
+        "previousSeverity": "UNCLASSIFIED"
+      },
+      {
+        "id": 2,
+        "severity": "LOW",
+        "description": "The approved logging notes are weaker than the repo logging gate. S1-U1 and S2-U1 both instruct the implementation to log only optional-field presence for create requests, but startDate and dueDate are non-sensitive diagnostic parameters and code-guidance explicitly says to log parameter values directly when they are not sensitive rather than booleans indicating presence. If left unchanged, the coder either follows the plan and fails the logging gate or ships a write path whose date-validation and GitLab payload behavior is materially harder to diagnose in production.",
+        "suggestedFix": "Revise the logging notes so controller and adapter logs record startDate and dueDate values directly, while still suppressing raw description text and request bodies. Keep title logging at length-only if that remains the chosen privacy boundary.",
+        "planRefs": [
+          "S1-U1"
+        ],
+        "connectedAreas": [
+          "S2-U1"
+        ],
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "ArchitectureReviewer",
+        "createdAt": "2026-04-25T16:21:22.439Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null,
+        "reclassifiedBy": "TL",
+        "reclassifiedAt": "2026-04-25T16:22:40.521Z",
+        "reclassificationReason": "Logging detail expectations are advisory quality guidance and do not make the design unsafe to implement.",
+        "previousSeverity": "UNCLASSIFIED"
+      }
+    ]
+  },
+  "codeFindings": {
+    "round": 1,
+    "findings": [
+      {
+        "id": 1,
+        "severity": "MEDIUM",
+        "description": "Boolean presence logging for diagnostic date values violates the code-guidance logging gate at all three layers. MilestonesController (L40-45), MilestonesService (L39-43), and GitLabMilestonesAdapter (L65-70) all log startDatePresent and dueDatePresent as booleans. Code-guidance states: 'Do not log booleans indicating presence when the actual value is diagnostic.' startDate and dueDate are non-sensitive strings; their values are required for diagnosing date-ordering and GitLab payload issues in production. Each layer should log the actual date string value (or null) instead of a boolean. This finding corresponds to arch-risk 2 which flagged the plan's loggingNotes as weaker than the gate; the plan needs a follow-up amendment.",
+        "file": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-25T17:07:09.518Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      },
+      {
+        "id": 2,
+        "severity": "LOW",
+        "description": "Controller logs 'request received' AFTER calling validateCreateRequest, not before. Rejected requests produce no 'request received' log entry, making it harder to correlate validation failures in log streams. Code-guidance logging gate says orchestration methods should log operation start with business context before delegating. The log call at L40-45 should move above the validateCreateRequest call on L37.",
+        "file": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-25T17:07:17.393Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      },
+      {
+        "id": 3,
+        "severity": "LOW",
+        "description": "Dead code: null-safe title branch 'title == null ? 0 : title.length()' on L41 is unreachable. validateCreateRequest on L37 throws ValidationException for null or blank title before the null check is reached. Remove the ternary; use title.length() directly. The null check also encourages a false sense that null title could reach the logging path.",
+        "file": "flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/orchestration/milestones/rest/MilestonesController.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-25T17:07:26.015Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      },
+      {
+        "id": 4,
+        "severity": "LOW",
+        "description": "Component test GitLab stub returns HTTP 200 for milestone create success via the shared jsonOkResponse() helper, while the real GitLab API returns 201 for successful milestone creation. Stubs at stubCreateMilestoneTitleOnlySuccess and stubCreateMilestoneFullSuccess both use this helper. The adapter unit tests correctly use HttpStatus.CREATED (201). The discrepancy does not cause test failures (RestClient accepts any 2xx) but lowers stub fidelity and could mask regressions if the adapter's error-handling is ever scoped to 201-only responses.",
+        "file": "flow-orchestrator/src/test/component/java/com/gitlabflow/floworchestrator/milestones/support/GitLabMilestonesStubSupport.java",
+        "status": "OPEN",
+        "round": 1,
+        "createdBy": "CodeReviewer",
+        "createdAt": "2026-04-25T17:07:34.795Z",
+        "responseNote": null,
+        "respondedBy": null,
+        "respondedAt": null,
+        "resolvedBy": null,
+        "resolvedAt": null
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 1,
+      "type": "batchStart",
+      "by": "TL",
+      "reason": "Started batch 1 for slices: S1, S2",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-25T16:23:32.802Z",
+      "batch": 1,
+      "slices": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "batchEnd",
+      "by": "TL",
+      "reason": "Completed batch 1 with status 'complete'.",
+      "target": null,
+      "relatedCheck": null,
+      "relatedReview": null,
+      "createdAt": "2026-04-25T16:59:55.800Z",
+      "batch": 1,
+      "slices": [
+        "S1",
+        "S2"
+      ],
+      "batchStatus": "complete"
+    }
+  ]
+}

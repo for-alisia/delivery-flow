@@ -1,5 +1,42 @@
 @baseUrl = http://localhost:8080
 
+### Create milestone (title only)
+POST {{baseUrl}}/api/milestones
+Content-Type: application/json
+
+{
+	"title": "Release v1.0"
+}
+
+### Create milestone (full payload)
+POST {{baseUrl}}/api/milestones
+Content-Type: application/json
+
+{
+	"title": "Q5 2026 Delivery",
+	"description": "Second quarter release cycle",
+	"startDate": "2026-04-01",
+	"dueDate": "2026-06-30"
+}
+
+### Create milestone - validation failure (blank title)
+POST {{baseUrl}}/api/milestones
+Content-Type: application/json
+
+{
+	"title": "  "
+}
+
+### Create milestone - validation failure (dueDate not after startDate)
+POST {{baseUrl}}/api/milestones
+Content-Type: application/json
+
+{
+	"title": "Sprint 3",
+	"startDate": "2026-06-30",
+	"dueDate": "2026-06-30"
+}
+
 ### Default search request (no body)
 POST {{baseUrl}}/api/milestones/search
 
