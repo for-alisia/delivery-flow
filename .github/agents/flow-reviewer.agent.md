@@ -104,4 +104,5 @@ In `What's Recommended`, provide:
 - Keep the review concise, practical, and opinionated.
 - Prefer repository evidence over generic advice.
 - If the current log lacks enough evidence, say exactly what is missing.
+- You are touching only agent prompts related to the flow, not others existing in the repository (solution-reviewer.agent.md, code-review-refactorer.agent.md are out of your scope).
 
