@@ -1,11 +1,15 @@
-import {
-  PLAN_CLASS_STATUSES,
-  PLAN_EXAMPLE_TYPES,
-  PLAN_MODEL_KINDS,
-  PLAN_MODEL_STATUSES,
-  PLAN_V3_SCHEMA_VERSION
-} from "./schema.mjs";
 import { collectAllReferences, collectPlanIds } from "./refs.mjs";
+import { PLAN_SCHEMA_VERSION, PLAN_TEST_LEVELS, PLAN_UNIT_KINDS, PLAN_UNIT_STATUSES } from "./schema.mjs";
+import {
+  isNonEmptyString,
+  isObject,
+  requireArray,
+  requireEnum,
+  requireId,
+  requireObject,
+  requireString,
+  requireStringArray
+} from "./validate-helpers.mjs";
 
 export function validatePlanShape(plan) {
   const issues = [];
@@ -15,18 +19,11 @@ export function validatePlanShape(plan) {
     return { valid: false, issues };
   }
 
-  validateContractExamples(plan.contractExamples ?? [], issues);
-  validateValidationRules(plan.validationRules, issues);
-  validateDesignDecisions(plan.designDecisions, issues);
-  validateImplementationFlow(plan.implementationFlow ?? [], issues);
-  validateModels(plan.models, issues);
-  validateClasses(plan.classes, issues);
-  validateSlices(plan.slices, issues);
-  validateVerification(plan.verification, issues);
-
-  const ids = collectPlanIds(plan);
-  validateCrossReferences(plan, ids, issues);
-  validateFlowOrderAndCoverage(plan, ids, issues);
+  validateSharedRules(plan.sharedRules ?? [], issues);
+  validateSharedDecisions(plan.sharedDecisions ?? [], issues);
+  validateSlices(plan.slices ?? [], issues);
+  validateFinalVerification(plan.finalVerification, issues);
+  validateCrossReferences(plan, collectPlanIds(plan), issues);
 
   return {
     valid: issues.length === 0,
@@ -40,28 +37,14 @@ function validateTopLevel(plan, issues) {
     return;
   }
 
-  const required = [
-    "schemaVersion",
-    "feature",
-    "revision",
-    "status",
-    "scope",
-    "validationRules",
-    "designDecisions",
-    "models",
-    "classes",
-    "slices",
-    "verification"
-  ];
-
-  for (const key of required) {
+  for (const key of ["schemaVersion", "feature", "revision", "status", "scope", "slices", "finalVerification"]) {
     if (!(key in plan)) {
       issues.push(`Missing top-level key '${key}'.`);
     }
   }
 
-  if (typeof plan.schemaVersion !== "string" || plan.schemaVersion !== PLAN_V3_SCHEMA_VERSION) {
-    issues.push(`schemaVersion must be '${PLAN_V3_SCHEMA_VERSION}'.`);
+  if (plan.schemaVersion !== PLAN_SCHEMA_VERSION) {
+    issues.push(`schemaVersion must be '${PLAN_SCHEMA_VERSION}'.`);
   }
 
   if (!isNonEmptyString(plan.feature)) {
@@ -80,383 +63,133 @@ function validateTopLevel(plan, issues) {
     issues.push("scope must be an object.");
   } else {
     requireString(plan.scope, "purpose", "scope", issues, true);
-    requireStringArray(plan.scope, "inScope", "scope", issues, false);
-    requireStringArray(plan.scope, "outOfScope", "scope", issues, false);
+    requireStringArray(plan.scope, "inScope", "scope", issues, true);
+    requireStringArray(plan.scope, "outOfScope", "scope", issues, true);
     requireStringArray(plan.scope, "constraints", "scope", issues, false);
   }
 
-  requireArray(plan, "validationRules", "plan", issues);
-  requireArray(plan, "designDecisions", "plan", issues);
-  requireArray(plan, "models", "plan", issues);
-  requireArray(plan, "classes", "plan", issues);
+  requireArray(plan, "sharedRules", "plan", issues);
+  requireArray(plan, "sharedDecisions", "plan", issues);
   requireArray(plan, "slices", "plan", issues);
 
-  if ("implementationFlow" in plan) {
-    requireArray(plan, "implementationFlow", "plan", issues);
-  }
-  if ("contractExamples" in plan) {
-    requireArray(plan, "contractExamples", "plan", issues);
-  }
-
-  if (!isObject(plan.verification)) {
-    issues.push("verification must be an object.");
+  if (!isObject(plan.finalVerification)) {
+    issues.push("finalVerification must be an object.");
   }
 }
 
-function validateContractExamples(examples, issues) {
-  const seen = new Set();
-
-  examples.forEach((example, index) => {
-    const context = `contractExamples[${index}]`;
-    requireObject(example, context, issues);
-    requireId(example, context, seen, issues);
-    requireString(example, "label", context, issues, true);
-    requireEnum(example, "type", context, PLAN_EXAMPLE_TYPES, issues);
-    if (!("body" in example)) {
-      issues.push(`${context}.body is required.`);
-    }
-  });
-}
-
-function validateValidationRules(rules, issues) {
+function validateSharedRules(rules, issues) {
   const seen = new Set();
 
   rules.forEach((rule, index) => {
-    const context = `validationRules[${index}]`;
+    const context = `sharedRules[${index}]`;
     requireObject(rule, context, issues);
     requireId(rule, context, seen, issues);
     requireString(rule, "rule", context, issues, true);
-    requireString(rule, "owner", context, issues, true);
-    requireString(rule, "reason", context, issues, true);
-    requireStringArray(rule, "appliesToSlices", context, issues, false);
+    requireStringArray(rule, "appliesTo", context, issues, true);
   });
 }
 
-function validateDesignDecisions(decisions, issues) {
+function validateSharedDecisions(decisions, issues) {
   const seen = new Set();
 
   decisions.forEach((decision, index) => {
-    const context = `designDecisions[${index}]`;
+    const context = `sharedDecisions[${index}]`;
     requireObject(decision, context, issues);
     requireId(decision, context, seen, issues);
     requireString(decision, "title", context, issues, true);
     requireString(decision, "decision", context, issues, true);
     requireString(decision, "rationale", context, issues, true);
-    requireStringArray(decision, "alternatives", context, issues, false);
-  });
-}
-
-function validateImplementationFlow(steps, issues) {
-  const seen = new Set();
-
-  steps.forEach((step, index) => {
-    const context = `implementationFlow[${index}]`;
-    requireObject(step, context, issues);
-    requireId(step, context, seen, issues);
-
-    if (!Number.isInteger(step.order) || step.order <= 0) {
-      issues.push(`${context}.order must be a positive integer.`);
-    }
-
-    requireString(step, "slice", context, issues, true);
-    requireString(step, "layer", context, issues, true);
-    requireString(step, "component", context, issues, true);
-    requireString(step, "responsibility", context, issues, true);
-    requireString(step, "constitutionReason", context, issues, true);
-    requireStringArray(step, "outputs", context, issues, true);
-  });
-}
-
-function validateModels(models, issues) {
-  const seen = new Set();
-  const EXISTING_FIELD_LIMIT = 3;
-
-  models.forEach((model, index) => {
-    const context = `models[${index}]`;
-    requireObject(model, context, issues);
-    requireId(model, context, seen, issues);
-    requireString(model, "qualifiedName", context, issues, true);
-    requireEnum(model, "kind", context, PLAN_MODEL_KINDS, issues);
-    requireEnum(model, "status", context, PLAN_MODEL_STATUSES, issues);
-    requireString(model, "purpose", context, issues, true);
-    requireString(model, "placementJustification", context, issues, true);
-    requireStringArray(model, "ownedBySlices", context, issues, true);
-
-    if (model.status === "existing") {
-      const fieldCount = Array.isArray(model.fields) ? model.fields.length : 0;
-      const methodCount = Array.isArray(model.methods) ? model.methods.length : 0;
-      if (fieldCount > EXISTING_FIELD_LIMIT) {
-        issues.push(
-          `${context} ('${model.qualifiedName}') has status 'existing' but lists ${fieldCount} fields. ` +
-          `Existing models should list only the fields the Coder needs to call (max ${EXISTING_FIELD_LIMIT}), or omit fields entirely. ` +
-          `Use 'usedMethods' for call-site references instead of re-listing the full model.`
-        );
-      }
-      if (methodCount > EXISTING_FIELD_LIMIT) {
-        issues.push(
-          `${context} ('${model.qualifiedName}') has status 'existing' but lists ${methodCount} methods. ` +
-          `Existing models should list only the methods the Coder needs to call (max ${EXISTING_FIELD_LIMIT}).`
-        );
-      }
-    }
-  });
-}
-
-function validateClasses(classes, issues) {
-  const seen = new Set();
-
-  classes.forEach((classEntry, index) => {
-    const context = `classes[${index}]`;
-    requireObject(classEntry, context, issues);
-    requireId(classEntry, context, seen, issues);
-    requireString(classEntry, "path", context, issues, true);
-    requireEnum(classEntry, "status", context, PLAN_CLASS_STATUSES, issues);
-    requireString(classEntry, "role", context, issues, true);
-    requireStringArray(classEntry, "ownedBySlices", context, issues, true);
+    requireStringArray(decision, "appliesTo", context, issues, true);
   });
 }
 
 function validateSlices(slices, issues) {
-  const seen = new Set();
+  const seenSlices = new Set();
+  const seenUnits = new Set();
+  const locationOwners = new Map();
 
   slices.forEach((slice, index) => {
     const context = `slices[${index}]`;
     requireObject(slice, context, issues);
-    requireId(slice, context, seen, issues);
+    requireId(slice, context, seenSlices, issues);
     requireString(slice, "title", context, issues, true);
     requireString(slice, "goal", context, issues, true);
     requireStringArray(slice, "dependsOn", context, issues, true);
-    requireStringArray(slice, "flowSteps", context, issues, true);
-
-    if (!isObject(slice.covers)) {
-      issues.push(`${context}.covers must be an object.`);
-    } else {
-      requireStringArray(slice.covers, "models", `${context}.covers`, issues, true);
-      requireStringArray(slice.covers, "classes", `${context}.covers`, issues, true);
-      requireStringArray(slice.covers, "validationRules", `${context}.covers`, issues, true);
-      requireStringArray(slice.covers, "examples", `${context}.covers`, issues, true);
-      requireStringArray(slice.covers, "decisions", `${context}.covers`, issues, true);
-    }
-
-    requireStringArray(slice, "implementationTasks", context, issues, true);
+    requireStringArray(slice, "readsExisting", context, issues, false);
+    requireStringArray(slice, "sliceRules", context, issues, false);
+    requireStringArray(slice, "compositionNotes", context, issues, false);
     requireStringArray(slice, "doneWhen", context, issues, true);
+    requireArray(slice, "units", context, issues);
 
-    if (!isObject(slice.tests)) {
-      issues.push(`${context}.tests must be an object.`);
-    } else {
-      requireStringArray(slice.tests, "unit", `${context}.tests`, issues, true);
-      requireStringArray(slice.tests, "integration", `${context}.tests`, issues, true);
-      requireStringArray(slice.tests, "component", `${context}.tests`, issues, true);
+    if (slice.contractDependency !== undefined) {
+      validateContractDependency(slice.contractDependency, `${context}.contractDependency`, issues);
     }
 
-    if (!isObject(slice.logging)) {
-      issues.push(`${context}.logging must be an object.`);
-    } else {
-      requireStringArray(slice.logging, "info", `${context}.logging`, issues, true);
-      requireStringArray(slice.logging, "warn", `${context}.logging`, issues, true);
-      requireStringArray(slice.logging, "error", `${context}.logging`, issues, true);
-    }
-
-    if (slice.flags !== undefined) {
-      if (!isObject(slice.flags)) {
-        issues.push(`${context}.flags must be an object when provided.`);
-      } else {
-        requireBoolean(slice.flags, "contractChanges", `${context}.flags`, issues, false);
-        requireBoolean(slice.flags, "validationSensitive", `${context}.flags`, issues, false);
-      }
-    }
+    (slice.units ?? []).forEach((unit, unitIndex) => {
+      validateUnit(unit, `${context}.units[${unitIndex}]`, seenUnits, locationOwners, issues);
+    });
   });
+
+  for (const [locationHint, owners] of locationOwners.entries()) {
+    if (owners.length > 1) {
+      issues.push(`Unit location '${locationHint}' is owned by multiple slices (${owners.join(", ")}). Keep one owning slice per artifact.`);
+    }
+  }
 }
 
-function validateVerification(verification, issues) {
-  if (!isObject(verification)) {
+function validateContractDependency(contractDependency, context, issues) {
+  requireObject(contractDependency, context, issues);
+  requireString(contractDependency, "section", context, issues, true);
+  requireStringArray(contractDependency, "notes", context, issues, false);
+}
+
+function validateUnit(unit, context, seenUnits, locationOwners, issues) {
+  requireObject(unit, context, issues);
+  requireId(unit, context, seenUnits, issues);
+  requireEnum(unit, "kind", context, PLAN_UNIT_KINDS, issues);
+  requireString(unit, "locationHint", context, issues, true);
+  requireEnum(unit, "status", context, PLAN_UNIT_STATUSES, issues);
+  requireString(unit, "purpose", context, issues, true);
+  requireString(unit, "change", context, issues, true);
+  requireStringArray(unit, "contractDetails", context, issues, false);
+
+  if (!isObject(unit.tests)) {
+    issues.push(`${context}.tests must be an object.`);
+  } else {
+    requireStringArray(unit.tests, "levels", `${context}.tests`, issues, true);
+    requireString(unit.tests, "notes", `${context}.tests`, issues, true);
+
+    (unit.tests.levels ?? []).forEach((level, index) => {
+      if (!PLAN_TEST_LEVELS.includes(level)) {
+        issues.push(`${context}.tests.levels[${index}] must be one of: ${PLAN_TEST_LEVELS.join(", ")}.`);
+      }
+    });
+  }
+
+  if (unit.loggingNotes !== undefined && !isNonEmptyString(unit.loggingNotes)) {
+    issues.push(`${context}.loggingNotes must be a non-empty string when provided.`);
+  }
+
+  if (isNonEmptyString(unit.locationHint)) {
+    const owner = unit.id.split("-")[0] ?? unit.id;
+    locationOwners.set(unit.locationHint, [...(locationOwners.get(unit.locationHint) ?? []), owner]);
+  }
+}
+
+function validateFinalVerification(finalVerification, issues) {
+  if (!isObject(finalVerification)) {
     return;
   }
 
-  requireArray(verification, "slices", "verification", issues);
-  requireArray(verification, "finalGates", "verification", issues);
-
-  (verification.slices ?? []).forEach((entry, index) => {
-    const context = `verification.slices[${index}]`;
-    requireObject(entry, context, issues);
-    requireString(entry, "slice", context, issues, true);
-    requireStringArray(entry, "checks", context, issues, true);
-    requireString(entry, "evidence", context, issues, true);
-  });
-
-  (verification.finalGates ?? []).forEach((entry, index) => {
-    const context = `verification.finalGates[${index}]`;
-    requireObject(entry, context, issues);
-    requireString(entry, "gate", context, issues, true);
-    requireString(entry, "owner", context, issues, true);
-    requireBoolean(entry, "required", context, issues, true);
-    requireString(entry, "evidence", context, issues, true);
-  });
+  requireArray(finalVerification, "requiredGates", "finalVerification", issues);
+  requireStringArray(finalVerification, "notes", "finalVerification", issues, false);
 }
 
 function validateCrossReferences(plan, ids, issues) {
-  const refs = collectAllReferences(plan);
-
-  for (const ref of refs) {
+  for (const ref of collectAllReferences(plan)) {
     const targetSet = ids[ref.targetType];
-
-    if (!targetSet) {
-      issues.push(`Unknown reference type '${ref.targetType}' from ${ref.field}.`);
-      continue;
-    }
-
-    if (!isNonEmptyString(ref.targetId) || !targetSet.has(ref.targetId)) {
-      issues.push(
-        `${ref.field} in '${ref.sourceId}' references missing ${ref.targetType} id '${ref.targetId}'.`
-      );
+    if (!targetSet || !targetSet.has(ref.targetId)) {
+      issues.push(`${ref.field} in '${ref.sourceId}' references missing ${ref.targetType} id '${ref.targetId}'.`);
     }
   }
-}
-
-function validateFlowOrderAndCoverage(plan, ids, issues) {
-  const orders = [];
-
-  for (const step of plan.implementationFlow ?? []) {
-    if (Number.isInteger(step.order) && step.order > 0) {
-      orders.push(step.order);
-    }
-  }
-
-  if (orders.length > 0) {
-    const uniqueOrders = new Set(orders);
-    if (uniqueOrders.size !== orders.length) {
-      issues.push("implementationFlow.order values must be unique.");
-    }
-
-    const sorted = [...uniqueOrders].sort((left, right) => left - right);
-    if (sorted[0] !== 1) {
-      issues.push("implementationFlow.order must start at 1.");
-    }
-
-    for (let index = 0; index < sorted.length; index += 1) {
-      const expected = index + 1;
-      if (sorted[index] !== expected) {
-        issues.push("implementationFlow.order values must be contiguous.");
-        break;
-      }
-    }
-  }
-
-  const hasFlow = Array.isArray(plan.implementationFlow) && plan.implementationFlow.length > 0;
-  for (const slice of plan.slices) {
-    if (hasFlow && (slice.flowSteps ?? []).length === 0) {
-      issues.push(`Slice '${slice.id}' must reference at least one flow step.`);
-    }
-  }
-
-  const flowOwnershipCounts = new Map();
-  const flowById = new Map();
-
-  for (const step of plan.implementationFlow ?? []) {
-    flowById.set(step.id, step);
-  }
-
-  for (const slice of plan.slices) {
-    for (const flowId of slice.flowSteps ?? []) {
-      flowOwnershipCounts.set(flowId, (flowOwnershipCounts.get(flowId) ?? 0) + 1);
-
-      const step = flowById.get(flowId);
-      if (step && step.slice !== slice.id) {
-        issues.push(`Flow '${flowId}' belongs to slice '${step.slice}' but is referenced by slice '${slice.id}'.`);
-      }
-    }
-  }
-
-  for (const flowId of ids.flow) {
-    const count = flowOwnershipCounts.get(flowId) ?? 0;
-
-    if (count !== 1) {
-      issues.push(`Flow '${flowId}' must belong to exactly one slice (found ${count}).`);
-    }
-  }
-}
-
-function requireObject(value, context, issues) {
-  if (!isObject(value)) {
-    issues.push(`${context} must be an object.`);
-  }
-}
-
-function requireArray(value, key, context, issues) {
-  if (!Array.isArray(value?.[key])) {
-    issues.push(`${context}.${key} must be an array.`);
-  }
-}
-
-function requireId(value, context, seen, issues) {
-  requireString(value, "id", context, issues, true);
-
-  if (isNonEmptyString(value?.id)) {
-    if (seen.has(value.id)) {
-      issues.push(`${context}.id '${value.id}' is duplicated in this section.`);
-    }
-    seen.add(value.id);
-  }
-}
-
-function requireString(value, key, context, issues, required) {
-  if (!(key in value)) {
-    if (required) {
-      issues.push(`${context}.${key} is required.`);
-    }
-    return;
-  }
-
-  if (typeof value[key] !== "string" || !value[key].trim()) {
-    issues.push(`${context}.${key} must be a non-empty string.`);
-  }
-}
-
-function requireStringArray(value, key, context, issues, required) {
-  if (!(key in value)) {
-    if (required) {
-      issues.push(`${context}.${key} is required.`);
-    }
-    return;
-  }
-
-  if (!Array.isArray(value[key])) {
-    issues.push(`${context}.${key} must be an array of strings.`);
-    return;
-  }
-
-  value[key].forEach((item, index) => {
-    if (typeof item !== "string" || !item.trim()) {
-      issues.push(`${context}.${key}[${index}] must be a non-empty string.`);
-    }
-  });
-}
-
-function requireEnum(value, key, context, allowedValues, issues) {
-  requireString(value, key, context, issues, true);
-
-  if (typeof value?.[key] === "string" && !allowedValues.includes(value[key])) {
-    issues.push(`${context}.${key} must be one of: ${allowedValues.join(", ")}.`);
-  }
-}
-
-function requireBoolean(value, key, context, issues, required) {
-  if (!(key in value)) {
-    if (required) {
-      issues.push(`${context}.${key} is required.`);
-    }
-    return;
-  }
-
-  if (typeof value[key] !== "boolean") {
-    issues.push(`${context}.${key} must be boolean.`);
-  }
-}
-
-function isObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
 }

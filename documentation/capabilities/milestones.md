@@ -1,8 +1,10 @@
 # Capability: milestones
 
-Search GitLab project milestones through a provider-agnostic orchestration layer.
+Create and search GitLab project milestones through a provider-agnostic orchestration layer.
 
-Endpoint: POST /api/milestones/search
+Endpoints:
+- POST /api/milestones — create a milestone; returns HTTP 201 with milestoneId (GitLab iid) and title
+- POST /api/milestones/search — search milestones by state, title, and IID filters
 
 All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworchestrator/ unless marked otherwise.
 
@@ -12,23 +14,24 @@ All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworc
 
 | File | Role |
 |------|------|
-| orchestration/milestones/MilestonesService.java | Service that coordinates milestone search flow and logs request/response summary |
-| orchestration/milestones/MilestonesPort.java | Provider-agnostic port implemented by integration adapters |
+| orchestration/milestones/MilestonesService.java | Service that coordinates milestone search and create flows and logs request/response summary |
+| orchestration/milestones/MilestonesPort.java | Provider-agnostic port implemented by integration adapters; defines searchMilestones and createMilestone |
 
 ## Orchestration Models (orchestration/milestones/model/)
 
 | File | Role |
 |------|------|
-| Milestone.java | Shared milestone model used by issue detail and milestone search responses |
+| Milestone.java | Shared milestone model used by issue detail, milestone search, and milestone create responses |
 | MilestoneState.java | Enum: active, closed, all |
 | SearchMilestonesInput.java | Provider-agnostic milestone search input |
+| CreateMilestoneInput.java | Provider-agnostic milestone create input (title required; description, startDate, dueDate optional) |
 
 ## REST Layer
 
 | File | Role |
 |------|------|
-| orchestration/milestones/rest/MilestonesController.java | REST controller for POST /api/milestones/search |
-| orchestration/milestones/rest/MilestonesRequestValidator.java | Boundary validation for milestoneIds list rules |
+| orchestration/milestones/rest/MilestonesController.java | REST controller for POST /api/milestones (create) and POST /api/milestones/search |
+| orchestration/milestones/rest/MilestonesRequestValidator.java | Boundary validation: create request (title, date format, date ordering) and search milestoneIds list rules |
 | orchestration/milestones/rest/mapper/MilestonesRequestMapper.java | Request DTO to orchestration-model mapping with default ACTIVE behavior |
 | orchestration/milestones/rest/mapper/MilestonesResponseMapper.java | Orchestration-model to response DTO mapping |
 
@@ -36,6 +39,8 @@ All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworc
 
 | File | Role |
 |------|------|
+| CreateMilestoneRequest.java | Create milestone request body (title required; description, dueDate, startDate optional) |
+| CreateMilestoneResponse.java | Create milestone response (milestoneId, title only — milestoneId is GitLab iid) |
 | MilestoneDto.java | Shared milestone DTO reused by issue detail and milestone search responses |
 | SearchMilestonesRequest.java | Request body wrapper for milestone search |
 | MilestoneFiltersRequest.java | Optional milestone search filter fields |
@@ -47,8 +52,9 @@ All paths are relative to flow-orchestrator/src/main/java/com/gitlabflow/floworc
 
 | File | Role |
 |------|------|
-| integration/gitlab/milestones/GitLabMilestonesAdapter.java | MilestonesPort adapter; builds GitLab milestones URI, delegates page traversal to GitLabOffsetPaginationLoader, maps DTOs to shared Milestone model |
-| integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java | Maps GitLabMilestoneResponse to shared Milestone model |
+| integration/gitlab/milestones/GitLabMilestonesAdapter.java | MilestonesPort adapter; builds GitLab milestones URI, delegates page traversal to GitLabOffsetPaginationLoader, POSTs create milestone, maps DTOs to shared Milestone model |
+| integration/gitlab/milestones/mapper/GitLabMilestonesMapper.java | Maps CreateMilestoneInput to GitLabCreateMilestoneRequest and GitLabMilestoneResponse to shared Milestone model |
+| integration/gitlab/milestones/dto/GitLabCreateMilestoneRequest.java | GitLab create milestone request DTO (title, description, start_date, due_date); null optional fields omitted via @JsonInclude |
 | integration/gitlab/milestones/dto/GitLabMilestoneResponse.java | GitLab project milestones response DTO (id, iid, title, description, start_date, due_date, state) |
 
 ## Shared Milestone Reuse
@@ -70,6 +76,9 @@ Paths are relative to flow-orchestrator/src/test/.
 - java/.../orchestration/milestones/rest/dto/MilestoneDtoTest.java
 - java/.../orchestration/milestones/rest/dto/MilestoneFiltersRequestTest.java
 - java/.../orchestration/milestones/rest/dto/SearchMilestonesResponseTest.java
+- java/.../orchestration/milestones/model/CreateMilestoneInputTest.java
+- java/.../orchestration/milestones/rest/dto/CreateMilestoneRequestTest.java
+- java/.../orchestration/milestones/rest/dto/CreateMilestoneResponseTest.java
 - java/.../orchestration/milestones/rest/MilestonesRequestValidatorTest.java
 - java/.../orchestration/milestones/rest/mapper/MilestonesRequestMapperTest.java
 - java/.../orchestration/milestones/rest/mapper/MilestonesResponseMapperTest.java
@@ -79,6 +88,7 @@ Paths are relative to flow-orchestrator/src/test/.
 - integration/java/.../orchestration/milestones/rest/MilestonesControllerIT.java
 - component/java/.../milestones/MilestonesApiComponentTest.java
 - component/java/.../milestones/support/GitLabMilestonesStubSupport.java
+- karate/resources/milestones/milestones-create.feature
 - karate/resources/milestones/milestones-search.feature
 - java/.../integration/gitlab/issues/mapper/GitLabIssueDetailMapperTest.java
 - java/.../orchestration/issues/rest/mapper/IssuesResponseMapperTest.java

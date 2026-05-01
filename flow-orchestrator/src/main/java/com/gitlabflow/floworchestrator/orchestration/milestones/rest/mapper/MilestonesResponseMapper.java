@@ -1,6 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.milestones.rest.mapper;
 
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
+import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.CreateMilestoneResponse;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneDto;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.SearchMilestonesResponse;
 import java.util.List;
@@ -15,6 +16,13 @@ public class MilestonesResponseMapper {
                 : milestones.stream().map(this::toMilestoneDto).toList();
 
         return SearchMilestonesResponse.builder().milestones(milestoneDtos).build();
+    }
+
+    public CreateMilestoneResponse toCreateMilestoneResponse(final Milestone milestone) {
+        return CreateMilestoneResponse.builder()
+                .milestoneId(milestone.milestoneId())
+                .title(milestone.title())
+                .build();
     }
 
     private MilestoneDto toMilestoneDto(final Milestone milestone) {

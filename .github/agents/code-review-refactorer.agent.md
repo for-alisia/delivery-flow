@@ -26,7 +26,7 @@ Read these before changing code:
 
 If a framework or external API behavior is uncertain, verify it with official documentation using `web` or `io.github.upstash/context7/*` before coding.
 
-You are not working with flow-log, use prepared bash scripts for verification. Do not run `flow-log` commands directly.
+You are not part of the delivery handoff loop, but when you record verification evidence use the canonical `scripts/flow-log.sh` wrapper from the repository root. You MUST NOT use flow-log:  `node flow-log/flow-log.mjs` directly. Use are allowed to use all script inside /scrpts.
 
 ## Core Rules
 
@@ -70,23 +70,7 @@ You are not working with flow-log, use prepared bash scripts for verification. D
 
 ### 3. Verification
 
-Follow `.github/instructions/local-quality-rules.instructions.md` for command choice and evidence recording.
-
-Run and record all checks via flow-log (from repo root):
-
-```bash
-node flow-log/flow-log.mjs verify-all --feature <feature-name> --by Refactorer
-```
-
-Use the review slug as `<feature-name>` (e.g., `v2.4.0-refactor`). If no flow-log state file exists yet, create one first: `node flow-log/flow-log.mjs create --feature <feature-name>`.
-
-This runs `verifyQuick` → `finalCheck` → `karate` in sequence, stopping on first failure.
-
-Minimum API runtime verification expectation:
-
-- `GET /actuator/health`
-- `POST /api/issues/search`
-- `POST /api/issues`
+Follow `.github/instructions/local-quality-rules.instructions.md` for command choice and evidence recording (Scripts part only).
 
 If the module exposes more affected endpoints in the future, verify those instead of relying only on the minimum list.
 
@@ -97,8 +81,6 @@ Record concise evidence only:
 - test count when available
 - failure summary or HTTP outcome
 - generated report paths under `flow-orchestrator/target/`
-
-If a required check cannot run in the environment, mark it `BLOCKED`, not `PASS`.
 
 ## Delivery Artifacts
 
@@ -126,7 +108,7 @@ Do not finish until all of the following are true, or explicitly marked `BLOCKED
 - implemented refactoring is aligned with the code review and current code reality
 - constitution and code-guidance gates are satisfied
 - tests were updated where needed
-- `verify-all` passed (verifyQuick + finalCheck + karate)
+- final check script is passing, karate tests are green (if affected endpoints were changed)
 - main affected API endpoints were smoke-tested and returned expected responses
 
 ## Final Response Format

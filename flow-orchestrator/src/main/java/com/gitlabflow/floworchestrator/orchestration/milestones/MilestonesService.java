@@ -1,6 +1,7 @@
 package com.gitlabflow.floworchestrator.orchestration.milestones;
 
 import com.gitlabflow.floworchestrator.common.util.ElapsedTime;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
 import java.util.List;
@@ -29,5 +30,22 @@ public class MilestonesService {
                 milestones.size(),
                 ElapsedTime.toDurationMs(startedAt));
         return milestones;
+    }
+
+    public Milestone createMilestone(final CreateMilestoneInput input) {
+        final long startedAt = System.nanoTime();
+        log.info(
+                "Creating milestone titleLength={} descriptionPresent={} startDate={} dueDate={}",
+                input.title().length(),
+                input.description() != null,
+                input.startDate(),
+                input.dueDate());
+
+        final Milestone milestone = milestonesPort.createMilestone(input);
+        log.info(
+                "Milestone create completed milestoneId={} durationMs={}",
+                milestone.milestoneId(),
+                ElapsedTime.toDurationMs(startedAt));
+        return milestone;
     }
 }

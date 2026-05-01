@@ -1,12 +1,17 @@
 import { timestamp } from "./common.mjs";
 
 export function startBatch(state, slices, by) {
+  if (state.batches.current) {
+    throw new Error(`Batch ${state.batches.current.batch} is already in progress.`);
+  }
+
   const now = timestamp();
   const batchNumber = state.batches.total + 1;
 
   state.batches.current = {
     batch: batchNumber,
     slices: slices ?? [],
+    changedFiles: [],
     startedAt: now,
     completedAt: null,
     status: "in-progress",
@@ -42,7 +47,14 @@ export function summarizeBatches(state) {
   }
 
   return {
-    current: state.batches.current?.batch ?? null,
+    current: state.batches.current
+      ? {
+        batch: state.batches.current.batch,
+        slices: state.batches.current.slices ?? [],
+        changedFileCount: (state.batches.current.changedFiles ?? []).length,
+        changedFiles: state.batches.current.changedFiles ?? []
+      }
+      : null,
     completed: state.batches.history.length,
     total: state.batches.total
   };

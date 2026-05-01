@@ -3,7 +3,7 @@ name: "solution-reviewer"
 description: "Review the current state of flow-orchestrator, answer architecture and code-quality questions, and write a structured markdown review with strengths, gaps, and a prioritized refactoring plan."
 target: vscode
 tools: [read, search, edit, execute, todo, io.github.upstash/context7/*, web]
-model: Claude Opus 4.6 (copilot)
+model: GPT-5.4 (copilot)
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "Provide the version or scope to review. Default output: artifacts/code-reviews/v2.1.0-code-review.md"

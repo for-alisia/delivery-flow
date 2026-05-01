@@ -30,6 +30,7 @@ These are the non-negotiable constraints copied from the original request or exp
 
 Use this section only when the story touches client payloads or upstream APIs such as GitLab.
 Keep it slim and capture only the details that Architect, Coder, and Reviewer must preserve.
+Add compact concrete examples when field names, nullability, omitted-body behavior, or error payload shape are easy to misread.
 Do not paste large payload dumps unless the exact payload shape is the main risk.
 If not applicable, write `None.`
 
@@ -37,14 +38,19 @@ If not applicable, write `None.`
 
 - Operation or endpoint:
 - Required request shape notes:
+- Minimal request example (only when shape is easy to misread):
 - Required response shape notes:
+- Minimal success response example (only when shape is easy to misread):
 - Validation or error contract notes:
+- Minimal validation or error example (only when shape is easy to misread):
 
 ### Upstream / GitLab Contract
 
 - Operation or endpoint:
 - Required query or body notes:
+- Minimal upstream request example (only when shape is easy to misread):
 - Response fields relied on:
+- Minimal upstream response example (only when shape is easy to misread):
 - Official doc reference checked by Architect:
 
 ## Business Context and Constraints

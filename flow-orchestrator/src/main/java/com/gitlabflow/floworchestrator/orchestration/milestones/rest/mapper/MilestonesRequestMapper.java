@@ -2,8 +2,10 @@ package com.gitlabflow.floworchestrator.orchestration.milestones.rest.mapper;
 
 import static java.util.Optional.ofNullable;
 
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.MilestoneState;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.SearchMilestonesInput;
+import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.CreateMilestoneRequest;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.MilestoneFiltersRequest;
 import com.gitlabflow.floworchestrator.orchestration.milestones.rest.dto.SearchMilestonesRequest;
 import java.util.List;
@@ -33,6 +35,15 @@ public class MilestonesRequestMapper {
                 .state(state)
                 .titleSearch(titleSearch)
                 .milestoneIds(milestoneIds)
+                .build();
+    }
+
+    public CreateMilestoneInput toCreateMilestoneInput(final CreateMilestoneRequest request) {
+        return CreateMilestoneInput.builder()
+                .title(request.title())
+                .description(request.description())
+                .startDate(request.startDate())
+                .dueDate(request.dueDate())
                 .build();
     }
 }

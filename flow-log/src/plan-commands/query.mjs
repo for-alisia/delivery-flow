@@ -1,23 +1,18 @@
 import {
+  assertPlan,
   buildPlanSummary,
-  isV3Plan,
   loadPlan,
   resolvePlanPath,
   validatePlanReadiness,
   validatePlanShape,
   validateRiskLinks
 } from "../plan/index.mjs";
-import {
-  buildPlanSummary as buildPlanSummaryV2,
-  getPlanSection as getPlanSectionV2,
-  validatePlan as validatePlanV2
-} from "../plan/legacy-v2.mjs";
 import { optionalFlag, requiredFlag } from "../cli-helpers.mjs";
 
 export const PLAN_QUERY_COMMAND_HELP = [
   "validate-plan --feature <name> [--state-path <path>]",
   "plan-summary --feature <name> [--state-path <path>]",
-  "plan-get --feature <name> [--section <name>]"
+  "plan-get --feature <name> (--section <name> | --slice <id>)"
 ];
 
 export function dispatchPlanQueryCommand(command, parsed, cwd) {
@@ -38,19 +33,7 @@ function handleValidatePlan(parsed, cwd) {
   const explicitStatePath = optionalFlag(parsed, "state-path");
   const planPath = resolvePlanPath(cwd, feature);
   const plan = loadPlan(planPath);
-
-  if (!isV3Plan(plan)) {
-    const legacy = validatePlanV2(plan);
-    return {
-      ok: true,
-      command: "validate-plan",
-      feature,
-      planPath,
-      schemaVersion: plan.schemaVersion,
-      legacy: true,
-      ...legacy
-    };
-  }
+  assertPlan(plan);
 
   const shape = validatePlanShape(plan);
   const readiness = validatePlanReadiness(plan);
@@ -81,18 +64,7 @@ function handlePlanSummary(parsed, cwd) {
   const explicitStatePath = optionalFlag(parsed, "state-path");
   const planPath = resolvePlanPath(cwd, feature);
   const plan = loadPlan(planPath);
-
-  if (!isV3Plan(plan)) {
-    return {
-      ok: true,
-      command: "plan-summary",
-      feature,
-      planPath,
-      schemaVersion: plan.schemaVersion,
-      legacy: true,
-      ...buildPlanSummaryV2(plan)
-    };
-  }
+  assertPlan(plan);
 
   return {
     ok: true,
@@ -106,37 +78,50 @@ function handlePlanSummary(parsed, cwd) {
 function handlePlanGet(parsed, cwd) {
   const feature = requiredFlag(parsed, "feature");
   const section = optionalFlag(parsed, "section");
+  const sliceId = optionalFlag(parsed, "slice");
   const planPath = resolvePlanPath(cwd, feature);
   const plan = loadPlan(planPath);
+  assertPlan(plan);
 
-  if (!section) {
-    return { ok: true, command: "plan-get", feature, planPath, plan };
+  if (section && sliceId) {
+    throw new Error("Use either --section or --slice, not both.");
   }
 
-  if (!isV3Plan(plan)) {
-    const data = getPlanSectionV2(plan, section);
+  if (!section && !sliceId) {
+    throw new Error("plan-get requires --section or --slice.");
+  }
+
+  if (sliceId) {
+    const slice = (plan.slices ?? []).find((entry) => entry.id === sliceId);
+    if (!slice) {
+      throw new Error(`Unknown slice id: ${sliceId}`);
+    }
+
     return {
       ok: true,
       command: "plan-get",
       feature,
       planPath,
-      section,
-      data,
+      sliceId,
+      data: {
+        feature: plan.feature,
+        revision: plan.revision,
+        scope: plan.scope,
+        sharedRules: filterBySlice(plan.sharedRules ?? [], sliceId),
+        sharedDecisions: filterBySlice(plan.sharedDecisions ?? [], sliceId),
+        slice,
+        finalVerification: plan.finalVerification
+      },
       schemaVersion: plan.schemaVersion,
-      legacy: true
     };
   }
 
   const sections = {
     scope: plan.scope,
-    implementationFlow: plan.implementationFlow,
-    contractExamples: plan.contractExamples,
-    validationRules: plan.validationRules,
-    designDecisions: plan.designDecisions,
-    models: plan.models,
-    classes: plan.classes,
+    sharedRules: plan.sharedRules,
+    sharedDecisions: plan.sharedDecisions,
     slices: plan.slices,
-    verification: plan.verification,
+    finalVerification: plan.finalVerification,
     hash: plan.hash
   };
 
@@ -153,4 +138,8 @@ function handlePlanGet(parsed, cwd) {
     data: sections[section],
     schemaVersion: plan.schemaVersion
   };
+}
+
+function filterBySlice(entries, sliceId) {
+  return entries.filter((entry) => (entry.appliesTo ?? []).includes(sliceId));
 }

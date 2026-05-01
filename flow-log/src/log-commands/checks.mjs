@@ -52,7 +52,8 @@ export function handleAddChange(parsed, cwd) {
     command: "add-change",
     feature,
     statePath,
-    changedFiles: state.changes.files
+    changedFiles: state.changes.files,
+    currentBatchChangedFiles: state.batches?.current?.changedFiles ?? []
   };
 }
 
@@ -81,13 +82,13 @@ export function handleRunCheck(parsed, cwd) {
   };
 }
 
-export function handleVerifyAll(parsed, cwd) {
+export function handleVerify(parsed, cwd) {
   const { feature, state, statePath } = openState(parsed, cwd);
+  const profile = optionalFlag(parsed, "profile") ?? "full";
   const by = optionalFlag(parsed, "by") ?? "flow-log";
   const timeoutRaw = optionalFlag(parsed, "timeout");
   const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
-
-  const sequence = ["verifyQuick", "finalCheck", "karate"];
+  const sequence = resolveVerifySequence(profile);
   const results = [];
 
   for (const name of sequence) {
@@ -98,8 +99,9 @@ export function handleVerifyAll(parsed, cwd) {
     if (result.status !== "PASS") {
       return {
         ok: false,
-        command: "verify-all",
+        command: "verify",
         feature,
+        profile,
         statePath,
         stoppedAt: name,
         results,
@@ -110,45 +112,21 @@ export function handleVerifyAll(parsed, cwd) {
 
   return {
     ok: true,
-    command: "verify-all",
+    command: "verify",
     feature,
+    profile,
     statePath,
     results
   };
 }
 
-export function handleBatchVerify(parsed, cwd) {
-  const { feature, state, statePath } = openState(parsed, cwd);
-  const by = optionalFlag(parsed, "by") ?? "flow-log";
-  const timeoutRaw = optionalFlag(parsed, "timeout");
-  const timeout = timeoutRaw ? Number(timeoutRaw) : undefined;
-
-  const sequence = ["verifyQuick", "finalCheck"];
-  const results = [];
-
-  for (const name of sequence) {
-    const result = runAndRecordCheck(state, name, cwd, { timeout, by });
-    saveState(statePath, state);
-    results.push({ check: name, status: result.status, durationMs: result.durationMs });
-
-    if (result.status !== "PASS") {
-      return {
-        ok: false,
-        command: "batch-verify",
-        feature,
-        statePath,
-        stoppedAt: name,
-        results,
-        failedCheck: result
-      };
-    }
+function resolveVerifySequence(profile) {
+  if (profile === "full") {
+    return ["verifyQuick", "finalCheck", "karate"];
+  }
+  if (profile === "batch") {
+    return ["verifyQuick", "finalCheck"];
   }
 
-  return {
-    ok: true,
-    command: "batch-verify",
-    feature,
-    statePath,
-    results
-  };
+  throw new Error(`Unknown verify profile: ${profile}. Available: full, batch`);
 }

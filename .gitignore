@@ -9,6 +9,7 @@
 
 # Temp files
 .github/agentic-flow/temp
+temp/
 
 # Node / TypeScript
 mcp-server/node_modules/

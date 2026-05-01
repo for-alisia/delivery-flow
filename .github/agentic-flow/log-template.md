@@ -62,7 +62,7 @@ Suggested content:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                                                                      │
 │   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
-│    start-batch (max 2 slices)   run-check + add-change               │
+│    start-batch (max 2 slices)   verify + add-change                  │
 │                                                                      │
 │   9:TL ──► 10:CODE-REV ◄──► 8:CODER (loop) ──► 11:TL              │
 │    increment   findings         code-review-gate PASS    sign-off    │
@@ -72,14 +72,14 @@ Suggested content:
 ### Flow Step Clarification
 
 - **1:TL** — Requirement lock; `create` + `lock-requirements` with request source path
-- **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria
+- **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria and seed `External Contracts` when boundary contracts matter
 - **3:TL** — Story gate; `register-artifact story` + `approve-artifact story`
-- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via v3 draft lifecycle; plan must include slices, payloads, validation boundaries, logging, and tests
+- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via the v4 draft lifecycle; plan is slice-first and must include shared rules / decisions, owned units, done criteria, and final verification expectations. External payloads stay in story `External Contracts`
 - **5:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
 - **6:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
-- **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slices to Coder
-- **8:CODER** — Implements slices; records checks via `run-check` and files via `add-change`; runs `verify-all` before handoff; runs `coder-handoff-check.sh`
-- **9:TL** — Coder gate; checks `*Stale` fields in `flow-log status`; independent `run-check --name finalCheck` + `run-check --name karate`; `increment-code-review-round` and invokes Code Reviewer
+- **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slice IDs to Coder
+- **8:CODER** — Implements active slices via `summary` + `plan-get --slice`; loads story contracts via `story-get --section external-contracts` only when needed; records checks via `run-check` and files via `add-change`; runs `verify --profile batch` per slice and `verify --profile full` before handoff; runs `coder-handoff-check.sh`
+- **9:TL** — Coder gate; checks `storyStale`, `planStale`, and `*Stale` fields in `flow-log status`; re-runs only stale or suspect checks; does not re-run `finalCheck` or `karate` by default when coder evidence is fresh; `increment-code-review-round` and invokes Code Reviewer
 - **10:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
 - **11:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
 
@@ -279,7 +279,7 @@ Capture deviations such as:
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                                                                          │
 │   8:CODER×1 ─✗─ 8:CODER×2 ─✗─ 8:CODER×3 ─✓─ 9:TL                    │
-│   <reason>      <reason>        set-check+add-change                     │
+│   <reason>      <reason>        verify+add-change                        │
 │                                                                          │
 │   9:TL ── 10:CODE-REV×1 ─✗─ 10:CODE-REV×2 ─✓─  11:TL / BLOCKED      │
 │   final-check  <reason>          findings resolved    sign-off           │

@@ -11,7 +11,8 @@ All paths relative to `flow-orchestrator/src/main/java/com/gitlabflow/floworches
 
 **Maintenance rules:**
 - Code Reviewer updates the relevant `capabilities/<capability>.md` and `.http` examples after reviewing the implementation.
-- Architect creates a new `capabilities/<capability>.md` when planning a new capability and adds it to the index below.
+- Code Reviewer creates a new `capabilities/<capability>.md` and adds it to the Capability Index when a new capability is delivered.
+- Architect uses this map for planning, but does not create or update documentation during plan authoring.
 
 ---
 

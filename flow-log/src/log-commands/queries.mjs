@@ -3,6 +3,7 @@ import {
   buildStatus,
   buildSummary
 } from "../log/index.mjs";
+import { loadStorySection } from "../log/story-sections.mjs";
 import {
   optionalFlag,
   parsePositiveInteger
@@ -45,6 +46,27 @@ export function handleSummary(parsed, cwd) {
   return {
     ok: true,
     summary: buildSummary(state, cwd, statePath)
+  };
+}
+
+export function handleStoryGet(parsed, cwd) {
+  const section = optionalFlag(parsed, "section");
+  if (!section) {
+    throw new Error("Missing required flag: --section");
+  }
+
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const result = loadStorySection(state, cwd, section);
+
+  return {
+    ok: true,
+    command: "story-get",
+    feature,
+    statePath,
+    storyPath: result.storyPath,
+    section,
+    heading: result.heading,
+    content: result.content
   };
 }
 

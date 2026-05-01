@@ -2,7 +2,9 @@ package com.gitlabflow.floworchestrator.integration.gitlab.milestones.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gitlabflow.floworchestrator.integration.gitlab.milestones.dto.GitLabCreateMilestoneRequest;
 import com.gitlabflow.floworchestrator.integration.gitlab.milestones.dto.GitLabMilestoneResponse;
+import com.gitlabflow.floworchestrator.orchestration.milestones.model.CreateMilestoneInput;
 import com.gitlabflow.floworchestrator.orchestration.milestones.model.Milestone;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,33 @@ import org.junit.jupiter.api.Test;
 class GitLabMilestonesMapperTest {
 
     private final GitLabMilestonesMapper mapper = new GitLabMilestonesMapper();
+
+    @Test
+    @DisplayName("maps create milestone title-only input to GitLab request")
+    void mapsCreateMilestoneTitleOnlyInputToGitLabRequest() {
+        final CreateMilestoneInput input = new CreateMilestoneInput("Release v1.0", null, null, null);
+
+        final GitLabCreateMilestoneRequest request = mapper.toCreateRequest(input);
+
+        assertThat(request.title()).isEqualTo("Release v1.0");
+        assertThat(request.description()).isNull();
+        assertThat(request.startDate()).isNull();
+        assertThat(request.dueDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("maps create milestone full input to GitLab request")
+    void mapsCreateMilestoneFullInputToGitLabRequest() {
+        final CreateMilestoneInput input =
+                new CreateMilestoneInput("Q2 2026 Delivery", "Scope", "2026-04-01", "2026-06-30");
+
+        final GitLabCreateMilestoneRequest request = mapper.toCreateRequest(input);
+
+        assertThat(request.title()).isEqualTo("Q2 2026 Delivery");
+        assertThat(request.description()).isEqualTo("Scope");
+        assertThat(request.startDate()).isEqualTo("2026-04-01");
+        assertThat(request.dueDate()).isEqualTo("2026-06-30");
+    }
 
     @Test
     @DisplayName("maps GitLab milestone DTO fields to shared milestone model")

@@ -1,14 +1,12 @@
-export const PLAN_V3_SCHEMA_VERSION = "3.0";
+export const PLAN_SCHEMA_VERSION = "4.0";
 
-export const PLAN_EXAMPLE_TYPES = ["request", "success", "error", "validation-error"];
-export const PLAN_MODEL_KINDS = ["record", "enum", "interface", "sealed-interface", "class"];
-export const PLAN_MODEL_STATUSES = ["new", "modified", "existing"];
-export const PLAN_CLASS_STATUSES = ["new", "modified", "existing"];
-export const PLAN_SLICE_TEST_LEVELS = ["unit", "integration", "component"];
+export const PLAN_UNIT_KINDS = ["java-class", "karate-feature", "archunit-test", "config"];
+export const PLAN_UNIT_STATUSES = ["new", "modified", "existing"];
+export const PLAN_TEST_LEVELS = ["unit", "integration", "component", "karate", "archunit"];
 
 export function createInitialPlan(feature) {
   return {
-    schemaVersion: PLAN_V3_SCHEMA_VERSION,
+    schemaVersion: PLAN_SCHEMA_VERSION,
     feature,
     revision: 1,
     status: "draft",
@@ -18,16 +16,12 @@ export function createInitialPlan(feature) {
       outOfScope: [],
       constraints: []
     },
-    implementationFlow: [],
-    contractExamples: [],
-    validationRules: [],
-    designDecisions: [],
-    models: [],
-    classes: [],
+    sharedRules: [],
+    sharedDecisions: [],
     slices: [],
-    verification: {
-      slices: [],
-      finalGates: []
+    finalVerification: {
+      requiredGates: ["verifyQuick", "finalCheck", "karate"],
+      notes: []
     },
     hash: null
   };
@@ -37,13 +31,13 @@ export function createDraftFromPlan(plan) {
   return structuredClone(plan);
 }
 
-export function isV3Plan(plan) {
-  return plan?.schemaVersion === PLAN_V3_SCHEMA_VERSION;
+export function isPlan(plan) {
+  return plan?.schemaVersion === PLAN_SCHEMA_VERSION;
 }
 
-export function assertV3Plan(plan, contextLabel = "plan") {
-  if (!isV3Plan(plan)) {
+export function assertPlan(plan, contextLabel = "plan") {
+  if (!isPlan(plan)) {
     const version = typeof plan?.schemaVersion === "string" ? plan.schemaVersion : "unknown";
-    throw new Error(`${contextLabel} must use schemaVersion '${PLAN_V3_SCHEMA_VERSION}', found '${version}'.`);
+    throw new Error(`${contextLabel} must use schemaVersion '${PLAN_SCHEMA_VERSION}', found '${version}'.`);
   }
 }

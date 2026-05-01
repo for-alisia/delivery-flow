@@ -4,8 +4,10 @@ import { computePlanHash } from "./hash.mjs";
 import { ensureFeatureMatches, loadState, resolveStatePath } from "../log/store.mjs";
 
 export function buildPlanSummary(plan, cwd, feature, explicitStatePath, canonicalPlanPath) {
-  const currentHash = typeof plan.hash === "string" ? plan.hash : computePlanHash(plan);
+  const currentHash = computePlanHash(plan);
   const approval = buildApprovalSummary(plan, cwd, feature, currentHash, explicitStatePath, canonicalPlanPath);
+  const slices = plan.slices ?? [];
+  const units = slices.flatMap((slice) => slice.units ?? []);
 
   return {
     feature: plan.feature,
@@ -14,16 +16,19 @@ export function buildPlanSummary(plan, cwd, feature, explicitStatePath, canonica
     schemaVersion: plan.schemaVersion,
     hash: currentHash,
     sectionCounts: {
-      implementationFlow: (plan.implementationFlow ?? []).length,
-      slices: plan.slices.length,
-      models: plan.models.length,
-      classes: plan.classes.length,
-      contractExamples: (plan.contractExamples ?? []).length,
-      validationRules: plan.validationRules.length,
-      designDecisions: plan.designDecisions.length,
-      verificationSlices: (plan.verification?.slices ?? []).length,
-      verificationFinalGates: (plan.verification?.finalGates ?? []).length
+      slices: slices.length,
+      units: units.length,
+      sharedRules: (plan.sharedRules ?? []).length,
+      sharedDecisions: (plan.sharedDecisions ?? []).length,
+      finalVerificationGates: (plan.finalVerification?.requiredGates ?? []).length
     },
+    slices: slices.map((slice) => ({
+      id: slice.id,
+      title: slice.title,
+      dependsOn: slice.dependsOn ?? [],
+      unitCount: (slice.units ?? []).length,
+      unitIds: (slice.units ?? []).map((unit) => unit.id)
+    })),
     approval
   };
 }

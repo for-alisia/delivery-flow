@@ -1,4 +1,4 @@
-import { artifactExists } from "./artifacts.mjs";
+import { buildArtifactApprovalState } from "./artifacts.mjs";
 import { summarizeBatches } from "./batches.mjs";
 import { computeSourceFingerprint, isCheckStale, summarizeChecks } from "./checks.mjs";
 import { summarizeEventCounts } from "./events.mjs";
@@ -18,12 +18,12 @@ export function buildSummary(state, cwd, statePath) {
     statePath,
     updatedAt: state.updatedAt,
     timing: state.timing ?? null,
-    currentPhase: deriveCurrentPhase(state),
+    currentPhase: deriveCurrentPhase(state, cwd),
     requirementsLocked: state.requirements.locked,
     requestSource: state.requirements.requestSource ?? null,
     artifacts: {
-      story: summarizeArtifactCompact(state.artifacts.story, cwd),
-      plan: summarizeArtifactCompact(state.artifacts.plan, cwd)
+      story: summarizeArtifactCompact(cwd, "story", state.artifacts.story),
+      plan: summarizeArtifactCompact(cwd, "plan", state.artifacts.plan)
     },
     reviews: summarizeReviews(state.reviews),
     checks: summarizeChecks(state.checks),
@@ -31,6 +31,7 @@ export function buildSummary(state, cwd, statePath) {
     codeFindings: summarizeFindings(state),
     batches: summarizeBatches(state),
     changedFileCount: state.changes.files.length,
+    changedFiles: state.changes.files,
     events: summarizeEventCounts(state.events),
     readiness,
     nextActions: readiness.ready ? [] : readiness.reasons
@@ -41,15 +42,19 @@ export function buildStatus(state, cwd, statePath) {
   const readiness = buildSignoffReadiness(state, cwd);
   const gate = buildArchitectureGate(state);
   const currentFingerprint = computeSourceFingerprint(cwd);
+  const story = buildArtifactApprovalState(cwd, "story", state.artifacts.story);
+  const plan = buildArtifactApprovalState(cwd, "plan", state.artifacts.plan);
 
   return {
     feature: state.feature,
     statePath,
     updatedAt: state.updatedAt,
-    phase: deriveCurrentPhase(state),
+    phase: deriveCurrentPhase(state, cwd),
     requirementsLocked: state.requirements.locked,
-    storyApproved: state.artifacts.story.approved && artifactExists(cwd, state.artifacts.story.path),
-    planApproved: state.artifacts.plan.approved && artifactExists(cwd, state.artifacts.plan.path),
+    storyApproved: story.approved && story.exists,
+    storyStale: story.stale,
+    planApproved: plan.approved && plan.exists,
+    planStale: plan.stale,
     architectureReview: state.reviews.architectureReview.status,
     architectureGate: gate.gate,
     architectureReviewRound: state.architecturalRisks?.round ?? 0,
@@ -69,12 +74,16 @@ export function buildStatus(state, cwd, statePath) {
   };
 }
 
-function summarizeArtifactCompact(entry, cwd) {
+function summarizeArtifactCompact(cwd, artifactType, entry) {
+  const approval = buildArtifactApprovalState(cwd, artifactType, entry);
+
   return {
-    path: entry.path,
-    exists: artifactExists(cwd, entry.path),
-    approved: entry.approved,
-    approvedRevision: entry.approvedRevision ?? null,
-    approvedHash: entry.approvedHash ?? null
+    path: approval.path,
+    exists: approval.exists,
+    approved: approval.approved,
+    approvedRevision: approval.approvedRevision,
+    approvedHash: approval.approvedHash,
+    approvalTracked: approval.approvalTracked,
+    stale: approval.stale
   };
 }

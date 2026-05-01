@@ -1,148 +1,145 @@
-# Plan Management (v3)
+# Plan Management (v4)
 
-The canonical plan artifact is:
+The canonical implementation plan artifact is:
 
 `artifacts/implementation-plans/<feature>.plan.json`
 
-Plans use schema version `3.0` and are tool-owned — the Architect edits a draft, then flow-log validates and accepts it into the canonical file.
+Plans use a single schema version: `4.0`.
 
-## Draft Lifecycle
-
-```bash
-# 1. Create canonical v3 skeleton
-node flow-log/flow-log.mjs init-plan --feature my-feature
-
-# 2. Create or resume tool-managed draft
-node flow-log/flow-log.mjs plan-create-draft --feature my-feature
-
-# 3. Edit the draft directly at /tmp/flow-log-plan-drafts/<feature>.draft.json
-#    Use read_file and edit tools. The draft is a plain JSON file.
-
-# 4. Validate draft (shape + readiness + risk link stability)
-node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
-
-# 5. Accept validated draft into canonical plan
-node flow-log/flow-log.mjs plan-accept-draft --feature my-feature
-```
-
-### Draft path
-
-`/tmp/flow-log-plan-drafts/<feature>.draft.json`
-
-### Command behavior
-
-**`plan-create-draft`:**
-- Creates a new draft from canonical when no draft exists
-- Returns the existing draft when it already matches canonical
-- Refuses to silently reuse a draft that has unapplied changes; inspect it with `plan-draft-status` or reset it with `plan-discard-draft`
-
-**`plan-accept-draft`:**
-- Validates before write
-- Exits non-zero if validation fails
-- Returns `changed: false` on no-op
-- Bumps canonical `revision` and recomputes `hash` on change
-- Invalidates flow-log plan approval metadata (`approved`, `approvedRevision`, `approvedHash`) when canonical content changes
-
-### Draft inspection and cleanup
+## Draft lifecycle
 
 ```bash
-node flow-log/flow-log.mjs plan-draft-status --feature my-feature
-node flow-log/flow-log.mjs plan-discard-draft --feature my-feature
+scripts/flow-log.sh plan-init-draft --feature my-feature
+# edit /tmp/flow-log-plan-drafts/<feature>.draft.json
+scripts/flow-log.sh plan-validate-draft --feature my-feature
+scripts/flow-log.sh plan-accept-draft --feature my-feature
 ```
 
-## Plan Schema (v3.0)
+Use [artifacts/templates/plan-v4.example.json](../../artifacts/templates/plan-v4.example.json) as the canonical field-level example while authoring the draft.
 
-Top-level sections of a v3 plan JSON:
+### Draft behavior
 
-| Section | Type | Required | Purpose |
-|---------|------|----------|---------|
-| `scope` | object | **yes** | `purpose`, `inScope[]`, `outOfScope[]`, `constraints[]` |
-| `validationRules` | array | **yes** | Each with `id`, `rule`, `location` |
-| `designDecisions` | array | **yes** | Each with `id`, `decision`, `rationale` |
-| `models` | array | **yes** | Each with `id`, `name`, `kind` (record/enum/interface/sealed-interface/class), `status`, `package`, `justification`, `fields[]` |
-| `classes` | array | **yes** | Each with `id`, `path`, `status`, `role` |
-| `slices` | array | **yes** | Each with `id`, `goal`, `files[]`, tests, logging |
-| `verification` | object | **yes** | `slices[]` (per-slice test expectations), `finalGates[]` |
-| `implementationFlow` | array | optional | Ordered flow steps with IDs (`F1`, `F2`, …) — include only when the feature has a non-trivial multi-step execution sequence |
-| `contractExamples` | array | optional | Payload examples — include only when the feature exposes or changes an API contract |
+- `plan-create-draft` creates a draft from the canonical plan when none exists.
+- If the current draft already matches the canonical plan, the command returns the existing draft path.
+- If the current draft has unapplied changes, the command fails. Inspect it with `plan-draft-status` or reset it with `plan-discard-draft`.
+- `plan-accept-draft` validates before write and invalidates plan approval metadata when canonical content changes.
 
-### Model kinds
+## Plan shape
 
-`record`, `enum`, `interface`, `sealed-interface`, `class`
+A v4 plan is slice-first and keeps contract payload ownership in the story `External Contracts` section.
 
-### Validation
+Top-level sections:
+
+- `scope`
+- `sharedRules`
+- `sharedDecisions`
+- `slices`
+- `finalVerification`
+
+Required top-level fields:
+
+- `schemaVersion`
+- `feature`
+- `revision`
+- `status`
+- `scope`
+- `slices`
+- `finalVerification`
+
+## Slice shape
+
+Each slice is the primary delivery and review unit.
+
+Required slice fields:
+
+- `id`
+- `title`
+- `goal`
+- `dependsOn`
+- `units`
+- `doneWhen`
+
+Optional slice fields:
+
+- `readsExisting`
+- `sliceRules`
+- `contractDependency`
+- `compositionNotes`
+
+## Unit shape
+
+Each unit identifies one owned implementation artifact.
+
+Required unit fields:
+
+- `id`
+- `kind`
+- `locationHint`
+- `status`
+- `purpose`
+- `change`
+- `tests`
+
+Optional unit fields:
+
+- `contractDetails`
+- `loggingNotes`
+
+Supported `kind` values:
+
+- `java-class`
+- `karate-feature`
+- `archunit-test`
+- `config`
+
+## Validation
 
 ```bash
-# Validate canonical plan
-node flow-log/flow-log.mjs validate-plan --feature my-feature
-
-# Validate draft before accepting
-node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
+scripts/flow-log.sh validate-plan --feature my-feature
+scripts/flow-log.sh plan-validate-draft --feature my-feature
 ```
 
-Validation checks:
-- All required top-level sections present (`scope`, `validationRules`, `designDecisions`, `models`, `classes`, `slices`, `verification`)
-- Schema version is `3.0`
-- Models have non-empty `justification`
-- Existing models (`status: "existing"`) with >3 fields or methods produce a warning — list only fields/methods the Coder needs to call
-- Slices reference valid model/class IDs
-- Implementation flow references valid IDs (when `implementationFlow` is present)
-- Cross-references are consistent
+Validation checks cover:
 
-## Reading Plans (all agents)
+- required top-level and slice / unit fields
+- duplicate IDs
+- cross-reference integrity for shared rules, shared decisions, and slice dependencies
+- slice readiness (`units`, `doneWhen`, test expectations)
+- stable risk references for OPEN, REOPENED, and ADDRESSED architecture risks
+
+## Reading plans
+
+Default to slice-scoped reads whenever possible.
 
 ```bash
-# Full plan
-node flow-log/flow-log.mjs plan-get --feature my-feature
-
-# Specific section
-node flow-log/flow-log.mjs plan-get --feature my-feature --section slices
-node flow-log/flow-log.mjs plan-get --feature my-feature --section models
-
-# Plan summary (counts and approval status)
-node flow-log/flow-log.mjs plan-summary --feature my-feature
+scripts/flow-log.sh plan-summary --feature my-feature
+scripts/flow-log.sh plan-get --feature my-feature --slice S1
+scripts/flow-log.sh plan-get --feature my-feature --section sharedRules
 ```
 
-## Plan Revision (after architecture review)
+`plan-get` requires an explicit target. Use `--slice` for implementation intake and `--section` for shared context. `plan-summary` returns slice metadata including slice IDs, titles, dependency IDs, and unit counts.
 
-When addressing architecture review risks:
+## Story contract retrieval
+
+External payload contracts stay in the story, not in the plan.
 
 ```bash
-# 1. Create a draft from the current canonical plan
-node flow-log/flow-log.mjs plan-create-draft --feature my-feature
-
-# 2. Edit the draft JSON directly — follow the revision scope from the TL handoff:
-#    LOCAL_CORRECTION  → fix only cited items, no section rewrite
-#    SECTION_REWRITE   → rewrite affected sections; do not touch unrelated sections
-#    FULL_REPLAN       → rewrite the entire plan from scratch
-#    Remove orphaned mechanisms, stale references, and dual-path ambiguity
-
-# 3. Validate and accept
-node flow-log/flow-log.mjs plan-validate-draft --feature my-feature
-node flow-log/flow-log.mjs plan-accept-draft --feature my-feature
+scripts/flow-log.sh story-get --feature my-feature --section external-contracts
 ```
 
-After acceptance, flow-log invalidates prior plan approval until TL re-approves.
+Use this when a slice depends on request/response or upstream API details. Keep compact request / response / error examples in the story when field names, nullability, omitted-body behavior, or error body shape are easy to misread. If the story changed after approval, Team Lead must re-approve it before `story-get` will return content.
 
-## Reviewer Risk References
+## Revision rules
 
-`add-risk` supports plan-aware references:
+Architecture review findings must reference stable IDs:
 
-```bash
-node flow-log/flow-log.mjs add-risk \
-  --feature my-feature \
-  --severity HIGH \
-  --description "Flow step ownership is unclear" \
-  --plan-ref F3 \
-  --connected-area S2 \
-  --connected-area M4 \
-  --suggested-fix "Split flow step and rebind slice ownership"
-```
+- slice-level: `S1`
+- unit-level: `S1-U2`
+- shared rule / decision: `R1`, `D1`
 
-Fields: `planRefs` (primary affected plan IDs), `connectedAreas` (secondary related IDs), `suggestedFix` (reviewer-proposed remediation).
+When revising a plan:
 
-Risk link enforcement during validation and acceptance applies to `OPEN`, `REOPENED`, and `ADDRESSED` risks.
-
-## Legacy v2 Commands
-
-Legacy `add-plan-*`, `set-plan-*`, and `revise-plan` commands remain available for existing `schemaVersion: "2.0"` plans. They are marked as legacy in CLI help and should not be used for new plans.
+- keep unchanged slice IDs stable
+- keep unchanged unit IDs stable
+- update story `External Contracts` only when the contract understanding changed
+- if story `External Contracts` changed, Team Lead must re-register and re-approve the story before approving the plan again
