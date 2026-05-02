@@ -88,9 +88,10 @@ Optional unit fields:
 Supported `kind` values:
 
 - `java-class`
-- `karate-feature`
 - `archunit-test`
 - `config`
+
+`karate-feature` remains in the schema for previously accepted plans, but it is not part of the active v2.5.3 authoring workflow. New plans should reference approved E2E scenario IDs in test notes instead of assigning Karate implementation work to Coder.
 
 ## Validation
 

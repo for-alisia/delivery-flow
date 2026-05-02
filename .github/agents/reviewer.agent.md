@@ -55,13 +55,14 @@ scripts/flow-log.sh summary --feature <feature-name>
 
 Review:
 - original request (path from flow-log `requestSource`)
-- active slice IDs from `flow-log summary`
+- approved E2E scenario artifact from `flow-log summary -> artifacts.e2e.path` when `summary.e2e.mode = SCENARIOS_REQUIRED`
+- active slice ID from `flow-log summary -> sliceRuns.current.slice` when a slice-run is open
 - approved plan slices: `scripts/flow-log.sh plan-get --feature <feature-name> --slice <slice-id>`
 - shared plan context only when needed: `plan-get --section sharedRules`, `plan-get --section sharedDecisions`, `plan-get --section finalVerification`
 - story contracts only when a reviewed slice depends on them: `scripts/flow-log.sh story-get --feature <feature-name> --section external-contracts` (including compact request / response / error examples when present)
 - flow-log checks and events (from `summary`)
 - architecture review outcome (flow-log `reviews.architectureReview`)
-- changed source files from the active batch (`flow-log summary -> batches.current.changedFiles`); if no batch is active, fall back to `summary.changedFiles`
+- changed source files from the active slice-run (`flow-log summary -> sliceRuns.current.changedFiles`); if no slice-run is active, fall back to `summary.changedFiles`
 - changed test files
 - `documentation/constitution.md`
 - `documentation/code-guidance.md`
@@ -75,9 +76,12 @@ Validate evidence before reviewing code quality.
 
 - Query `flow-log summary` for check statuses and events.
 - If `summary.artifacts.story.stale` or `summary.artifacts.plan.stale` is `true`, mark the review `BLOCKED` until Team Lead re-approves the artifact.
+- If `summary.e2e.mode = SCENARIOS_REQUIRED` and `summary.artifacts.e2e.stale` is `true`, mark the review `BLOCKED` until Team Lead re-approves the E2E artifact.
 - Confirm that `finalCheck` and `karate` checks are recorded as `PASS` in flow-log.
 - Check `flow-log status` for `*Stale` fields — if `finalCheckStale` or `karateStale` is `true`, the source changed after the check passed. Mark the stale check as suspect.
 - If `finalCheck` status is `NOT_RUN` or suspect (including stale), re-run via `scripts/flow-log.sh run-check --feature <feature-name> --name finalCheck --by CodeReviewer`.
+- If `finalCheck` is `FAIL`, `BLOCKED`, or a reviewer rerun fails, inspect `scripts/flow-log.sh check-log --feature <feature-name> --name finalCheck --lines 80` before recording the review outcome.
+- If `karate` is `FAIL` or `BLOCKED`, inspect `scripts/flow-log.sh check-log --feature <feature-name> --name karate --lines 80` and cite that evidence in the review result.
 - Never re-run startup or Karate tests.
 - If startup or Karate evidence is missing (check status is `NOT_RUN`), mark `BLOCKED`.
 
@@ -109,6 +113,8 @@ On re-invocation, read each finding's `responseNote` from `flow-log summary → 
 
 Focus re-review on OPEN and REOPENED findings. Do not re-scan resolved items. New code from fixes may introduce new issues — check those too.
 
+Findings marked `ACCEPTED` or `DEFERRED` are Team Lead-reviewed debt. Do not re-surface them as blocking unless new evidence appears.
+
 ### What to check
 
 - naming consistency
@@ -118,6 +124,7 @@ Focus re-review on OPEN and REOPENED findings. Do not re-scan resolved items. Ne
 - over-engineering
 - missing or misleading log context
 - test quality and placement
+- When `summary.e2e.mode = SCENARIOS_REQUIRED`: Karate scenario alignment with the approved E2E scenario artifact and repeatability rules
 - edge-case coverage required by the plan
 - interface contracts are complete — no empty marker interfaces, no interfaces missing common accessor methods that implementations carry
 - DTO hierarchies mirror domain model interface contracts in shape
@@ -151,7 +158,7 @@ After code quality review, update documentation to reflect the actual implementa
 
 ### Review protocol
 
-1. Validate evidence (flow-log checks, finalCheck and karate statuses).
+1. Validate evidence (approved story / E2E / plan artifacts, flow-log checks, finalCheck and karate statuses).
 2. Compare implementation to plan and approved deviations.
 3. Compare changed files against the owned slice units, not against a whole-plan artifact inventory.
 4. Check architecture boundaries and test levels.

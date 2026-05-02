@@ -1,6 +1,7 @@
 import {
   addFinding,
   buildCodeReviewGate,
+  decideFinding,
   incrementCodeReviewRound,
   reopenFinding,
   resolveFinding,
@@ -60,6 +61,25 @@ export function handleResolveFinding(parsed, cwd) {
   return {
     ok: true,
     command: "resolve-finding",
+    feature,
+    statePath,
+    finding
+  };
+}
+
+export function handleDecideFinding(parsed, cwd) {
+  const findingId = parsePositiveInteger(requiredFlag(parsed, "id"), "finding id");
+  const status = requiredFlag(parsed, "status");
+  const reason = requiredFlag(parsed, "reason");
+  const followUpRef = optionalFlag(parsed, "follow-up");
+  const by = optionalFlag(parsed, "by");
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const finding = decideFinding(state, findingId, status, reason, by, followUpRef);
+  saveState(statePath, state);
+
+  return {
+    ok: true,
+    command: "decide-finding",
     feature,
     statePath,
     finding

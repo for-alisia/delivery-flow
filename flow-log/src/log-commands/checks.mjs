@@ -2,6 +2,7 @@ import {
   CHECK_NAMES,
   CHECK_STATUSES,
   appendChangedFiles,
+  loadPersistedCheckLog,
   runAndRecordCheck,
   saveState,
   setCheck,
@@ -10,6 +11,7 @@ import {
 import {
   normalizeArray,
   optionalFlag,
+  parsePositiveInteger,
   requiredFlag
 } from "../cli-helpers.mjs";
 import { openState } from "./shared.mjs";
@@ -53,7 +55,7 @@ export function handleAddChange(parsed, cwd) {
     feature,
     statePath,
     changedFiles: state.changes.files,
-    currentBatchChangedFiles: state.batches?.current?.changedFiles ?? []
+    currentSliceRunChangedFiles: state.sliceRuns?.current?.changedFiles ?? []
   };
 }
 
@@ -124,9 +126,30 @@ function resolveVerifySequence(profile) {
   if (profile === "full") {
     return ["verifyQuick", "finalCheck", "karate"];
   }
-  if (profile === "batch") {
+  if (profile === "slice") {
     return ["verifyQuick", "finalCheck"];
   }
 
-  throw new Error(`Unknown verify profile: ${profile}. Available: full, batch`);
+  throw new Error(`Unknown verify profile: ${profile}. Available: full, slice`);
+}
+
+export function handleCheckLog(parsed, cwd) {
+  const name = requiredFlag(parsed, "name");
+  validateValue(name, CHECK_NAMES, "check name");
+
+  const linesValue = optionalFlag(parsed, "lines");
+  const lines = linesValue === undefined ? undefined : parsePositiveInteger(linesValue, "lines");
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const log = loadPersistedCheckLog(state, name, { lines });
+
+  return {
+    ok: true,
+    command: "check-log",
+    feature,
+    statePath,
+    check: name,
+    status: state.checks[name].status,
+    updatedAt: state.checks[name].updatedAt,
+    ...log
+  };
 }

@@ -1,6 +1,7 @@
 import {
   addRisk,
   buildArchitectureGate,
+  decideRisk,
   incrementReviewRound,
   reclassifyRisk,
   reopenRisk,
@@ -74,6 +75,25 @@ export function handleResolveRisk(parsed, cwd) {
   return {
     ok: true,
     command: "resolve-risk",
+    feature,
+    statePath,
+    risk
+  };
+}
+
+export function handleDecideRisk(parsed, cwd) {
+  const riskId = parsePositiveInteger(requiredFlag(parsed, "id"), "risk id");
+  const status = requiredFlag(parsed, "status");
+  const reason = requiredFlag(parsed, "reason");
+  const followUpRef = optionalFlag(parsed, "follow-up");
+  const by = optionalFlag(parsed, "by");
+  const { feature, state, statePath } = openState(parsed, cwd);
+  const risk = decideRisk(state, riskId, status, reason, by, followUpRef);
+  saveState(statePath, state);
+
+  return {
+    ok: true,
+    command: "decide-risk",
     feature,
     statePath,
     risk

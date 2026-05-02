@@ -30,11 +30,18 @@ scripts/flow-log.sh run-check --feature <name> --name karate --by <agent>
 Or run the standard sequences through one command:
 
 ```bash
-scripts/flow-log.sh verify --feature <name> --profile batch --by <agent>
+scripts/flow-log.sh verify --feature <name> --profile slice --by <agent>
 scripts/flow-log.sh verify --feature <name> --profile full --by <agent>
 ```
 
-`verify --profile batch` runs `verifyQuick` then `finalCheck`. `verify --profile full` runs `verifyQuick`, `finalCheck`, then `karate`. `run-check` maps each check name to the correct script automatically. On failure, the JSON output includes `outputTail` (last 80 lines) for diagnosis. Do not run scripts separately and then call `set-check` — that pattern is error-prone and deprecated for agent use.
+`verify --profile slice` runs `verifyQuick` then `finalCheck`. `verify --profile full` runs `verifyQuick`, `finalCheck`, then `karate`. In the active workflow, use the `slice` profile for coder handoff work and reserve the `full` profile for exceptional combined reruns only. `run-check` maps each check name to the correct script automatically. On failure, the JSON output includes `outputTail` (last 80 lines) plus `logPath` for the persisted redacted check log. Use `scripts/flow-log.sh check-log --feature <name> --name <verifyQuick|finalCheck|karate> --lines 80` before rerunning a non-obvious failure or when review / smoke evidence needs deeper inspection. Do not run scripts separately and then call `set-check` — that pattern is error-prone and deprecated for agent use.
+
+Active workflow ownership:
+
+- `Java Coder` uses `verify --profile slice` for every slice-run.
+- When `e2eMode = SCENARIOS_REQUIRED`, `E2E Tester` owns `run-check --name karate` after the final slice-run and after any later source change that makes `karateStale=true`.
+- When `e2eMode = REUSE_EXISTING`, Team Lead runs `run-check --name karate` directly against the existing Karate suite.
+- `verify --profile full` remains available for exceptional combined reruns, but it is not the default handoff path in the active workflow.
 
 ### Source Staleness Detection
 

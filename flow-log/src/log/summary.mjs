@@ -1,5 +1,4 @@
 import { buildArtifactApprovalState } from "./artifacts.mjs";
-import { summarizeBatches } from "./batches.mjs";
 import { computeSourceFingerprint, isCheckStale, summarizeChecks } from "./checks.mjs";
 import { summarizeEventCounts } from "./events.mjs";
 import { buildCodeReviewGate, summarizeFindings } from "./findings.mjs";
@@ -9,6 +8,7 @@ import {
 } from "./gates.mjs";
 import { buildArchitectureGate, summarizeRisks } from "./risks.mjs";
 import { summarizeReviews } from "./reviews.mjs";
+import { ensureSliceRunsState, summarizeSliceRuns } from "./slice-runs.mjs";
 
 export function buildSummary(state, cwd, statePath) {
   const readiness = buildSignoffReadiness(state, cwd);
@@ -21,15 +21,22 @@ export function buildSummary(state, cwd, statePath) {
     currentPhase: deriveCurrentPhase(state, cwd),
     requirementsLocked: state.requirements.locked,
     requestSource: state.requirements.requestSource ?? null,
+    e2e: {
+      mode: state.e2e?.mode ?? "UNDECIDED",
+      decidedAt: state.e2e?.decidedAt ?? null,
+      decidedBy: state.e2e?.decidedBy ?? null,
+      reason: state.e2e?.reason ?? null
+    },
     artifacts: {
       story: summarizeArtifactCompact(cwd, "story", state.artifacts.story),
+      e2e: summarizeArtifactCompact(cwd, "e2e", state.artifacts.e2e),
       plan: summarizeArtifactCompact(cwd, "plan", state.artifacts.plan)
     },
     reviews: summarizeReviews(state.reviews),
     checks: summarizeChecks(state.checks),
     architecturalRisks: summarizeRisks(state),
     codeFindings: summarizeFindings(state),
-    batches: summarizeBatches(state),
+    sliceRuns: summarizeSliceRuns(state),
     changedFileCount: state.changes.files.length,
     changedFiles: state.changes.files,
     events: summarizeEventCounts(state.events),
@@ -43,7 +50,9 @@ export function buildStatus(state, cwd, statePath) {
   const gate = buildArchitectureGate(state);
   const currentFingerprint = computeSourceFingerprint(cwd);
   const story = buildArtifactApprovalState(cwd, "story", state.artifacts.story);
+  const e2e = buildArtifactApprovalState(cwd, "e2e", state.artifacts.e2e);
   const plan = buildArtifactApprovalState(cwd, "plan", state.artifacts.plan);
+  const sliceRuns = ensureSliceRunsState(state);
 
   return {
     feature: state.feature,
@@ -51,8 +60,11 @@ export function buildStatus(state, cwd, statePath) {
     updatedAt: state.updatedAt,
     phase: deriveCurrentPhase(state, cwd),
     requirementsLocked: state.requirements.locked,
+    e2eMode: state.e2e?.mode ?? "UNDECIDED",
     storyApproved: story.approved && story.exists,
     storyStale: story.stale,
+    e2eApproved: e2e.approved && e2e.exists,
+    e2eStale: e2e.stale,
     planApproved: plan.approved && plan.exists,
     planStale: plan.stale,
     architectureReview: state.reviews.architectureReview.status,
@@ -67,8 +79,10 @@ export function buildStatus(state, cwd, statePath) {
     finalCheckStale: isCheckStale(state.checks.finalCheck, currentFingerprint),
     karate: state.checks.karate.status,
     karateStale: isCheckStale(state.checks.karate, currentFingerprint),
-    currentBatch: state.batches?.current?.batch ?? null,
-    totalBatches: state.batches?.total ?? 0,
+    currentSliceRun: sliceRuns.current?.run ?? null,
+    currentSlice: sliceRuns.current?.slice ?? null,
+    currentSliceRunType: sliceRuns.current?.type ?? null,
+    totalSliceRuns: sliceRuns.total ?? 0,
     readyForSignoff: readiness.ready,
     missing: readiness.reasons
   };

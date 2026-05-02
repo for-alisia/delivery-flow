@@ -1,6 +1,6 @@
 ---
 applyTo: "**"
-description: "Delivery flow rules for Team Lead, Product Manager, Java Architect, Java Coder, and Reviewer. Apply during agentic delivery workflow execution."
+description: "Delivery flow rules for Team Lead, Product Manager, E2E Tester, Java Architect, Java Coder, and Reviewer. Apply during agentic delivery workflow execution."
 ---
 
 ## Delivery Flow Rules

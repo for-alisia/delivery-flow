@@ -8,13 +8,26 @@ test("flow-log records minimal workflow facts and reports signoff readiness", ()
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
   const storyPath = path.join(tempRoot, "story.md");
+  const e2ePath = path.join(tempRoot, "demo.e2e.md");
   const planPath = path.join(tempRoot, "plan.md");
 
   fs.writeFileSync(storyPath, "# Story\n");
+  fs.writeFileSync(e2ePath, "# E2E Scenarios\n");
   fs.writeFileSync(planPath, "# Plan\n");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   runCli(tempRoot, ["lock-requirements", "--feature", "demo", "--state-path", statePath, "--by", "TL"]);
+  runCli(tempRoot, [
+    "set-e2e-mode",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--mode",
+    "SCENARIOS_REQUIRED",
+    "--by",
+    "TL"
+  ]);
   runCli(tempRoot, [
     "register-artifact",
     "story",
@@ -28,6 +41,26 @@ test("flow-log records minimal workflow facts and reports signoff readiness", ()
   runCli(tempRoot, [
     "approve-artifact",
     "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+  runCli(tempRoot, [
+    "register-artifact",
+    "e2e",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--path",
+    e2ePath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "e2e",
     "--feature",
     "demo",
     "--state-path",
@@ -125,6 +158,135 @@ test("flow-log records minimal workflow facts and reports signoff readiness", ()
   assert.deepEqual(readiness.readiness.reasons, []);
 });
 
+test("flow-log signoff allows reuse-existing smoke without an e2e artifact", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const storyPath = path.join(tempRoot, "story.md");
+  const planPath = path.join(tempRoot, "plan.md");
+
+  fs.writeFileSync(storyPath, "# Story\n");
+  fs.writeFileSync(planPath, "# Plan\n");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["lock-requirements", "--feature", "demo", "--state-path", statePath, "--by", "TL"]);
+  runCli(tempRoot, [
+    "set-e2e-mode",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--mode",
+    "REUSE_EXISTING",
+    "--by",
+    "TL",
+    "--reason",
+    "Internal refactor only; existing smoke coverage is reused."
+  ]);
+  runCli(tempRoot, [
+    "register-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--path",
+    storyPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "story",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+  runCli(tempRoot, [
+    "register-artifact",
+    "plan",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--path",
+    planPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact",
+    "plan",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--by",
+    "TL"
+  ]);
+  runCli(tempRoot, [
+    "set-review",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--name",
+    "architectureReview",
+    "--status",
+    "PASS",
+    "--by",
+    "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "set-review",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--name",
+    "codeReview",
+    "--status",
+    "PASS",
+    "--by",
+    "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "set-check",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--name",
+    "finalCheck",
+    "--status",
+    "PASS",
+    "--by",
+    "TL",
+    "--command",
+    "scripts/final-check.sh"
+  ]);
+  runCli(tempRoot, [
+    "set-check",
+    "--feature",
+    "demo",
+    "--state-path",
+    statePath,
+    "--name",
+    "karate",
+    "--status",
+    "PASS",
+    "--by",
+    "TL",
+    "--command",
+    "scripts/karate-test.sh"
+  ]);
+
+  const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  const readiness = runCli(tempRoot, ["readiness", "signoff", "--feature", "demo", "--state-path", statePath]);
+
+  assert.equal(status.status.e2eMode, "REUSE_EXISTING");
+  assert.equal(readiness.readiness.checks.e2eMode, "REUSE_EXISTING");
+  assert.equal(readiness.readiness.ready, true);
+});
+
 test("flow-log summary reports missing signoff requirements", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
@@ -206,91 +368,98 @@ test("flow-log tracks red cards and rejections in event history", () => {
   assert.equal(history.events[1].relatedReview, "codeReview");
 });
 
-test("flow-log tracks batch lifecycle (start, complete, multiple batches)", () => {
+test("flow-log tracks slice-run lifecycle (start, complete, multiple runs)", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   registerApprovedPlan(tempRoot, statePath, "demo", ["slice-1", "slice-2", "slice-3"]);
 
-  const firstBatch = runCli(tempRoot, [
-    "start-batch",
+  const firstSliceRun = runCli(tempRoot, [
+    "start-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--slice", "slice-1",
-    "--slice", "slice-2",
+    "--type", "intermediate",
     "--by", "TL"
   ]);
-  assert.equal(firstBatch.ok, true);
-  assert.equal(firstBatch.batch.batch, 1);
-  assert.deepEqual(firstBatch.batch.slices, ["slice-1", "slice-2"]);
-  assert.equal(firstBatch.batch.status, "in-progress");
+  assert.equal(firstSliceRun.ok, true);
+  assert.equal(firstSliceRun.sliceRun.run, 1);
+  assert.equal(firstSliceRun.sliceRun.slice, "slice-1");
+  assert.equal(firstSliceRun.sliceRun.type, "intermediate");
+  assert.equal(firstSliceRun.sliceRun.status, "in-progress");
 
   const midStatus = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
-  assert.equal(midStatus.status.currentBatch, 1);
-  assert.equal(midStatus.status.totalBatches, 1);
+  assert.equal(midStatus.status.currentSliceRun, 1);
+  assert.equal(midStatus.status.currentSlice, "slice-1");
+  assert.equal(midStatus.status.currentSliceRunType, "intermediate");
+  assert.equal(midStatus.status.totalSliceRuns, 1);
 
   const firstComplete = runCli(tempRoot, [
-    "complete-batch",
+    "complete-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--status", "complete"
   ]);
   assert.equal(firstComplete.ok, true);
-  assert.equal(firstComplete.completedBatch.batch, 1);
-  assert.equal(firstComplete.completedBatch.status, "complete");
-  assert.equal(firstComplete.totalBatches, 1);
+  assert.equal(firstComplete.completedSliceRun.run, 1);
+  assert.equal(firstComplete.completedSliceRun.status, "complete");
+  assert.equal(firstComplete.totalSliceRuns, 1);
 
   runCli(tempRoot, [
-    "start-batch",
+    "start-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--slice", "slice-3",
+    "--type", "final",
     "--by", "TL"
   ]);
   runCli(tempRoot, [
-    "complete-batch",
+    "complete-slice-run",
     "--feature", "demo",
     "--state-path", statePath
   ]);
 
   const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
-  assert.equal(summary.summary.batches.completed, 2);
-  assert.equal(summary.summary.batches.total, 2);
-  assert.equal(summary.summary.batches.current, null);
-  assert.equal(summary.summary.events.counts.batchStart, 2);
-  assert.equal(summary.summary.events.counts.batchEnd, 2);
+  assert.equal(summary.summary.sliceRuns.completed, 2);
+  assert.equal(summary.summary.sliceRuns.total, 2);
+  assert.equal(summary.summary.sliceRuns.current, null);
+  assert.equal(summary.summary.events.counts.sliceRunStart, 2);
+  assert.equal(summary.summary.events.counts.sliceRunEnd, 2);
 
   const history = runCli(tempRoot, ["history", "--feature", "demo", "--state-path", statePath]);
-  assert.equal(history.events[0].type, "batchStart");
-  assert.deepEqual(history.events[0].slices, ["slice-1", "slice-2"]);
-  assert.equal(history.events[1].type, "batchEnd");
-  assert.equal(history.events[1].batchStatus, "complete");
+  assert.equal(history.events[0].type, "sliceRunStart");
+  assert.equal(history.events[0].slice, "slice-1");
+  assert.equal(history.events[0].sliceRunType, "intermediate");
+  assert.equal(history.events[1].type, "sliceRunEnd");
+  assert.equal(history.events[1].sliceRunStatus, "complete");
+  assert.equal(history.events[1].sliceRunType, "intermediate");
 });
 
-test("flow-log summary exposes active batch slice ids", () => {
+test("flow-log summary exposes the active slice-run", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
   runCli(tempRoot, [
-    "start-batch",
+    "start-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--slice", "S1",
-    "--slice", "S2",
+    "--type", "intermediate",
     "--by", "TL"
   ]);
 
   const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
-  assert.equal(summary.summary.batches.current.batch, 1);
-  assert.deepEqual(summary.summary.batches.current.slices, ["S1", "S2"]);
-  assert.equal(summary.summary.batches.current.changedFileCount, 0);
-  assert.deepEqual(summary.summary.batches.current.changedFiles, []);
+  assert.equal(summary.summary.sliceRuns.current.run, 1);
+  assert.equal(summary.summary.sliceRuns.current.slice, "S1");
+  assert.equal(summary.summary.sliceRuns.current.type, "intermediate");
+  assert.equal(summary.summary.sliceRuns.current.changedFileCount, 0);
+  assert.deepEqual(summary.summary.sliceRuns.current.changedFiles, []);
 });
 
-test("flow-log start-batch requires explicit approved slice ids", () => {
+test("flow-log start-slice-run requires one explicit approved slice id and handoff type", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -298,36 +467,48 @@ test("flow-log start-batch requires explicit approved slice ids", () => {
   registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
 
   const missingSlice = runCliRaw(tempRoot, [
-    "start-batch", "--feature", "demo", "--state-path", statePath
+    "start-slice-run", "--feature", "demo", "--state-path", statePath
   ]);
   assert.notEqual(missingSlice.status, 0);
-  assert.match(missingSlice.stderr, /requires at least one --slice/i);
+  assert.match(missingSlice.stderr, /Missing required flag: --slice/i);
+
+  const missingType = runCliRaw(tempRoot, [
+    "start-slice-run", "--feature", "demo", "--state-path", statePath, "--slice", "S1"
+  ]);
+  assert.notEqual(missingType.status, 0);
+  assert.match(missingType.stderr, /Missing required flag: --type/i);
+
+  const unknownType = runCliRaw(tempRoot, [
+    "start-slice-run", "--feature", "demo", "--state-path", statePath, "--slice", "S1", "--type", "review"
+  ]);
+  assert.notEqual(unknownType.status, 0);
+  assert.match(unknownType.stderr, /slice-run type must be one of/i);
 
   const unknownSlice = runCliRaw(tempRoot, [
-    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S404"
+    "start-slice-run", "--feature", "demo", "--state-path", statePath, "--slice", "S404", "--type", "intermediate"
   ]);
   assert.notEqual(unknownSlice.status, 0);
-  assert.match(unknownSlice.stderr, /Unknown approved slice ids: S404/);
+  assert.match(unknownSlice.stderr, /Unknown approved slice id: S404/);
 });
 
-test("flow-log start-batch rejects a second in-progress batch", () => {
+test("flow-log start-slice-run rejects a second in-progress slice-run", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   registerApprovedPlan(tempRoot, statePath, "demo", ["S1", "S2"]);
   runCli(tempRoot, [
-    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S1", "--by", "TL"
+    "start-slice-run", "--feature", "demo", "--state-path", statePath, "--slice", "S1", "--type", "intermediate", "--by", "TL"
   ]);
 
   const secondStart = runCliRaw(tempRoot, [
-    "start-batch", "--feature", "demo", "--state-path", statePath, "--slice", "S2", "--by", "TL"
+    "start-slice-run", "--feature", "demo", "--state-path", statePath, "--slice", "S2", "--type", "intermediate", "--by", "TL"
   ]);
   assert.notEqual(secondStart.status, 0);
   assert.match(secondStart.stderr, /already in progress/i);
 });
 
-test("flow-log start-batch rejects stale approved plan after direct file edits even when stored hash is unchanged", () => {
+test("flow-log start-slice-run rejects stale approved plan after direct file edits even when stored hash is unchanged", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
   const feature = "demo";
@@ -364,13 +545,15 @@ test("flow-log start-batch rejects stale approved plan after direct file edits e
   fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
 
   const start = runCliRaw(tempRoot, [
-    "start-batch",
+    "start-slice-run",
     "--feature",
     feature,
     "--state-path",
     statePath,
     "--slice",
     "S1",
+    "--type",
+    "intermediate",
     "--by",
     "TL"
   ]);
@@ -385,10 +568,11 @@ test("flow-log summary exposes changed files for review intake", () => {
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   registerApprovedPlan(tempRoot, statePath, "demo", ["S1"]);
   runCli(tempRoot, [
-    "start-batch",
+    "start-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--slice", "S1",
+    "--type", "intermediate",
     "--by", "TL"
   ]);
   runCli(tempRoot, [
@@ -405,24 +589,25 @@ test("flow-log summary exposes changed files for review intake", () => {
     "flow-orchestrator/src/main/java/com/example/Demo.java",
     "flow-orchestrator/src/test/java/com/example/DemoTest.java"
   ]);
-  assert.equal(summary.summary.batches.current.changedFileCount, 2);
-  assert.deepEqual(summary.summary.batches.current.changedFiles, [
+  assert.equal(summary.summary.sliceRuns.current.changedFileCount, 2);
+  assert.deepEqual(summary.summary.sliceRuns.current.changedFiles, [
     "flow-orchestrator/src/main/java/com/example/Demo.java",
     "flow-orchestrator/src/test/java/com/example/DemoTest.java"
   ]);
 });
 
-test("flow-log complete-batch preserves changed file ownership in history", () => {
+test("flow-log complete-slice-run preserves changed file ownership in history", () => {
   const tempRoot = createPlanTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
   registerApprovedPlan(tempRoot, statePath, "demo", ["S1"]);
   runCli(tempRoot, [
-    "start-batch",
+    "start-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--slice", "S1",
+    "--type", "intermediate",
     "--by", "TL"
   ]);
   runCli(tempRoot, [
@@ -432,15 +617,15 @@ test("flow-log complete-batch preserves changed file ownership in history", () =
     "--file", "flow-orchestrator/src/main/java/com/example/Demo.java"
   ]);
   runCli(tempRoot, [
-    "complete-batch",
+    "complete-slice-run",
     "--feature", "demo",
     "--state-path", statePath,
     "--status", "complete"
   ]);
 
   const state = runCli(tempRoot, ["get", "--feature", "demo", "--state-path", statePath]);
-  assert.equal(state.state.batches.history.length, 1);
-  assert.deepEqual(state.state.batches.history[0].changedFiles, [
+  assert.equal(state.state.sliceRuns.history.length, 1);
+  assert.deepEqual(state.state.sliceRuns.history[0].changedFiles, [
     "flow-orchestrator/src/main/java/com/example/Demo.java"
   ]);
 });
@@ -906,6 +1091,57 @@ test("flow-log reclassify-risk to LOW makes risk non-blocking", () => {
   const gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
   assert.equal(gate.gate, "PASS");
   assert.equal(gate.unresolvedBlocking, 0);
+  assert.equal(gate.undecidedNonBlocking, 1);
+});
+
+test("flow-log decide-risk records explicit non-blocking architecture debt", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
+
+  runCli(tempRoot, [
+    "add-risk", "--feature", "demo", "--state-path", statePath,
+    "--severity", "MEDIUM", "--description", "Logging context could be richer",
+    "--plan-ref", "S1", "--by", "ArchitectureReviewer"
+  ]);
+
+  const decision = runCli(tempRoot, [
+    "decide-risk", "--feature", "demo", "--state-path", statePath,
+    "--id", "1", "--status", "ACCEPTED",
+    "--reason", "Acceptable for this release; not worth another plan loop.",
+    "--follow-up", "cleanup-story", "--by", "TL"
+  ]);
+
+  assert.equal(decision.risk.status, "ACCEPTED");
+  assert.equal(decision.risk.decisionReason, "Acceptable for this release; not worth another plan loop.");
+  assert.equal(decision.risk.followUpRef, "cleanup-story");
+
+  const gate = runCli(tempRoot, ["architecture-gate", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(gate.gate, "PASS");
+  assert.equal(gate.accepted, 1);
+  assert.equal(gate.undecidedNonBlocking, 0);
+
+  const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(summary.summary.architecturalRisks.byStatus.ACCEPTED, 1);
+  assert.equal(summary.summary.architecturalRisks.debt.accepted, 1);
+  assert.equal(summary.summary.architecturalRisks.risks[0].decisionReason, "Acceptable for this release; not worth another plan loop.");
+
+  const invalid = runCliRaw(tempRoot, [
+    "add-risk", "--feature", "demo", "--state-path", statePath,
+    "--severity", "HIGH", "--description", "Blocking defect",
+    "--plan-ref", "S1", "--by", "ArchitectureReviewer"
+  ]);
+  assert.equal(invalid.status, 0);
+
+  const invalidDecision = runCliRaw(tempRoot, [
+    "decide-risk", "--feature", "demo", "--state-path", statePath,
+    "--id", "2", "--status", "DEFERRED",
+    "--reason", "Should not be allowed", "--by", "TL"
+  ]);
+  assert.notEqual(invalidDecision.status, 0);
+  assert.match(invalidDecision.stderr, /only MEDIUM or LOW risks can be ACCEPTED or DEFERRED/i);
 });
 
 test("flow-log code findings full lifecycle: add, respond, resolve/reopen, gate", () => {
@@ -966,6 +1202,99 @@ test("flow-log code findings full lifecycle: add, respond, resolve/reopen, gate"
   const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
   assert.equal(status.status.codeReviewGate, "PASS");
   assert.equal(status.status.codeReviewRound, 1);
+});
+
+test("flow-log readiness signoff requires explicit decisions for non-blocking review debt", () => {
+  const tempRoot = createTempRoot();
+  const statePath = path.join(tempRoot, "feature.json");
+  const storyPath = path.join(tempRoot, "story.md");
+  const planPath = path.join(tempRoot, "plan.md");
+
+  fs.writeFileSync(storyPath, "# Story\n");
+  fs.writeFileSync(planPath, "# Plan\n");
+
+  runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, ["lock-requirements", "--feature", "demo", "--state-path", statePath, "--by", "TL"]);
+  runCli(tempRoot, [
+    "set-e2e-mode", "--feature", "demo", "--state-path", statePath,
+    "--mode", "REUSE_EXISTING", "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "register-artifact", "story", "--feature", "demo", "--state-path", statePath,
+    "--path", storyPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact", "story", "--feature", "demo", "--state-path", statePath,
+    "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "register-artifact", "plan", "--feature", "demo", "--state-path", statePath,
+    "--path", planPath
+  ]);
+  runCli(tempRoot, [
+    "approve-artifact", "plan", "--feature", "demo", "--state-path", statePath,
+    "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "set-review", "--feature", "demo", "--state-path", statePath,
+    "--name", "architectureReview", "--status", "PASS", "--by", "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "set-review", "--feature", "demo", "--state-path", statePath,
+    "--name", "codeReview", "--status", "PASS", "--by", "Reviewer"
+  ]);
+  runCli(tempRoot, [
+    "set-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "finalCheck", "--status", "PASS", "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "set-check", "--feature", "demo", "--state-path", statePath,
+    "--name", "karate", "--status", "PASS", "--by", "TL"
+  ]);
+  runCli(tempRoot, ["increment-round", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, [
+    "add-risk", "--feature", "demo", "--state-path", statePath,
+    "--severity", "MEDIUM", "--description", "Minor naming debt",
+    "--plan-ref", "S1", "--by", "ArchitectureReviewer"
+  ]);
+  runCli(tempRoot, ["increment-code-review-round", "--feature", "demo", "--state-path", statePath]);
+  runCli(tempRoot, [
+    "add-finding", "--feature", "demo", "--state-path", statePath,
+    "--severity", "LOW", "--description", "Extract constant", "--by", "CodeReviewer"
+  ]);
+
+  let readiness = runCli(tempRoot, [
+    "readiness", "signoff", "--feature", "demo", "--state-path", statePath
+  ]);
+  assert.equal(readiness.readiness.ready, false);
+  assert.ok(readiness.readiness.reasons.some((reason) => reason.includes("Non-blocking architecture risks still require TL decision")));
+  assert.ok(readiness.readiness.reasons.some((reason) => reason.includes("Non-blocking code findings still require TL decision")));
+
+  const statusBefore = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(statusBefore.status.phase, "review-debt");
+
+  runCli(tempRoot, [
+    "decide-risk", "--feature", "demo", "--state-path", statePath,
+    "--id", "1", "--status", "ACCEPTED",
+    "--reason", "Accept naming debt for this release.", "--by", "TL"
+  ]);
+  runCli(tempRoot, [
+    "decide-finding", "--feature", "demo", "--state-path", statePath,
+    "--id", "1", "--status", "DEFERRED",
+    "--reason", "Track in cleanup story.", "--follow-up", "cleanup-story", "--by", "TL"
+  ]);
+
+  readiness = runCli(tempRoot, [
+    "readiness", "signoff", "--feature", "demo", "--state-path", statePath
+  ]);
+  assert.equal(readiness.readiness.ready, true);
+
+  const summary = runCli(tempRoot, ["summary", "--feature", "demo", "--state-path", statePath]);
+  assert.equal(summary.summary.architecturalRisks.byStatus.ACCEPTED, 1);
+  assert.equal(summary.summary.codeFindings.byStatus.DEFERRED, 1);
+  assert.equal(summary.summary.architecturalRisks.debt.accepted, 1);
+  assert.equal(summary.summary.codeFindings.debt.deferred, 1);
+  assert.equal(summary.summary.codeFindings.findings[0].followUpRef, "cleanup-story");
 });
 
 test("flow-log code findings reopen and escalation after 3 rounds", () => {
@@ -1124,7 +1453,7 @@ test("flow-log run-check records FAIL on non-zero exit", () => {
   const statePath = path.join(tempRoot, "feature.json");
   const scriptPath = path.join(tempRoot, "fail-script.sh");
 
-  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\necho 'Test failed: 3 errors'\nexit 1\n", { mode: 0o755 });
+  fs.writeFileSync(scriptPath, "#!/usr/bin/env bash\necho 'Authorization: Bearer secret-token-value'\necho 'TOKEN=secret-value'\necho 'bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)'\necho 'Test failed: 3 errors'\nexit 1\n", { mode: 0o755 });
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const result = runCli(tempRoot, [
@@ -1136,9 +1465,32 @@ test("flow-log run-check records FAIL on non-zero exit", () => {
   assert.equal(result.status, "FAIL");
   assert.equal(result.exitCode, 1);
   assert.ok(result.outputTail.some(line => line.includes("3 errors")));
+  assert.ok(result.outputTail.some(line => line.includes("[REDACTED]")));
+  assert.ok(!result.outputTail.some(line => line.includes("secret-token-value")));
+  assert.ok(result.logPath);
+  assert.ok(fs.existsSync(result.logPath));
+
+  const persisted = fs.readFileSync(result.logPath, "utf8");
+  assert.match(persisted, /Test failed: 3 errors/);
+  assert.match(persisted, /\[REDACTED\]/);
+  assert.doesNotMatch(persisted, /secret-token-value/);
+
+  const logResult = runCli(tempRoot, [
+    "check-log", "--feature", "demo", "--state-path", statePath,
+    "--name", "verifyQuick", "--lines", "2"
+  ]);
+  assert.equal(logResult.check, "verifyQuick");
+  assert.equal(logResult.status, "FAIL");
+  assert.equal(logResult.logPath, result.logPath);
+  assert.ok(logResult.lines.some(line => line.includes("3 errors")));
+  assert.ok(logResult.lines.some(line => line.includes("[REDACTED]")));
+  assert.ok(!logResult.lines.some(line => line.includes("setlocale")));
 
   const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
   assert.equal(status.status.verifyQuick, "FAIL");
+
+  const raw = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  assert.equal(raw.checks.verifyQuick.logPath, result.logPath);
 });
 
 test("flow-log run-check records FAIL on timeout", () => {
@@ -1157,6 +1509,8 @@ test("flow-log run-check records FAIL on timeout", () => {
   assert.equal(result.ok, false);
   assert.equal(result.status, "FAIL");
   assert.equal(result.timedOut, true);
+  assert.ok(result.logPath);
+  assert.ok(fs.existsSync(result.logPath));
 
   const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
   assert.equal(status.status.karate, "FAIL");
@@ -1411,6 +1765,8 @@ test("flow-log verify --profile full stops on first failure and reports which ch
   assert.equal(result.results[1].check, "finalCheck");
   assert.equal(result.results[1].status, "FAIL");
   assert.ok(result.failedCheck.outputTail.some(line => line.includes("format error")));
+  assert.ok(result.failedCheck.logPath);
+  assert.ok(fs.existsSync(result.failedCheck.logPath));
 
   // karate should still be NOT_RUN since we stopped early
   const status = runCli(tempRoot, ["status", "--feature", "demo", "--state-path", statePath]);
@@ -1419,9 +1775,9 @@ test("flow-log verify --profile full stops on first failure and reports which ch
   assert.equal(status.status.karate, "NOT_RUN");
 });
 
-// --- verify batch tests ---
+// --- verify slice profile tests ---
 
-test("flow-log verify --profile batch runs verifyQuick and finalCheck only", () => {
+test("flow-log verify --profile slice runs verifyQuick and finalCheck only", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -1434,12 +1790,12 @@ test("flow-log verify --profile batch runs verifyQuick and finalCheck only", () 
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const result = runCli(tempRoot, [
-    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "batch", "--by", "JavaCoder"
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "slice", "--by", "JavaCoder"
   ]);
 
   assert.equal(result.ok, true);
   assert.equal(result.command, "verify");
-  assert.equal(result.profile, "batch");
+  assert.equal(result.profile, "slice");
   assert.equal(result.results.length, 2);
   assert.equal(result.results[0].check, "verifyQuick");
   assert.equal(result.results[0].status, "PASS");
@@ -1453,7 +1809,7 @@ test("flow-log verify --profile batch runs verifyQuick and finalCheck only", () 
   assert.equal(status.status.karate, "NOT_RUN");
 });
 
-test("flow-log verify --profile batch stops on first failure", () => {
+test("flow-log verify --profile slice stops on first failure", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
 
@@ -1465,7 +1821,7 @@ test("flow-log verify --profile batch stops on first failure", () => {
   runCli(tempRoot, ["create", "--feature", "demo", "--state-path", statePath]);
 
   const raw = runCliRaw(tempRoot, [
-    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "batch"
+    "verify", "--feature", "demo", "--state-path", statePath, "--profile", "slice"
   ]);
   const result = JSON.parse(raw.stdout);
 
@@ -1474,6 +1830,8 @@ test("flow-log verify --profile batch stops on first failure", () => {
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0].status, "FAIL");
   assert.ok(result.failedCheck.outputTail.some(line => line.includes("compile error")));
+  assert.ok(result.failedCheck.logPath);
+  assert.ok(fs.existsSync(result.failedCheck.logPath));
 });
 
 // --- run-check PASS output trimming ---
@@ -1535,7 +1893,7 @@ function buildValidV4Plan(feature, sliceIds = ["S1"]) {
     status: "approved",
     scope: {
       purpose: "Test plan",
-      inScope: ["Batch validation"],
+      inScope: ["Slice validation"],
       outOfScope: ["None"],
       constraints: []
     },
@@ -1553,7 +1911,7 @@ function buildValidV4Plan(feature, sliceIds = ["S1"]) {
           locationHint: `flow-orchestrator/src/main/java/com/example/${sliceId}Handler.java`,
           status: "new",
           purpose: `Unit for ${sliceId}`,
-          change: "Implement the batch-owned unit.",
+          change: "Implement the slice-owned unit.",
           tests: {
             levels: ["unit"],
             notes: "Exercise the owned unit."

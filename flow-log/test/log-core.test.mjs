@@ -11,15 +11,17 @@ import {
   appendEvent,
   buildArchitectureGate,
   buildCodeReviewGate,
-  completeBatch,
+  completeSliceRun,
   createInitialState,
+  decideFinding,
+  decideRisk,
   ensureFeatureMatches,
   incrementCodeReviewRound,
   incrementReviewRound,
   loadState,
   saveState,
-  startBatch,
-  summarizeBatches,
+  startSliceRun,
+  summarizeSliceRuns,
   summarizeEventCounts
 } from "../src/log/index.mjs";
 import { createTempRoot } from "./test-helpers.mjs";
@@ -48,8 +50,8 @@ test("event summary counts all supported event types and never returns NaN", () 
     assert.equal(Number.isNaN(summary.counts[type]), false);
   }
 
-  assert.equal(summary.counts.batchStart, 0);
-  assert.equal(summary.counts.batchEnd, 0);
+  assert.equal(summary.counts.sliceRunStart, 0);
+  assert.equal(summary.counts.sliceRunEnd, 0);
 });
 
 test("architecture gate returns PASS, FAIL, and ESCALATE for expected conditions", () => {
@@ -98,6 +100,40 @@ test("code review gate returns PASS, FAIL, and ESCALATE for expected conditions"
   assert.equal(escalateGate.unresolvedBlocking, 1);
 });
 
+test("review gates surface explicit non-blocking debt counts", () => {
+  const architectureState = createInitialState("demo-arch-debt");
+  incrementReviewRound(architectureState);
+  addRisk(architectureState, "MEDIUM", "Naming cleanup", "ArchitectureReviewer", null, ["S1"]);
+
+  let architectureGate = buildArchitectureGate(architectureState);
+  assert.equal(architectureGate.gate, "PASS");
+  assert.equal(architectureGate.undecidedNonBlocking, 1);
+  assert.equal(architectureGate.accepted, 0);
+  assert.equal(architectureGate.deferred, 0);
+
+  decideRisk(architectureState, 1, "ACCEPTED", "Accept naming debt for this delivery.", "TL", null);
+  architectureGate = buildArchitectureGate(architectureState);
+  assert.equal(architectureGate.gate, "PASS");
+  assert.equal(architectureGate.undecidedNonBlocking, 0);
+  assert.equal(architectureGate.accepted, 1);
+
+  const codeState = createInitialState("demo-code-debt");
+  incrementCodeReviewRound(codeState);
+  addFinding(codeState, "LOW", "Extract constant", "src/App.java", "CodeReviewer");
+
+  let codeGate = buildCodeReviewGate(codeState);
+  assert.equal(codeGate.gate, "PASS");
+  assert.equal(codeGate.undecidedNonBlocking, 1);
+  assert.equal(codeGate.accepted, 0);
+  assert.equal(codeGate.deferred, 0);
+
+  decideFinding(codeState, 1, "DEFERRED", "Follow up in cleanup story.", "TL", "cleanup-story");
+  codeGate = buildCodeReviewGate(codeState);
+  assert.equal(codeGate.gate, "PASS");
+  assert.equal(codeGate.undecidedNonBlocking, 0);
+  assert.equal(codeGate.deferred, 1);
+});
+
 test("store layer updates updatedAt, validates shape, and rejects feature mismatches", () => {
   const tempRoot = createTempRoot();
   const statePath = path.join(tempRoot, "feature.json");
@@ -123,21 +159,21 @@ test("store layer updates updatedAt, validates shape, and rejects feature mismat
   );
 });
 
-test("batch lifecycle guards complete-without-start and preserves history totals", () => {
+test("slice-run lifecycle guards complete-without-start and preserves history totals", () => {
   const state = createInitialState("demo");
 
   assert.throws(
-    () => completeBatch(state),
-    /No batch is currently in progress/
+    () => completeSliceRun(state),
+    /No slice-run is currently in progress/
   );
 
-  startBatch(state, ["slice-1"], "TL");
-  completeBatch(state, "complete");
+  startSliceRun(state, "slice-1", "intermediate", "TL");
+  completeSliceRun(state, "complete");
 
-  startBatch(state, ["slice-2"], "TL");
-  completeBatch(state);
+  startSliceRun(state, "slice-2", "final", "TL");
+  completeSliceRun(state);
 
-  const summary = summarizeBatches(state);
+  const summary = summarizeSliceRuns(state);
   assert.equal(summary.current, null);
   assert.equal(summary.completed, 2);
   assert.equal(summary.total, 2);

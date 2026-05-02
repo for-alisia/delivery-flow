@@ -116,6 +116,8 @@ When summary shows risks with status `ADDRESSED` or `INVALIDATED`:
 - If the response is weak, hand-wavy, or does not actually fix the problem → `reopen-risk` with `--reason`
 - May add new risks found in the revised plan.
 
+When summary shows risks with status `ACCEPTED` or `DEFERRED`, treat them as Team Lead-reviewed debt. Do not re-surface them as blocking unless new evidence appears.
+
 Do not accept a response just because it was provided. Accept it because it is correct.
 
 ## Boundaries
