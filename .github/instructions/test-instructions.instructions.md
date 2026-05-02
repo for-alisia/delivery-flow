@@ -11,7 +11,7 @@ description: "Test placement, naming, levels, coverage, and quality rules for wr
 - Use `src/test/java` for unit logic, validation, defaulting, mapping, error translation, adapter tests with mocked collaborators, and lightweight config/context tests.
 - Keep architecture tests in `src/test/architecture/java` and name classes `*ArchitectureTest`.
 - Use `src/test/architecture/java` for ArchUnit and similar structural rules that validate package boundaries, dependency rules, layering, and cycle constraints without starting Spring or a running application.
-- The Architect defines new ArchUnit rules when a plan introduces new layer interactions or package boundaries not covered by existing rules. The Coder implements those rules alongside production code. Same ownership model as Karate tests.
+- The Architect defines new ArchUnit rules when a plan introduces new layer interactions or package boundaries not covered by existing rules. The Coder implements those rules alongside production code.
 - Do not remove or weaken existing ArchUnit rules without explicit approval. They enforce `constitution.md` boundaries.
 - Keep Spring-backed integration tests in `src/test/integration/java` and name classes `*IT`.
 - Use `src/test/integration/java` for `@WebMvcTest` and other Spring-wired slice or integration tests that prove request binding, validation, response mapping, HTTP errors, or cross-bean behavior.
@@ -23,7 +23,11 @@ description: "Test placement, naming, levels, coverage, and quality rules for wr
 - Use Karate tests for end-to-end API verification against a running application. Tag all smoke scenarios with `@smoke`.
 - Karate tests are isolated from unit and quality-gate runs — they only execute via `scripts/karate-test.sh` or the `-Pkarate` Maven profile. Do not add Karate runner classes to surefire or default failsafe includes.
 - For local smoke verification, prefer `scripts/karate-test.sh` over manual startup plus raw Maven. The script reuses a healthy local app when available or starts it automatically.
-- The Architect writes Karate `.feature` files directly as part of the implementation plan. The Team Lead executes them. The Coder may only adjust existing Karate tests for small payload or endpoint changes (field names, URL paths, status codes, request/response bodies) but does not add scenarios, remove scenarios, or change test logic.
+- When API-facing behavior or smoke coverage changes, the E2E Tester writes and updates Karate `.feature` files and runners from the approved E2E scenario artifact, then records the smoke result via `flow-log run-check --name karate`.
+- The Java Architect references approved E2E scenario IDs in plan notes when runtime smoke coverage matters but does not write Karate files.
+- The Java Coder does not write or modify Karate `.feature` files or runners.
+- For internal refactors or business-logic-only changes where existing smoke coverage is sufficient, Team Lead reuses the existing Karate suite and runs the `karate` check directly.
+- For mutable write-path smoke scenarios, use unique values or cleanup so reruns remain repeatable.
 - Prefer the smallest test level that proves the change.
 - Do not duplicate the same scenario across unit, integration, and component tests unless each level proves something different.
 - Every non-trivial logic, validation, defaulting, mapping, or error translation change requires unit coverage.

@@ -48,10 +48,12 @@ Suggested content:
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        INTENDED FLOW                                 │
 │                                                                      │
-│   1:TL ──────► 2:PM ──────► 3:TL ──────► 4:ARCH ──────► 5:TL      │
-│    create+lock   story.md     register     plan.json      register   │
+│ 1:TL ─► 2:PM ─► 3:TL ─► 4:TL ─► 5:ARCH ─► 6:TL                  │
+│ lock      story     story-gate  e2e-mode   plan       plan-gate    │
 │                                                                      │
-│   5:TL ──► 6:ARCH-REV ◄──► 4:ARCH (loop) ──► 7:TL                 │
+│ if `SCENARIOS_REQUIRED`: 4:TL ─► E2E ─► TL before planning          │
+│                                                                      │
+│   6:TL ──► 7:ARCH-REV ◄──► 5:ARCH (loop) ──► 8:TL                 │
 │    increment     risks (UNCLASSIFIED)          arch-gate PASS        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -61,11 +63,16 @@ Suggested content:
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                                                                      │
-│   7:TL ──────────────────────► 8:CODER ──────────────────► 9:TL    │
-│    start-batch (max 2 slices)   verify + add-change                  │
+│   8:TL ─────────────────────► 9:CODER ──────────────────► 10:TL    │
+│    start-slice-run (1 slice+type) verify + add-change                │
 │                                                                      │
-│   9:TL ──► 10:CODE-REV ◄──► 8:CODER (loop) ──► 11:TL              │
-│    increment   findings         code-review-gate PASS    sign-off    │
+│   10:TL ──► 8:TL (next slice if needed)                             │
+│                                                                      │
+│ if `SCENARIOS_REQUIRED`: 10:TL ─► E2E ─► 11:TL                     │
+│ if `REUSE_EXISTING`: 10:TL ─► TL karate run-check ─► 11:TL         │
+│                                                                      │
+│  11:TL ──► 12:CODE-REV ◄──► 9:CODER ─► smoke owner ─► 13:TL       │
+│   increment   findings          fix loop     if karate stale signoff │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,14 +81,18 @@ Suggested content:
 - **1:TL** — Requirement lock; `create` + `lock-requirements` with request source path
 - **2:PM** — Produces `artifacts/user-stories/<feature>.story.md`; story must preserve locked scope and acceptance criteria and seed `External Contracts` when boundary contracts matter
 - **3:TL** — Story gate; `register-artifact story` + `approve-artifact story`
-- **4:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via the v4 draft lifecycle; plan is slice-first and must include shared rules / decisions, owned units, done criteria, and final verification expectations. External payloads stay in story `External Contracts`
-- **5:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
-- **6:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
-- **7:TL** — Architecture gate passed; `set-review architectureReview PASS`; hands off approved slice IDs to Coder
-- **8:CODER** — Implements active slices via `summary` + `plan-get --slice`; loads story contracts via `story-get --section external-contracts` only when needed; records checks via `run-check` and files via `add-change`; runs `verify --profile batch` per slice and `verify --profile full` before handoff; runs `coder-handoff-check.sh`
-- **9:TL** — Coder gate; checks `storyStale`, `planStale`, and `*Stale` fields in `flow-log status`; re-runs only stale or suspect checks; does not re-run `finalCheck` or `karate` by default when coder evidence is fresh; `increment-code-review-round` and invokes Code Reviewer
-- **10:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
-- **11:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
+- **4:TL** — Records `set-e2e-mode --mode <REUSE_EXISTING|SCENARIOS_REQUIRED>`; chooses whether E2E Tester is needed
+- **4:E2E** — Only when `SCENARIOS_REQUIRED`: produces `artifacts/e2e-scenarios/<feature>.e2e.md` from the locked request and approved story; captures stable scenario IDs, smoke coverage, and repeatability rules
+- **4:TL** — Only when `SCENARIOS_REQUIRED`: E2E gate; `register-artifact e2e` + `approve-artifact e2e`
+- **5:ARCH** — Produces `artifacts/implementation-plans/<feature>.plan.json` via the v4 draft lifecycle; plan is slice-first and must include shared rules / decisions, owned units, done criteria, and final verification expectations. External payloads stay in story `External Contracts`, and smoke intent stays in the approved E2E artifact when that artifact exists
+- **6:TL** — Plan gate; `validate-plan` + `plan-summary` + `register-artifact plan` + `approve-artifact plan`; then `increment-round` and invoke Architecture Reviewer
+- **7:ARCH-REV** — Records risks via `add-risk` (all UNCLASSIFIED); TL classifies severity via `reclassify-risk`; TL runs `architecture-gate`
+- **8:TL** — Architecture gate passed; `set-review architectureReview PASS`; starts one approved slice-run at a time via `start-slice-run --slice <id> --type <intermediate|final>`. If more slices remain, TL repeats this step sequentially instead of grouping them.
+- **9:CODER** — Implements the active slice via `summary` + `plan-get --slice`; loads story contracts via `story-get --section external-contracts` only when needed; records checks via `run-check` and files via `add-change`; runs `verify --profile slice` for every slice-run; runs `coder-handoff-check.sh`
+- **10:TL** — Coder gate; checks `storyStale`, `planStale`, `e2eMode`, and `*Stale` fields in `flow-log status`; verifies the handoff against `summary.sliceRuns.current`; re-runs only stale or suspect checks; completes the slice-run or starts the next approved slice-run; selects the smoke owner after the final slice-run is accepted
+- **11:SMOKE OWNER** — If `SCENARIOS_REQUIRED`, `E2E Tester` updates Karate `.feature` files and runners from the approved E2E artifact, records changed files via `add-change`, and runs `run-check --name karate`. If `REUSE_EXISTING`, Team Lead runs `run-check --name karate` directly using the existing Karate suite.
+- **12:CODE-REV** — Records findings via `add-finding`; updates `capabilities/<capability>.md` and `.http` examples
+- **13:TL** — Final audit gate; `readiness signoff` must return `ready: true`; `complete` to record timing
 
 ---
 
@@ -104,6 +115,7 @@ Between runs, apply fixes and document them in the "Fixes Applied After This Run
 - **Models:**
   - Team Lead: model-name
   - Product Manager: model-name
+  - E2E Tester: model-name
   - Architect: model-name
   - Coder: model-name
   - Reviewer: model-name

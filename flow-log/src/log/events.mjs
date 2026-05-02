@@ -16,14 +16,17 @@ export function appendEvent(state, event) {
   if (event.decision) {
     entry.decision = event.decision;
   }
-  if (event.batch !== undefined) {
-    entry.batch = event.batch;
+  if (event.sliceRun !== undefined) {
+    entry.sliceRun = event.sliceRun;
   }
-  if (event.slices) {
-    entry.slices = event.slices;
+  if (event.slice) {
+    entry.slice = event.slice;
   }
-  if (event.batchStatus) {
-    entry.batchStatus = event.batchStatus;
+  if (event.sliceRunStatus) {
+    entry.sliceRunStatus = event.sliceRunStatus;
+  }
+  if (event.sliceRunType) {
+    entry.sliceRunType = event.sliceRunType;
   }
 
   state.events.push(entry);

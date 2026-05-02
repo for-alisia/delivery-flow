@@ -54,6 +54,31 @@ scripts/flow-log.sh resolve-risk --feature my-feature --id 1 --by ArchitectureRe
 scripts/flow-log.sh reopen-risk --feature my-feature --id 1 --reason "Unit id changed without reason" --by ArchitectureReviewer
 ```
 
+### Team Lead records non-blocking debt
+
+Use this only for `MEDIUM` or `LOW` risks that are consciously being carried forward.
+
+```bash
+scripts/flow-log.sh decide-risk \
+  --feature my-feature \
+  --id 2 \
+  --status ACCEPTED \
+  --reason "Valid concern, but not worth another architecture loop for this delivery." \
+  --by TL
+
+scripts/flow-log.sh decide-risk \
+  --feature my-feature \
+  --id 3 \
+  --status DEFERRED \
+  --reason "Track in follow-up cleanup story after release." \
+  --follow-up cleanup-story \
+  --by TL
+```
+
+`ACCEPTED` means TL reviewed the risk and is consciously carrying it in the current delivery.
+`DEFERRED` means TL reviewed the risk and is carrying it with an explicit later follow-up.
+Signoff blocks when non-blocking risks remain undecided.
+
 ### Round management
 
 ```bash
@@ -93,6 +118,31 @@ scripts/flow-log.sh respond-finding \
 scripts/flow-log.sh resolve-finding --feature my-feature --id 1 --by CodeReviewer
 scripts/flow-log.sh reopen-finding --feature my-feature --id 1 --reason "Only one call site was fixed" --by CodeReviewer
 ```
+
+### Team Lead records non-blocking debt
+
+Use this only for `MEDIUM` or `LOW` findings that are consciously being carried forward.
+
+```bash
+scripts/flow-log.sh decide-finding \
+  --feature my-feature \
+  --id 2 \
+  --status ACCEPTED \
+  --reason "Readable enough for now; not worth another coder loop." \
+  --by TL
+
+scripts/flow-log.sh decide-finding \
+  --feature my-feature \
+  --id 3 \
+  --status DEFERRED \
+  --reason "Follow up in refactor ticket." \
+  --follow-up refactor-ticket \
+  --by TL
+```
+
+`ACCEPTED` means TL reviewed the finding and is consciously carrying it in the current delivery.
+`DEFERRED` means TL reviewed the finding and is carrying it with an explicit later follow-up.
+Signoff blocks when non-blocking findings remain undecided.
 
 ### Round management
 

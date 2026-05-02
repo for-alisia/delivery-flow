@@ -1,16 +1,18 @@
 import { timestamp } from "./common.mjs";
 
-export const ARTIFACT_TYPES = ["story", "plan"];
+export const ARTIFACT_TYPES = ["story", "e2e", "plan"];
 export const REVIEW_NAMES = ["architectureReview", "codeReview"];
 export const REVIEW_STATUSES = ["PENDING", "PASS", "FAIL", "BLOCKED"];
 export const CHECK_NAMES = ["verifyQuick", "finalCheck", "karate"];
 export const CHECK_STATUSES = ["NOT_RUN", "PASS", "FAIL", "BLOCKED"];
-export const EVENT_TYPES = ["redCard", "rejection", "reroute", "note", "batchStart", "batchEnd", "archEscalationDecision"];
+export const SLICE_RUN_TYPES = ["intermediate", "final"];
+export const E2E_MODES = ["UNDECIDED", "REUSE_EXISTING", "SCENARIOS_REQUIRED"];
+export const EVENT_TYPES = ["redCard", "rejection", "reroute", "note", "sliceRunStart", "sliceRunEnd", "archEscalationDecision"];
 export const ARCH_ESCALATION_DECISIONS = ["PROCEED_TO_CODING", "FINAL_ADJUSTMENT", "ESCALATE_TO_USER"];
 export const RISK_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNCLASSIFIED"];
-export const RISK_STATUSES = ["OPEN", "ADDRESSED", "INVALIDATED", "RESOLVED", "REOPENED"];
+export const RISK_STATUSES = ["OPEN", "ADDRESSED", "INVALIDATED", "RESOLVED", "REOPENED", "ACCEPTED", "DEFERRED"];
 export const FINDING_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
-export const FINDING_STATUSES = ["OPEN", "FIXED", "DISPUTED", "RESOLVED", "REOPENED"];
+export const FINDING_STATUSES = ["OPEN", "FIXED", "DISPUTED", "RESOLVED", "REOPENED", "ACCEPTED", "DEFERRED"];
 export const MAX_ARCHITECTURE_REVIEW_ROUNDS = 3;
 export const MAX_CODE_REVIEW_ROUNDS = 3;
 
@@ -28,8 +30,10 @@ export function createInitialState(feature) {
       lockedBy: null,
       requestSource: null
     },
+    e2e: createE2EState(),
     artifacts: {
       story: createArtifactEntry(),
+      e2e: createArtifactEntry(),
       plan: createArtifactEntry()
     },
     reviews: {
@@ -46,7 +50,7 @@ export function createInitialState(feature) {
       completedAt: null,
       durationMinutes: null
     },
-    batches: {
+    sliceRuns: {
       current: null,
       total: 0,
       history: []
@@ -78,6 +82,15 @@ export function createArtifactEntry() {
   };
 }
 
+export function createE2EState() {
+  return {
+    mode: "UNDECIDED",
+    decidedAt: null,
+    decidedBy: null,
+    reason: null
+  };
+}
+
 export function createReviewEntry() {
   return {
     status: "PENDING",
@@ -95,6 +108,7 @@ export function createCheckEntry() {
     command: null,
     details: null,
     reportPaths: [],
+    logPath: null,
     sourceFingerprint: null
   };
 }
@@ -104,6 +118,7 @@ export function validateStateShape(state, statePath) {
     "schemaVersion",
     "feature",
     "requirements",
+    "e2e",
     "artifacts",
     "reviews",
     "checks",

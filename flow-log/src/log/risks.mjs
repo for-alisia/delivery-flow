@@ -1,6 +1,9 @@
 import { nextRiskId, timestamp, validateValue } from "./common.mjs";
 import { MAX_ARCHITECTURE_REVIEW_ROUNDS, RISK_SEVERITIES } from "./schema.mjs";
 
+const NON_BLOCKING_RISK_SEVERITIES = new Set(["MEDIUM", "LOW"]);
+const DECISION_STATUSES = new Set(["ACCEPTED", "DEFERRED"]);
+
 export function addRisk(state, severity, description, by, suggestedFix, planRefs = [], connectedAreas = []) {
   const effectiveSeverity = severity ?? "UNCLASSIFIED";
   validateValue(effectiveSeverity, RISK_SEVERITIES, "risk severity");
@@ -22,11 +25,38 @@ export function addRisk(state, severity, description, by, suggestedFix, planRefs
     responseNote: null,
     respondedBy: null,
     respondedAt: null,
+    decisionReason: null,
+    decisionBy: null,
+    decisionAt: null,
+    followUpRef: null,
     resolvedBy: null,
     resolvedAt: null
   };
 
   state.architecturalRisks.risks.push(risk);
+  return risk;
+}
+
+export function decideRisk(state, riskId, newStatus, reason, by, followUpRef) {
+  ensureRisksSection(state);
+  validateValue(newStatus, Array.from(DECISION_STATUSES), "risk decision status");
+
+  const risk = findRisk(state, riskId);
+
+  if (!NON_BLOCKING_RISK_SEVERITIES.has(risk.severity)) {
+    throw new Error(`Risk ${riskId} has severity '${risk.severity}' — only MEDIUM or LOW risks can be ACCEPTED or DEFERRED.`);
+  }
+
+  if (risk.status === "RESOLVED") {
+    throw new Error(`Risk ${riskId} is '${risk.status}' — resolved risks cannot be marked ACCEPTED or DEFERRED.`);
+  }
+
+  risk.status = newStatus;
+  risk.decisionReason = reason ?? null;
+  risk.decisionBy = by ?? null;
+  risk.decisionAt = timestamp();
+  risk.followUpRef = followUpRef ?? null;
+
   return risk;
 }
 
@@ -61,22 +91,24 @@ export function resolveRisk(state, riskId, by) {
   return risk;
 }
 
-export function reopenRisk(state, riskId, reason, by) {
+export function reopenRisk(state, riskId, reason) {
   ensureRisksSection(state);
   const risk = findRisk(state, riskId);
 
-  if (risk.status !== "ADDRESSED" && risk.status !== "INVALIDATED") {
-    throw new Error(`Risk ${riskId} is '${risk.status}' — can only reopen ADDRESSED or INVALIDATED risks.`);
+  if (risk.status !== "ADDRESSED" && risk.status !== "INVALIDATED" && !DECISION_STATUSES.has(risk.status)) {
+    throw new Error(`Risk ${riskId} is '${risk.status}' — can only reopen ADDRESSED, INVALIDATED, ACCEPTED, or DEFERRED risks.`);
   }
 
   risk.status = "REOPENED";
   risk.responseNote = reason ?? risk.responseNote;
   risk.respondedBy = null;
   risk.respondedAt = null;
+  risk.decisionReason = null;
+  risk.decisionBy = null;
+  risk.decisionAt = null;
+  risk.followUpRef = null;
   risk.resolvedBy = null;
   risk.resolvedAt = null;
-
-  void by;
 
   return risk;
 }
@@ -118,12 +150,23 @@ export function getUnresolvedBlockingRisks(state) {
   );
 }
 
+export function getUndecidedNonBlockingRisks(state) {
+  ensureRisksSection(state);
+
+  return state.architecturalRisks.risks.filter(
+    (risk) => NON_BLOCKING_RISK_SEVERITIES.has(risk.severity) &&
+      risk.status !== "RESOLVED" &&
+      !DECISION_STATUSES.has(risk.status)
+  );
+}
+
 export function buildArchitectureGate(state) {
   ensureRisksSection(state);
 
   const risks = state.architecturalRisks.risks;
   const round = state.architecturalRisks.round;
   const unresolvedBlocking = getUnresolvedBlockingRisks(state);
+  const debt = summarizeRiskDebt(risks);
 
   const allResponded = risks
     .filter((risk) => risk.status === "OPEN" || risk.status === "REOPENED")
@@ -134,8 +177,9 @@ export function buildArchitectureGate(state) {
       gate: "PASS",
       round,
       unresolvedBlocking: 0,
+      ...debt,
       totalRisks: risks.length,
-      message: "No unresolved Critical/High/Unclassified risks. Ready for implementation."
+      message: buildRiskPassMessage(debt)
     };
   }
 
@@ -144,6 +188,7 @@ export function buildArchitectureGate(state) {
       gate: "ESCALATE",
       round,
       unresolvedBlocking: unresolvedBlocking.length,
+      ...debt,
       unresolvedRisks: unresolvedBlocking.map((risk) => ({
         id: risk.id,
         severity: risk.severity,
@@ -159,6 +204,7 @@ export function buildArchitectureGate(state) {
     gate: "FAIL",
     round,
     unresolvedBlocking: unresolvedBlocking.length,
+    ...debt,
     allResponded,
     totalRisks: risks.length,
     message: `${unresolvedBlocking.length} unresolved Critical/High/Unclassified risk(s) in round ${round}.`
@@ -170,7 +216,7 @@ export function summarizeRisks(state) {
   const risks = section.risks;
 
   const bySeverity = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNCLASSIFIED: 0 };
-  const byStatus = { OPEN: 0, ADDRESSED: 0, INVALIDATED: 0, RESOLVED: 0, REOPENED: 0 };
+  const byStatus = { OPEN: 0, ADDRESSED: 0, INVALIDATED: 0, RESOLVED: 0, REOPENED: 0, ACCEPTED: 0, DEFERRED: 0 };
 
   for (const risk of risks) {
     bySeverity[risk.severity] = (bySeverity[risk.severity] ?? 0) + 1;
@@ -182,6 +228,7 @@ export function summarizeRisks(state) {
     total: risks.length,
     bySeverity,
     byStatus,
+    debt: summarizeRiskDebt(risks),
     risks: risks.map((risk) => ({
       id: risk.id,
       severity: risk.severity,
@@ -190,7 +237,11 @@ export function summarizeRisks(state) {
       suggestedFix: risk.suggestedFix ?? null,
       planRefs: risk.planRefs ?? [],
       connectedAreas: risk.connectedAreas ?? [],
-      responseNote: risk.responseNote
+      responseNote: risk.responseNote,
+      decisionReason: risk.decisionReason ?? null,
+      decisionBy: risk.decisionBy ?? null,
+      decisionAt: risk.decisionAt ?? null,
+      followUpRef: risk.followUpRef ?? null
     }))
   };
 }
@@ -217,4 +268,28 @@ function sanitizeStringArray(values) {
   return values
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .filter((value) => value.length > 0);
+}
+
+function summarizeRiskDebt(risks) {
+  return {
+    accepted: risks.filter((risk) => risk.status === "ACCEPTED").length,
+    deferred: risks.filter((risk) => risk.status === "DEFERRED").length,
+    undecidedNonBlocking: risks.filter(
+      (risk) => NON_BLOCKING_RISK_SEVERITIES.has(risk.severity) &&
+        risk.status !== "RESOLVED" &&
+        !DECISION_STATUSES.has(risk.status)
+    ).length
+  };
+}
+
+function buildRiskPassMessage(debt) {
+  if (debt.undecidedNonBlocking > 0) {
+    return `No unresolved Critical/High/Unclassified risks, but ${debt.undecidedNonBlocking} non-blocking Medium/Low risk(s) still need TL decision (ACCEPTED or DEFERRED).`;
+  }
+
+  if (debt.accepted > 0 || debt.deferred > 0) {
+    return `No unresolved Critical/High/Unclassified risks. ${debt.accepted} ACCEPTED and ${debt.deferred} DEFERRED non-blocking risk(s) are recorded.`;
+  }
+
+  return "No unresolved Critical/High/Unclassified risks. Ready for implementation.";
 }
